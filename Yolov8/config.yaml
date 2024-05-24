@@ -1,0 +1,6 @@
+path: "C:/Users/Tarik/Desktop/code env/comp_vision/Yolov8_conda/data"
+train: "images/train"
+val: "images/val"
+
+nc: 1
+names: ["hair"]
