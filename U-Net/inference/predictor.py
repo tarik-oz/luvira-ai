@@ -1,0 +1,309 @@
+"""
+Inference module for hair segmentation U-Net model.
+Handles model prediction and result visualization.
+"""
+
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+from pathlib import Path
+from typing import Union, Tuple, Optional, List
+import logging
+
+from config import (
+    TEST_IMAGES_DIR, TEST_RESULTS_DIR, 
+    DATA_CONFIG, MODEL_CONFIG
+)
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+class HairSegmentationPredictor:
+    """
+    Predictor class for hair segmentation U-Net model.
+    
+    Handles model inference, prediction, and result visualization.
+    """
+    
+    def __init__(self, 
+                 model,
+                 test_images_dir: Path = TEST_IMAGES_DIR,
+                 test_results_dir: Path = TEST_RESULTS_DIR,
+                 image_size: Tuple[int, int] = DATA_CONFIG["image_size"],
+                 normalization_factor: float = DATA_CONFIG["normalization_factor"],
+                 mask_threshold: float = DATA_CONFIG["mask_threshold"]):
+        """
+        Initialize the predictor.
+        
+        Args:
+            model: Trained U-Net model
+            test_images_dir: Directory containing test images
+            test_results_dir: Directory to save prediction results
+            image_size: Target size for images (height, width)
+            normalization_factor: Factor to normalize pixel values
+            mask_threshold: Threshold for binary mask conversion
+        """
+        self.model = model
+        self.test_images_dir = Path(test_images_dir)
+        self.test_results_dir = Path(test_results_dir)
+        self.image_size = image_size
+        self.normalization_factor = normalization_factor
+        self.mask_threshold = mask_threshold
+        
+        # Create results directory if it doesn't exist
+        self.test_results_dir.mkdir(parents=True, exist_ok=True)
+        
+    def preprocess_image(self, image_path: Union[str, Path]) -> np.ndarray:
+        """
+        Preprocess a single image for prediction.
+        
+        Args:
+            image_path: Path to the image file
+            
+        Returns:
+            Preprocessed image as numpy array
+        """
+        try:
+            # Load image
+            image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
+            if image is None:
+                raise ValueError(f"Could not load image: {image_path}")
+            
+            # Store original size for later use
+            original_size = image.shape[:2]
+            
+            # Resize image
+            image_resized = cv2.resize(image, self.image_size)
+            
+            # Normalize pixel values
+            image_normalized = image_resized / self.normalization_factor
+            image_normalized = image_normalized.astype(np.float32)
+            
+            # Add batch dimension
+            image_batch = np.expand_dims(image_normalized, axis=0)
+            
+            return image_batch, original_size
+            
+        except Exception as e:
+            logger.error(f"Error preprocessing image {image_path}: {e}")
+            return None, None
+    
+    def predict(self, image_path: Union[str, Path]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Predict segmentation mask for a single image.
+        
+        Args:
+            image_path: Path to the image file
+            
+        Returns:
+            Tuple of (original_image, predicted_mask, binary_mask)
+        """
+        # Preprocess image
+        image_batch, original_size = self.preprocess_image(image_path)
+        if image_batch is None:
+            return None, None, None
+        
+        # Load original image for visualization
+        original_image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
+        
+        # Make prediction
+        logger.info(f"Predicting segmentation for {image_path}")
+        prediction = self.model.predict(image_batch)
+        predicted_mask = prediction[0]  # Remove batch dimension
+        
+        # Convert to binary mask
+        binary_mask = self._create_binary_mask(predicted_mask)
+        
+        # Resize masks to original image size
+        if original_size:
+            predicted_mask = cv2.resize(predicted_mask, (original_size[1], original_size[0]))
+            binary_mask = cv2.resize(binary_mask, (original_size[1], original_size[0]))
+        
+        return original_image, predicted_mask, binary_mask
+    
+    def _create_binary_mask(self, predicted_mask: np.ndarray) -> np.ndarray:
+        """
+        Create binary mask from predicted probabilities.
+        
+        Args:
+            predicted_mask: Predicted mask with probabilities
+            
+        Returns:
+            Binary mask
+        """
+        # Normalize to 0-255 range
+        mask_normalized = (predicted_mask - predicted_mask.min()) / (predicted_mask.max() - predicted_mask.min())
+        mask_scaled = (mask_normalized * 255).astype(np.uint8)
+        
+        # Create binary mask
+        binary_mask = np.zeros_like(mask_scaled)
+        binary_mask[mask_scaled > (self.mask_threshold * 255)] = 255
+        
+        return binary_mask
+    
+    def visualize_prediction(self, 
+                           original_image: np.ndarray,
+                           predicted_mask: np.ndarray,
+                           binary_mask: np.ndarray,
+                           save_path: Optional[Path] = None,
+                           show_plot: bool = True) -> None:
+        """
+        Visualize prediction results.
+        
+        Args:
+            original_image: Original input image
+            predicted_mask: Predicted probability mask
+            binary_mask: Binary segmentation mask
+            save_path: Path to save the visualization
+            show_plot: Whether to display the plot
+        """
+        # Create figure with subplots
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        
+        # Original image
+        axes[0].imshow(cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB))
+        axes[0].set_title("Original Image")
+        axes[0].axis("off")
+        
+        # Predicted mask
+        axes[1].imshow(predicted_mask, cmap='gray')
+        axes[1].set_title("Predicted Mask")
+        axes[1].axis("off")
+        
+        # Binary mask
+        axes[2].imshow(binary_mask, cmap='gray')
+        axes[2].set_title("Binary Mask")
+        axes[2].axis("off")
+        
+        # Adjust layout
+        plt.tight_layout()
+        
+        # Save plot if path provided
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            logger.info(f"Visualization saved to {save_path}")
+        
+        # Show plot
+        if show_plot:
+            plt.show()
+        else:
+            plt.close()
+    
+    def predict_and_save(self, 
+                        image_path: Union[str, Path],
+                        output_name: Optional[str] = None) -> bool:
+        """
+        Predict segmentation and save results.
+        
+        Args:
+            image_path: Path to the image file
+            output_name: Name for output files (without extension)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Generate output name if not provided
+            if output_name is None:
+                output_name = Path(image_path).stem
+            
+            # Make prediction
+            original_image, predicted_mask, binary_mask = self.predict(image_path)
+            
+            if original_image is None:
+                return False
+            
+            # Save masks
+            predicted_mask_path = self.test_results_dir / f"{output_name}_predicted_mask.png"
+            binary_mask_path = self.test_results_dir / f"{output_name}_binary_mask.png"
+            visualization_path = self.test_results_dir / f"{output_name}_visualization.png"
+            
+            cv2.imwrite(str(predicted_mask_path), predicted_mask)
+            cv2.imwrite(str(binary_mask_path), binary_mask)
+            
+            # Create and save visualization
+            self.visualize_prediction(
+                original_image, predicted_mask, binary_mask,
+                save_path=visualization_path, show_plot=False
+            )
+            
+            logger.info(f"Results saved for {image_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing {image_path}: {e}")
+            return False
+    
+    def predict_batch(self, 
+                     image_paths: List[Union[str, Path]],
+                     output_names: Optional[List[str]] = None) -> List[bool]:
+        """
+        Predict segmentation for multiple images.
+        
+        Args:
+            image_paths: List of image paths
+            output_names: List of output names (optional)
+            
+        Returns:
+            List of success status for each image
+        """
+        results = []
+        
+        for i, image_path in enumerate(image_paths):
+            output_name = output_names[i] if output_names else None
+            success = self.predict_and_save(image_path, output_name)
+            results.append(success)
+        
+        successful = sum(results)
+        total = len(results)
+        logger.info(f"Batch prediction completed: {successful}/{total} successful")
+        
+        return results
+    
+    def predict_directory(self, 
+                         input_dir: Optional[Path] = None,
+                         file_pattern: str = "*.jpg") -> List[bool]:
+        """
+        Predict segmentation for all images in a directory.
+        
+        Args:
+            input_dir: Input directory (uses test_images_dir if None)
+            file_pattern: File pattern to match
+            
+        Returns:
+            List of success status for each image
+        """
+        if input_dir is None:
+            input_dir = self.test_images_dir
+        
+        input_dir = Path(input_dir)
+        if not input_dir.exists():
+            logger.error(f"Input directory does not exist: {input_dir}")
+            return []
+        
+        # Find all matching files
+        image_paths = list(input_dir.glob(file_pattern))
+        if not image_paths:
+            logger.warning(f"No images found in {input_dir} matching pattern {file_pattern}")
+            return []
+        
+        logger.info(f"Found {len(image_paths)} images to process")
+        
+        # Process all images
+        return self.predict_batch(image_paths)
+
+
+def create_predictor(model, **kwargs) -> HairSegmentationPredictor:
+    """
+    Factory function to create a predictor.
+    
+    Args:
+        model: Trained U-Net model
+        **kwargs: Arguments to pass to HairSegmentationPredictor
+        
+    Returns:
+        HairSegmentationPredictor instance
+    """
+    return HairSegmentationPredictor(model, **kwargs) 

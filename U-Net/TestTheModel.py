@@ -2,11 +2,10 @@ import numpy as np
 import tensorflow as tf
 import cv2
 import matplotlib.pyplot as plt
+import os
 
 # load the model
-best_model_file = (
-    "C:/Users/Tarik/Desktop/code env/comp_vision/U-Net_conda/data/Hair-Unet.h5"
-)
+best_model_file = "model/Hair-Unet.h5"
 
 model = tf.keras.models.load_model(best_model_file)
 # print(model.summary())
@@ -15,10 +14,7 @@ Height = 256
 Width = 256
 
 # show one image
-
-imgPath = (
-    "C:/Users/Tarik/Desktop/code env/comp_vision//U-Net_conda/test_images/1624.jpg"
-)
+imgPath = "test_images/1624.jpg"
 
 img = cv2.imread(imgPath, cv2.IMREAD_COLOR)
 # cv2.imshow("imread", img)
@@ -101,10 +97,5 @@ axes[2].axis("off")
 # Subplot'ları gösterme
 plt.tight_layout()
 plt.show()
-cv2.imwrite(
-    "C:/Users/Tarik/Desktop/code env/comp_vision/U-Net_conda/1624Mask.png", mask
-)
-cv2.imwrite(
-    "C:/Users/Tarik/Desktop/code env/comp_vision/U-Net_conda/1624Mask_Binary.png",
-    binary_mask,
-)
+cv2.imwrite("1624Mask.png", mask)
+cv2.imwrite("1624Mask_Binary.png", binary_mask)

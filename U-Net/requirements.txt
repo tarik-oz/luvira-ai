@@ -1,0 +1,17 @@
+# Core dependencies
+tensorflow>=2.8.0
+numpy>=1.21.0
+opencv-python>=4.5.0
+matplotlib>=3.5.0
+scikit-learn>=1.0.0
+tqdm>=4.62.0
+
+# Development dependencies (optional)
+pytest>=6.0.0
+black>=22.0.0
+flake8>=4.0.0
+mypy>=0.950
+
+# Additional utilities
+Pillow>=8.3.0
+seaborn>=0.11.0 

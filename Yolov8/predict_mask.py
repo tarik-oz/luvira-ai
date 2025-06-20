@@ -3,7 +3,7 @@ import os
 import cv2
 import matplotlib.pyplot as plt
 
-model_path = "runs/segment/train/weights/best.pt"
+model_path = "model/best.pt"
 
 image_path = "test_images/1624.jpg"
 image_name = os.path.basename(image_path).replace(".jpg", "")
