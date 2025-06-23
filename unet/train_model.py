@@ -48,8 +48,8 @@ def main():
             train_masks=train_masks,
             val_images=val_images,
             val_masks=val_masks,
-            epochs=10,  # You can modify this
-            batch_size=2  # You can modify this
+            epochs=2,
+            batch_size=2
         )
         
         # Get training summary

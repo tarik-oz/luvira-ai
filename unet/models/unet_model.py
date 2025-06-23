@@ -164,18 +164,3 @@ def create_unet_model(input_shape: Tuple[int, int, int] = None,
         input_shape = MODEL_CONFIG["input_shape"]
         
     return UNetModel(input_shape=input_shape, **kwargs)
-
-
-# Legacy function for backward compatibility
-def build_model(shape: Tuple[int, int, int]) -> Model:
-    """
-    Legacy function to build U-Net model (for backward compatibility).
-    
-    Args:
-        shape: Input shape (height, width, channels)
-        
-    Returns:
-        Compiled U-Net model
-    """
-    unet = UNetModel(input_shape=shape)
-    return unet.build() 
