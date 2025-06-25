@@ -39,15 +39,13 @@ def main():
         
         # Setup data
         logger.info("Setting up training data...")
-        train_images, train_masks, val_images, val_masks = trainer.setup_data(load_processed=True)
+        train_loader, val_loader = trainer.setup_data(load_processed=True)
         
         # Start training
         logger.info("Starting model training...")
         history = trainer.train(
-            train_images=train_images,
-            train_masks=train_masks,
-            val_images=val_images,
-            val_masks=val_masks,
+            train_loader=train_loader,
+            val_loader=val_loader,
             epochs=2,
             batch_size=2
         )

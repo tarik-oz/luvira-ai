@@ -17,8 +17,8 @@ PROCESSED_DATA_DIR = DATA_DIR / "processed"
 
 # Model paths
 MODEL_DIR = PROJECT_ROOT / "models"
-BEST_MODEL_PATH = MODEL_DIR / "best_model.h5"
-LATEST_MODEL_PATH = MODEL_DIR / "latest_model.h5"
+BEST_MODEL_PATH = MODEL_DIR / "best_model.pth"
+LATEST_MODEL_PATH = MODEL_DIR / "latest_model.pth"
 
 # Test paths
 TEST_IMAGES_DIR = PROJECT_ROOT / "test_images"
@@ -31,7 +31,7 @@ for directory in [DATA_DIR, IMAGES_DIR, MASKS_DIR, PROCESSED_DATA_DIR,
 
 # Model configuration
 MODEL_CONFIG = {
-    "input_shape": (256, 256, 3),
+    "input_shape": (3, 256, 256),  # (channels, height, width)
     "num_filters": [64, 128, 256, 512],
     "bridge_filters": 256,
     "output_channels": 1,
@@ -45,9 +45,10 @@ TRAINING_CONFIG = {
     "learning_rate": 1e-4,
     "validation_split": 0.1,
     "random_seed": 42,
-    "loss_function": "binary_crossentropy",
+    "loss_function": "bce",  # Binary Cross Entropy
     "optimizer": "adam",
-    "metrics": ["accuracy"]
+    "metrics": ["accuracy"],
+    "device": "auto"  # auto, cpu, or cuda
 }
 
 # Data preprocessing configuration

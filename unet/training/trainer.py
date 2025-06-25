@@ -5,11 +5,14 @@ Handles model training with callbacks and logging.
 
 import os
 import numpy as np
-import tensorflow as tf
-from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 import logging
+from tqdm import tqdm
 
 from config import (
     TRAINING_CONFIG, CALLBACKS_CONFIG, 
@@ -22,8 +25,25 @@ from data.data_loader import create_data_loader
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Set TensorFlow logging level
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"
+
+class EarlyStopping:
+    """Early stopping callback for PyTorch training."""
+    
+    def __init__(self, patience: int = 7, min_delta: float = 0, monitor: str = 'val_loss'):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.monitor = monitor
+        self.counter = 0
+        self.best_loss = float('inf')
+        
+    def __call__(self, val_loss: float) -> bool:
+        if val_loss < self.best_loss - self.min_delta:
+            self.best_loss = val_loss
+            self.counter = 0
+        else:
+            self.counter += 1
+            
+        return self.counter >= self.patience
 
 
 class HairSegmentationTrainer:
@@ -57,9 +77,31 @@ class HairSegmentationTrainer:
         # Model and data
         self.model = None
         self.data_loader = None
-        self.history = None
+        self.device = None
+        self.optimizer = None
+        self.criterion = None
+        self.history = {
+            'train_loss': [],
+            'train_accuracy': [],
+            'val_loss': [],
+            'val_accuracy': []
+        }
         
-    def setup_model(self, input_shape: tuple = None) -> tf.keras.Model:
+        # Setup device
+        self._setup_device()
+        
+    def _setup_device(self):
+        """Setup device (CPU/GPU) for training."""
+        if self.config["device"] == "auto":
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        elif self.config["device"] == "cuda":
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            self.device = torch.device("cpu")
+            
+        logger.info(f"Using device: {self.device}")
+        
+    def setup_model(self, input_shape: tuple = None) -> nn.Module:
         """
         Setup the U-Net model.
         
@@ -67,26 +109,36 @@ class HairSegmentationTrainer:
             input_shape: Input shape for the model
             
         Returns:
-            Compiled U-Net model
+            U-Net model
         """
         logger.info("Setting up U-Net model...")
         
         # Create model
         self.model = create_unet_model(input_shape=input_shape)
+        self.model.to(self.device)
         
-        # Compile model
-        self.model.compile_model(
-            optimizer=self.config["optimizer"],
-            loss=self.config["loss_function"],
-            metrics=self.config["metrics"]
-        )
+        # Setup optimizer
+        if self.config["optimizer"] == "adam":
+            self.optimizer = optim.Adam(self.model.parameters(), lr=self.config["learning_rate"])
+        elif self.config["optimizer"] == "sgd":
+            self.optimizer = optim.SGD(self.model.parameters(), lr=self.config["learning_rate"])
+        else:
+            raise ValueError(f"Unsupported optimizer: {self.config['optimizer']}")
+        
+        # Setup loss function
+        if self.config["loss_function"] == "bce":
+            self.criterion = nn.BCELoss()
+        elif self.config["loss_function"] == "bce_with_logits":
+            self.criterion = nn.BCEWithLogitsLoss()
+        else:
+            raise ValueError(f"Unsupported loss function: {self.config['loss_function']}")
         
         logger.info("Model setup complete")
         self.model.summary()
         
-        return self.model.model
+        return self.model
     
-    def setup_data(self, load_processed: bool = True) -> tuple:
+    def setup_data(self, load_processed: bool = True) -> Tuple[DataLoader, DataLoader]:
         """
         Setup training and validation data.
         
@@ -94,7 +146,7 @@ class HairSegmentationTrainer:
             load_processed: Whether to load processed data or process raw data
             
         Returns:
-            Tuple of (train_images, train_masks, val_images, val_masks)
+            Tuple of (train_loader, val_loader)
         """
         logger.info("Setting up data...")
         
@@ -110,7 +162,34 @@ class HairSegmentationTrainer:
         else:
             data = self._process_raw_data()
         
-        return data
+        # Convert to PyTorch tensors and create DataLoaders
+        train_images, train_masks, val_images, val_masks = data
+        
+        # Convert to PyTorch format (NCHW)
+        train_images = torch.FloatTensor(train_images).permute(0, 3, 1, 2)
+        train_masks = torch.FloatTensor(train_masks).unsqueeze(1)  # Add channel dimension
+        val_images = torch.FloatTensor(val_images).permute(0, 3, 1, 2)
+        val_masks = torch.FloatTensor(val_masks).unsqueeze(1)  # Add channel dimension
+        
+        # Create datasets
+        train_dataset = TensorDataset(train_images, train_masks)
+        val_dataset = TensorDataset(val_images, val_masks)
+        
+        # Create data loaders
+        train_loader = DataLoader(
+            train_dataset, 
+            batch_size=self.config["batch_size"], 
+            shuffle=True,
+            num_workers=0  # Set to 0 for Windows compatibility
+        )
+        val_loader = DataLoader(
+            val_dataset, 
+            batch_size=self.config["batch_size"], 
+            shuffle=False,
+            num_workers=0  # Set to 0 for Windows compatibility
+        )
+        
+        return train_loader, val_loader
     
     def _process_raw_data(self) -> tuple:
         """
@@ -131,58 +210,79 @@ class HairSegmentationTrainer:
         
         return data
     
-    def _create_callbacks(self) -> list:
-        """
-        Create training callbacks.
+    def _calculate_accuracy(self, predictions: torch.Tensor, targets: torch.Tensor) -> float:
+        """Calculate accuracy for binary segmentation."""
+        with torch.no_grad():
+            # Convert predictions to binary
+            binary_preds = (predictions > 0.5).float()
+            # Calculate accuracy
+            accuracy = (binary_preds == targets).float().mean().item()
+        return accuracy
+    
+    def _train_epoch(self, train_loader: DataLoader) -> Tuple[float, float]:
+        """Train for one epoch."""
+        self.model.train()
+        total_loss = 0.0
+        total_accuracy = 0.0
+        num_batches = 0
         
-        Returns:
-            List of callbacks
-        """
-        callbacks = []
+        for batch_idx, (images, masks) in enumerate(tqdm(train_loader, desc="Training")):
+            images = images.to(self.device)
+            masks = masks.to(self.device)
+            
+            # Forward pass
+            self.optimizer.zero_grad()
+            predictions = self.model(images)
+            loss = self.criterion(predictions, masks)
+            
+            # Backward pass
+            loss.backward()
+            self.optimizer.step()
+            
+            # Calculate accuracy
+            accuracy = self._calculate_accuracy(predictions, masks)
+            
+            total_loss += loss.item()
+            total_accuracy += accuracy
+            num_batches += 1
         
-        # Model checkpoint
-        checkpoint = ModelCheckpoint(
-            filepath=str(self.model_path),
-            monitor=CALLBACKS_CONFIG["checkpoint_monitor"],
-            save_best_only=CALLBACKS_CONFIG["checkpoint_save_best_only"],
-            verbose=1
-        )
-        callbacks.append(checkpoint)
+        return total_loss / num_batches, total_accuracy / num_batches
+    
+    def _validate_epoch(self, val_loader: DataLoader) -> Tuple[float, float]:
+        """Validate for one epoch."""
+        self.model.eval()
+        total_loss = 0.0
+        total_accuracy = 0.0
+        num_batches = 0
         
-        # Learning rate reduction
-        reduce_lr = ReduceLROnPlateau(
-            monitor=CALLBACKS_CONFIG["reduce_lr_monitor"],
-            patience=CALLBACKS_CONFIG["reduce_lr_patience"],
-            factor=CALLBACKS_CONFIG["reduce_lr_factor"],
-            min_lr=CALLBACKS_CONFIG["reduce_lr_min_lr"],
-            verbose=1
-        )
-        callbacks.append(reduce_lr)
+        with torch.no_grad():
+            for batch_idx, (images, masks) in enumerate(tqdm(val_loader, desc="Validation")):
+                images = images.to(self.device)
+                masks = masks.to(self.device)
+                
+                # Forward pass
+                predictions = self.model(images)
+                loss = self.criterion(predictions, masks)
+                
+                # Calculate accuracy
+                accuracy = self._calculate_accuracy(predictions, masks)
+                
+                total_loss += loss.item()
+                total_accuracy += accuracy
+                num_batches += 1
         
-        # Early stopping
-        early_stopping = EarlyStopping(
-            monitor=CALLBACKS_CONFIG["early_stopping_monitor"],
-            patience=CALLBACKS_CONFIG["early_stopping_patience"],
-            verbose=1
-        )
-        callbacks.append(early_stopping)
-        
-        return callbacks
+        return total_loss / num_batches, total_accuracy / num_batches
     
     def train(self, 
-              train_images: np.ndarray,
-              train_masks: np.ndarray,
-              val_images: np.ndarray,
-              val_masks: np.ndarray,
-              **kwargs) -> tf.keras.callbacks.History:
+              train_loader: DataLoader,
+              val_loader: DataLoader,
+              **kwargs) -> Dict[str, list]:
         """
         Train the model.
         
         Args:
-            train_images: Training images
-            train_masks: Training masks
-            val_images: Validation images
-            val_masks: Validation masks
+            train_loader: Training data loader
+            val_loader: Validation data loader
             **kwargs: Additional training parameters
             
         Returns:
@@ -191,81 +291,79 @@ class HairSegmentationTrainer:
         if self.model is None:
             raise ValueError("Model not setup. Call setup_model() first.")
         
+        epochs = kwargs.get('epochs', self.config['epochs'])
+        
         logger.info("Starting training...")
-        logger.info(f"Training samples: {len(train_images)}")
-        logger.info(f"Validation samples: {len(val_images)}")
+        logger.info(f"Training samples: {len(train_loader.dataset)}")
+        logger.info(f"Validation samples: {len(val_loader.dataset)}")
+        logger.info(f"Epochs: {epochs}")
         
-        # Calculate steps per epoch
-        batch_size = kwargs.get('batch_size', self.config['batch_size'])
-        steps_per_epoch = np.ceil(len(train_images) / batch_size)
-        validation_steps = np.ceil(len(val_images) / batch_size)
-        
-        logger.info(f"Steps per epoch: {steps_per_epoch}")
-        logger.info(f"Validation steps: {validation_steps}")
-        
-        # Create callbacks
-        callbacks = self._create_callbacks()
-        
-        # Training parameters
-        training_params = {
-            'batch_size': batch_size,
-            'epochs': kwargs.get('epochs', self.config['epochs']),
-            'verbose': 1,
-            'validation_data': (val_images, val_masks),
-            'validation_steps': validation_steps,
-            'steps_per_epoch': steps_per_epoch,
-            'shuffle': True,
-            'callbacks': callbacks
-        }
-        
-        # Start training
-        self.history = self.model.model.fit(
-            train_images,
-            train_masks,
-            **training_params
+        # Setup callbacks
+        early_stopping = EarlyStopping(
+            patience=CALLBACKS_CONFIG["early_stopping_patience"],
+            monitor=CALLBACKS_CONFIG["early_stopping_monitor"]
         )
         
-        # Save latest model
-        self.model.model.save(str(self.latest_model_path))
-        logger.info(f"Training completed. Best model saved to {self.model_path}")
+        best_val_loss = float('inf')
         
+        for epoch in range(epochs):
+            logger.info(f"\nEpoch {epoch+1}/{epochs}")
+            
+            # Training
+            train_loss, train_acc = self._train_epoch(train_loader)
+            
+            # Validation
+            val_loss, val_acc = self._validate_epoch(val_loader)
+            
+            # Log results
+            logger.info(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}")
+            logger.info(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
+            
+            # Save history
+            self.history['train_loss'].append(train_loss)
+            self.history['train_accuracy'].append(train_acc)
+            self.history['val_loss'].append(val_loss)
+            self.history['val_accuracy'].append(val_acc)
+            
+            # Save best model
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                torch.save(self.model.state_dict(), self.model_path)
+                logger.info(f"Saved best model with val_loss: {val_loss:.4f}")
+            
+            # Save latest model
+            torch.save(self.model.state_dict(), self.latest_model_path)
+            
+            # Early stopping
+            if early_stopping(val_loss):
+                logger.info("Early stopping triggered")
+                break
+        
+        logger.info("Training completed!")
         return self.history
     
     def get_training_summary(self) -> Dict[str, Any]:
         """
-        Get training summary information.
+        Get training summary.
         
         Returns:
             Dictionary containing training summary
         """
-        if self.history is None:
-            return {"status": "No training history available"}
+        if not self.history['train_loss']:
+            return {}
         
-        # Get final metrics
-        final_train_loss = self.history.history['loss'][-1]
-        final_train_acc = self.history.history['accuracy'][-1]
-        final_val_loss = self.history.history['val_loss'][-1]
-        final_val_acc = self.history.history['val_accuracy'][-1]
-        
-        # Get best metrics
-        best_val_loss = min(self.history.history['val_loss'])
-        best_val_acc = max(self.history.history['val_accuracy'])
-        
-        summary = {
-            "epochs_trained": len(self.history.history['loss']),
-            "final_train_loss": final_train_loss,
-            "final_train_accuracy": final_train_acc,
-            "final_val_loss": final_val_loss,
-            "final_val_accuracy": final_val_acc,
-            "best_val_loss": best_val_loss,
-            "best_val_accuracy": best_val_acc,
-            "model_path": str(self.model_path),
-            "latest_model_path": str(self.latest_model_path)
+        return {
+            'final_train_loss': self.history['train_loss'][-1],
+            'final_train_accuracy': self.history['train_accuracy'][-1],
+            'final_val_loss': self.history['val_loss'][-1],
+            'final_val_accuracy': self.history['val_accuracy'][-1],
+            'best_val_loss': min(self.history['val_loss']),
+            'best_val_accuracy': max(self.history['val_accuracy']),
+            'total_epochs': len(self.history['train_loss']),
+            'device_used': str(self.device)
         }
-        
-        return summary
     
-    def load_trained_model(self, model_path: Optional[Path] = None) -> tf.keras.Model:
+    def load_trained_model(self, model_path: Optional[Path] = None) -> nn.Module:
         """
         Load a trained model.
         
@@ -278,12 +376,18 @@ class HairSegmentationTrainer:
         if model_path is None:
             model_path = self.model_path
         
-        if not Path(model_path).exists():
-            raise FileNotFoundError(f"Model not found at {model_path}")
+        if not model_path.exists():
+            raise FileNotFoundError(f"Model file not found: {model_path}")
         
-        logger.info(f"Loading model from {model_path}")
-        self.model = tf.keras.models.load_model(str(model_path))
+        # Create model if not already created
+        if self.model is None:
+            self.setup_model()
         
+        # Load model weights
+        self.model.load_state_dict(torch.load(model_path, map_location=self.device))
+        self.model.eval()
+        
+        logger.info(f"Loaded model from {model_path}")
         return self.model
 
 
@@ -292,7 +396,7 @@ def create_trainer(**kwargs) -> HairSegmentationTrainer:
     Factory function to create a trainer.
     
     Args:
-        **kwargs: Arguments to pass to HairSegmentationTrainer
+        **kwargs: Arguments for HairSegmentationTrainer
         
     Returns:
         HairSegmentationTrainer instance

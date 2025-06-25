@@ -3,23 +3,96 @@ U-Net model implementation for hair segmentation.
 Provides a clean and modular implementation of the U-Net architecture.
 """
 
-import tensorflow as tf
-from tensorflow.keras.layers import (
-    Input, Conv2D, BatchNormalization, Activation, 
-    MaxPool2D, UpSampling2D, Concatenate
-)
-from tensorflow.keras.models import Model
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from typing import Tuple, List
 
 from config import MODEL_CONFIG
 
 
-class UNetModel:
+class DoubleConv(nn.Module):
+    """
+    Double convolutional block with batch normalization and ReLU activation.
+    """
+    
+    def __init__(self, in_channels: int, out_channels: int):
+        super().__init__()
+        self.double_conv = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+    
+    def forward(self, x):
+        return self.double_conv(x)
+
+
+class Down(nn.Module):
+    """
+    Downscaling with maxpool then double conv.
+    """
+    
+    def __init__(self, in_channels: int, out_channels: int):
+        super().__init__()
+        self.maxpool_conv = nn.Sequential(
+            nn.MaxPool2d(2),
+            DoubleConv(in_channels, out_channels)
+        )
+    
+    def forward(self, x):
+        return self.maxpool_conv(x)
+
+
+class Up(nn.Module):
+    """
+    Upscaling then double conv.
+    """
+    
+    def __init__(self, in_channels: int, out_channels: int):
+        super().__init__()
+        # ConvTranspose2d ile channel sayısını yarıya indir
+        self.up = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
+        # Concatenation sonrası channel sayısı: (in_channels // 2) + skip_channels
+        # Bu durumda skip_channels = out_channels olduğu için toplam: (in_channels // 2) + out_channels
+        self.conv = DoubleConv((in_channels // 2) + out_channels, out_channels)
+    
+    def forward(self, x1, x2):
+        x1 = self.up(x1)
+        
+        # Input is CHW
+        diffY = x2.size()[2] - x1.size()[2]
+        diffX = x2.size()[3] - x1.size()[3]
+        
+        x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
+                       diffY // 2, diffY - diffY // 2])
+        
+        x = torch.cat([x2, x1], dim=1)
+        return self.conv(x)
+
+
+class OutConv(nn.Module):
+    """
+    Output convolution layer.
+    """
+    
+    def __init__(self, in_channels: int, out_channels: int):
+        super(OutConv, self).__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+    
+    def forward(self, x):
+        return self.conv(x)
+
+
+class UNetModel(nn.Module):
     """
     U-Net model for semantic segmentation.
     
     Attributes:
-        input_shape: Shape of input images (height, width, channels)
+        input_shape: Shape of input images (channels, height, width)
         num_filters: List of filter counts for each encoder/decoder level
         bridge_filters: Number of filters in the bridge layer
         output_channels: Number of output channels
@@ -36,116 +109,76 @@ class UNetModel:
         Initialize U-Net model with specified parameters.
         
         Args:
-            input_shape: Shape of input images (height, width, channels)
+            input_shape: Shape of input images (channels, height, width)
             num_filters: List of filter counts for each encoder/decoder level
             bridge_filters: Number of filters in the bridge layer
             output_channels: Number of output channels
             activation: Activation function for output layer
         """
+        super(UNetModel, self).__init__()
+        
         self.input_shape = input_shape
         self.num_filters = num_filters
         self.bridge_filters = bridge_filters
         self.output_channels = output_channels
         self.activation = activation
-        self.model = None
         
-    def _convolutional_block(self, x: tf.Tensor, num_filters: int) -> tf.Tensor:
-        """
-        Create a convolutional block with two consecutive conv layers.
-        
-        Args:
-            x: Input tensor
-            num_filters: Number of filters for convolution layers
-            
-        Returns:
-            Output tensor after convolutional block
-        """
-        x = Conv2D(num_filters, (3, 3), padding="same")(x)
-        x = BatchNormalization()(x)
-        x = Activation("relu")(x)
-        
-        x = Conv2D(num_filters, (3, 3), padding="same")(x)
-        x = BatchNormalization()(x)
-        x = Activation("relu")(x)
-        
-        return x
-    
-    def build(self) -> Model:
-        """
-        Build the U-Net model architecture.
-        
-        Returns:
-            Compiled U-Net model
-        """
-        # Input layer
-        inputs = Input(self.input_shape)
+        # Input channels
+        in_channels = input_shape[0]
         
         # Encoder path
-        skip_connections = []
-        x = inputs
-        
-        # Downsampling path
-        for filters in self.num_filters:
-            x = self._convolutional_block(x, filters)
-            skip_connections.append(x)
-            x = MaxPool2D((2, 2))(x)
+        self.inc = DoubleConv(in_channels, num_filters[0])
+        self.down1 = Down(num_filters[0], num_filters[1])
+        self.down2 = Down(num_filters[1], num_filters[2])
+        self.down3 = Down(num_filters[2], num_filters[3])
         
         # Bridge
-        x = self._convolutional_block(x, self.bridge_filters)
+        self.down4 = Down(num_filters[3], bridge_filters)
         
         # Decoder path
-        # Reverse filters and skip connections for upsampling
-        reversed_filters = list(reversed(self.num_filters))
-        reversed_skip_connections = list(reversed(skip_connections))
-        
-        # Upsampling path
-        for i, filters in enumerate(reversed_filters):
-            x = UpSampling2D((2, 2))(x)
-            skip_connection = reversed_skip_connections[i]
-            x = Concatenate()([x, skip_connection])
-            x = self._convolutional_block(x, filters)
+        self.up1 = Up(bridge_filters, num_filters[3])
+        self.up2 = Up(num_filters[3], num_filters[2])
+        self.up3 = Up(num_filters[2], num_filters[1])
+        self.up4 = Up(num_filters[1], num_filters[0])
         
         # Output layer
-        x = Conv2D(self.output_channels, (1, 1), padding="same")(x)
-        x = Activation(self.activation)(x)
+        self.outc = OutConv(num_filters[0], output_channels)
         
-        self.model = Model(inputs, x)
-        return self.model
-    
-    def compile_model(self, 
-                     optimizer: str = "adam",
-                     loss: str = "binary_crossentropy",
-                     metrics: List[str] = None) -> Model:
-        """
-        Compile the U-Net model.
+    def forward(self, x):
+        # Encoder path
+        x1 = self.inc(x)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x5 = self.down4(x4)
         
-        Args:
-            optimizer: Optimizer for training
-            loss: Loss function
-            metrics: List of metrics to track
-            
-        Returns:
-            Compiled model
-        """
-        if metrics is None:
-            metrics = ["accuracy"]
-            
-        if self.model is None:
-            self.build()
-            
-        self.model.compile(
-            optimizer=optimizer,
-            loss=loss,
-            metrics=metrics
-        )
+        # Decoder path
+        x = self.up1(x5, x4)
+        x = self.up2(x, x3)
+        x = self.up3(x, x2)
+        x = self.up4(x, x1)
         
-        return self.model
+        # Output
+        logits = self.outc(x)
+        
+        # Apply activation
+        if self.activation == "sigmoid":
+            return torch.sigmoid(logits)
+        elif self.activation == "softmax":
+            return F.softmax(logits, dim=1)
+        else:
+            return logits
     
     def summary(self) -> None:
         """Print model summary."""
-        if self.model is None:
-            self.build()
-        self.model.summary()
+        total_params = sum(p.numel() for p in self.parameters())
+        trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        
+        print(f"Model Summary:")
+        print(f"Total parameters: {total_params:,}")
+        print(f"Trainable parameters: {trainable_params:,}")
+        print(f"Input shape: {self.input_shape}")
+        print(f"Output channels: {self.output_channels}")
 
 
 def create_unet_model(input_shape: Tuple[int, int, int] = None,

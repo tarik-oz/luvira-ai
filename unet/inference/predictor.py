@@ -6,6 +6,7 @@ Handles model prediction and result visualization.
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
 from pathlib import Path
 from typing import Union, Tuple, Optional, List
 import logging
@@ -33,7 +34,8 @@ class HairSegmentationPredictor:
                  test_results_dir: Path = TEST_RESULTS_DIR,
                  image_size: Tuple[int, int] = DATA_CONFIG["image_size"],
                  normalization_factor: float = DATA_CONFIG["normalization_factor"],
-                 mask_threshold: float = DATA_CONFIG["mask_threshold"]):
+                 mask_threshold: float = DATA_CONFIG["mask_threshold"],
+                 device: str = "auto"):
         """
         Initialize the predictor.
         
@@ -44,6 +46,7 @@ class HairSegmentationPredictor:
             image_size: Target size for images (height, width)
             normalization_factor: Factor to normalize pixel values
             mask_threshold: Threshold for binary mask conversion
+            device: Device to use for inference (auto, cpu, cuda)
         """
         self.model = model
         self.test_images_dir = Path(test_images_dir)
@@ -52,10 +55,24 @@ class HairSegmentationPredictor:
         self.normalization_factor = normalization_factor
         self.mask_threshold = mask_threshold
         
+        # Setup device
+        if device == "auto":
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        elif device == "cuda":
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            self.device = torch.device("cpu")
+        
+        # Move model to device
+        self.model.to(self.device)
+        self.model.eval()
+        
         # Create results directory if it doesn't exist
         self.test_results_dir.mkdir(parents=True, exist_ok=True)
         
-    def preprocess_image(self, image_path: Union[str, Path]) -> np.ndarray:
+        logger.info(f"Using device: {self.device}")
+        
+    def preprocess_image(self, image_path: Union[str, Path]) -> Tuple[torch.Tensor, Tuple[int, int]]:
         """
         Preprocess a single image for prediction.
         
@@ -63,7 +80,7 @@ class HairSegmentationPredictor:
             image_path: Path to the image file
             
         Returns:
-            Preprocessed image as numpy array
+            Tuple of (preprocessed_tensor, original_size)
         """
         try:
             # Load image
@@ -81,8 +98,11 @@ class HairSegmentationPredictor:
             image_normalized = image_resized / self.normalization_factor
             image_normalized = image_normalized.astype(np.float32)
             
+            # Convert to PyTorch format (CHW)
+            image_tensor = torch.FloatTensor(image_normalized).permute(2, 0, 1)
+            
             # Add batch dimension
-            image_batch = np.expand_dims(image_normalized, axis=0)
+            image_batch = image_tensor.unsqueeze(0)
             
             return image_batch, original_size
             
@@ -108,10 +128,14 @@ class HairSegmentationPredictor:
         # Load original image for visualization
         original_image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
         
+        # Move to device
+        image_batch = image_batch.to(self.device)
+        
         # Make prediction
         logger.info(f"Predicting segmentation for {image_path}")
-        prediction = self.model.predict(image_batch)
-        predicted_mask = prediction[0]  # Remove batch dimension
+        with torch.no_grad():
+            prediction = self.model(image_batch)
+            predicted_mask = prediction[0].cpu().numpy()  # Remove batch dimension and move to CPU
         
         # Convert to binary mask
         binary_mask = self._create_binary_mask(predicted_mask)
@@ -133,6 +157,10 @@ class HairSegmentationPredictor:
         Returns:
             Binary mask
         """
+        # Remove channel dimension if present
+        if predicted_mask.ndim == 3 and predicted_mask.shape[0] == 1:
+            predicted_mask = predicted_mask[0]
+        
         # Normalize to 0-255 range
         mask_normalized = (predicted_mask - predicted_mask.min()) / (predicted_mask.max() - predicted_mask.min())
         mask_scaled = (mask_normalized * 255).astype(np.uint8)
@@ -215,18 +243,15 @@ class HairSegmentationPredictor:
             if original_image is None:
                 return False
             
-            # Save masks
-            predicted_mask_path = self.test_results_dir / f"{output_name}_predicted_mask.png"
-            binary_mask_path = self.test_results_dir / f"{output_name}_binary_mask.png"
-            visualization_path = self.test_results_dir / f"{output_name}_visualization.png"
+            # Save binary mask
+            mask_path = self.test_results_dir / f"{output_name}_mask.png"
+            cv2.imwrite(str(mask_path), binary_mask)
             
-            cv2.imwrite(str(predicted_mask_path), predicted_mask)
-            cv2.imwrite(str(binary_mask_path), binary_mask)
-            
-            # Create and save visualization
+            # Save visualization
+            viz_path = self.test_results_dir / f"{output_name}_visualization.png"
             self.visualize_prediction(
                 original_image, predicted_mask, binary_mask,
-                save_path=visualization_path, show_plot=False
+                save_path=viz_path, show_plot=False
             )
             
             logger.info(f"Results saved for {image_path}")
@@ -256,10 +281,6 @@ class HairSegmentationPredictor:
             success = self.predict_and_save(image_path, output_name)
             results.append(success)
         
-        successful = sum(results)
-        total = len(results)
-        logger.info(f"Batch prediction completed: {successful}/{total} successful")
-        
         return results
     
     def predict_directory(self, 
@@ -278,13 +299,9 @@ class HairSegmentationPredictor:
         if input_dir is None:
             input_dir = self.test_images_dir
         
-        input_dir = Path(input_dir)
-        if not input_dir.exists():
-            logger.error(f"Input directory does not exist: {input_dir}")
-            return []
-        
         # Find all matching files
         image_paths = list(input_dir.glob(file_pattern))
+        
         if not image_paths:
             logger.warning(f"No images found in {input_dir} matching pattern {file_pattern}")
             return []
@@ -300,8 +317,8 @@ def create_predictor(model, **kwargs) -> HairSegmentationPredictor:
     Factory function to create a predictor.
     
     Args:
-        model: Trained U-Net model
-        **kwargs: Arguments to pass to HairSegmentationPredictor
+        model: Trained model
+        **kwargs: Additional arguments for HairSegmentationPredictor
         
     Returns:
         HairSegmentationPredictor instance
