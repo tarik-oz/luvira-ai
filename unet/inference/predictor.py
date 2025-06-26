@@ -135,37 +135,45 @@ class HairSegmentationPredictor:
         logger.info(f"Predicting segmentation for {image_path}")
         with torch.no_grad():
             prediction = self.model(image_batch)
-            predicted_mask = prediction[0].cpu().numpy()  # Remove batch dimension and move to CPU
+            predicted_mask = prediction[0].cpu().numpy()  # Remove batch dimension
         
         # Convert to binary mask
         binary_mask = self._create_binary_mask(predicted_mask)
         
+        # Create 2D version of predicted_mask for visualization
+        if predicted_mask.ndim == 3 and predicted_mask.shape[0] == 1:
+            predicted_mask_2d = predicted_mask[0]
+        else:
+            predicted_mask_2d = predicted_mask
+        
         # Resize masks to original image size
         if original_size:
-            predicted_mask = cv2.resize(predicted_mask, (original_size[1], original_size[0]))
+            predicted_mask_2d = cv2.resize(predicted_mask_2d, (original_size[1], original_size[0]))
             binary_mask = cv2.resize(binary_mask, (original_size[1], original_size[0]))
         
-        return original_image, predicted_mask, binary_mask
+        return original_image, predicted_mask_2d, binary_mask
     
     def _create_binary_mask(self, predicted_mask: np.ndarray) -> np.ndarray:
         """
         Create binary mask from predicted probabilities.
         
         Args:
-            predicted_mask: Predicted mask with probabilities
+            predicted_mask: Predicted mask with probabilities (shape: (1, H, W) or (H, W))
             
         Returns:
-            Binary mask
+            Binary mask (shape: (H, W))
         """
         # Remove channel dimension if present
         if predicted_mask.ndim == 3 and predicted_mask.shape[0] == 1:
-            predicted_mask = predicted_mask[0]
+            predicted_mask_2d = predicted_mask[0]
+        else:
+            predicted_mask_2d = predicted_mask
         
         # Normalize to 0-255 range
-        mask_normalized = (predicted_mask - predicted_mask.min()) / (predicted_mask.max() - predicted_mask.min())
+        mask_normalized = (predicted_mask_2d - predicted_mask_2d.min()) / (predicted_mask_2d.max() - predicted_mask_2d.min())
         mask_scaled = (mask_normalized * 255).astype(np.uint8)
         
-        # Create binary mask
+        # Create binary mask using threshold
         binary_mask = np.zeros_like(mask_scaled)
         binary_mask[mask_scaled > (self.mask_threshold * 255)] = 255
         
@@ -244,8 +252,14 @@ class HairSegmentationPredictor:
                 return False
             
             # Save binary mask
-            mask_path = self.test_results_dir / f"{output_name}_mask.png"
+            mask_path = self.test_results_dir / f"{output_name}_binary_mask.png"
             cv2.imwrite(str(mask_path), binary_mask)
+            
+            # Save normal probability mask (better for hair color manipulation)
+            prob_mask_path = self.test_results_dir / f"{output_name}_prob_mask.png"
+            # Convert probability mask to 0-255 range for saving
+            prob_mask_255 = (predicted_mask * 255).astype(np.uint8)
+            cv2.imwrite(str(prob_mask_path), prob_mask_255)
             
             # Save visualization
             viz_path = self.test_results_dir / f"{output_name}_visualization.png"
@@ -255,6 +269,9 @@ class HairSegmentationPredictor:
             )
             
             logger.info(f"Results saved for {image_path}")
+            logger.info(f"  - Binary mask: {mask_path}")
+            logger.info(f"  - Probability mask: {prob_mask_path}")
+            logger.info(f"  - Visualization: {viz_path}")
             return True
             
         except Exception as e:

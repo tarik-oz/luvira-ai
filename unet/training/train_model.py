@@ -8,11 +8,12 @@ import sys
 from pathlib import Path
 
 # Add project root to path
-project_root = Path(__file__).parent
+project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
 from training.trainer import create_trainer
 from data.data_loader import create_data_loader
+from config import TRAINING_CONFIG
 import logging
 
 # Configure logging
@@ -46,8 +47,8 @@ def main():
         history = trainer.train(
             train_loader=train_loader,
             val_loader=val_loader,
-            epochs=2,
-            batch_size=2
+            epochs=TRAINING_CONFIG["epochs"],
+            batch_size=TRAINING_CONFIG["batch_size"]
         )
         
         # Get training summary

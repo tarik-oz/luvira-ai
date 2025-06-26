@@ -40,8 +40,8 @@ MODEL_CONFIG = {
 
 # Training configuration
 TRAINING_CONFIG = {
-    "batch_size": 2,
-    "epochs": 10,
+    "batch_size": 8,
+    "epochs": 50,
     "learning_rate": 1e-4,
     "validation_split": 0.1,
     "random_seed": 42,

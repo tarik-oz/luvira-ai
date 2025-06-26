@@ -9,7 +9,7 @@ import argparse
 from pathlib import Path
 
 # Add project root to path
-project_root = Path(__file__).parent
+project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
 from inference.predictor import create_predictor
