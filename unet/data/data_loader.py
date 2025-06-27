@@ -258,25 +258,59 @@ class HairSegmentationDataLoader:
     
     def get_data_info(self) -> dict:
         """
-        Get information about the loaded dataset.
+        Get comprehensive information about the loaded dataset.
         
         Returns:
             Dictionary containing dataset information
         """
         info = {
-            "total_samples": len(self.images) if self.images is not None else 0,
             "image_size": self.image_size,
-            "normalization_factor": self.normalization_factor
+            "normalization_factor": self.normalization_factor,
+            "images_dir_exists": self.images_dir.exists(),
+            "masks_dir_exists": self.masks_dir.exists(),
+            "processed_dir_exists": self.processed_dir.exists()
         }
         
+        # Raw data information
+        if self.images is not None:
+            info.update({
+                "raw_data_loaded": True,
+                "total_samples": len(self.images),
+                "raw_data_type": type(self.images).__name__
+            })
+            
+            # Check if data is numpy array or list
+            if hasattr(self.images, 'shape'):
+                info.update({
+                    "raw_images_shape": self.images.shape,
+                    "raw_masks_shape": self.masks.shape
+                })
+            else:
+                # Data is still in list format
+                info.update({
+                    "raw_images_shape": f"list with {len(self.images)} items",
+                    "raw_masks_shape": f"list with {len(self.masks)} items"
+                })
+        else:
+            info.update({
+                "raw_data_loaded": False,
+                "total_samples": 0
+            })
+        
+        # Processed data information
         if self.train_images is not None:
             info.update({
+                "processed_data_loaded": True,
                 "train_samples": len(self.train_images),
                 "val_samples": len(self.val_images),
                 "train_images_shape": self.train_images.shape,
                 "train_masks_shape": self.train_masks.shape,
                 "val_images_shape": self.val_images.shape,
                 "val_masks_shape": self.val_masks.shape
+            })
+        else:
+            info.update({
+                "processed_data_loaded": False
             })
         
         return info

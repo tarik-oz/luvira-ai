@@ -4,6 +4,8 @@ unet/data/masks/*
 unet/data/processed/*
 unet/models/best_model.pth
 unet/models/latest_model.pth
+unet/models/96acc.pth
+unet/models/trained_models/*
 
 # Python cache files (all directories)
 __pycache__/

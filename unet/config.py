@@ -17,8 +17,7 @@ PROCESSED_DATA_DIR = DATA_DIR / "processed"
 
 # Model paths
 MODEL_DIR = PROJECT_ROOT / "models"
-BEST_MODEL_PATH = MODEL_DIR / "best_model.pth"
-LATEST_MODEL_PATH = MODEL_DIR / "latest_model.pth"
+TRAINED_MODELS_DIR = MODEL_DIR / "trained_models"
 
 # Test paths
 TEST_IMAGES_DIR = PROJECT_ROOT / "test_images"
@@ -26,7 +25,7 @@ TEST_RESULTS_DIR = PROJECT_ROOT / "test_results"
 
 # Create directories if they don't exist
 for directory in [DATA_DIR, IMAGES_DIR, MASKS_DIR, PROCESSED_DATA_DIR, 
-                  MODEL_DIR, TEST_IMAGES_DIR, TEST_RESULTS_DIR]:
+                  MODEL_DIR, TRAINED_MODELS_DIR, TEST_IMAGES_DIR, TEST_RESULTS_DIR]:
     directory.mkdir(parents=True, exist_ok=True)
 
 # Model configuration
@@ -41,7 +40,7 @@ MODEL_CONFIG = {
 # Training configuration
 TRAINING_CONFIG = {
     "batch_size": 8,
-    "epochs": 50,
+    "epochs": 3,
     "learning_rate": 1e-4,
     "validation_split": 0.1,
     "random_seed": 42,

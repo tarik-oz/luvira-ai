@@ -14,7 +14,6 @@ sys.path.append(str(project_root))
 
 from inference.predictor import create_predictor
 from training.trainer import create_trainer
-from config import BEST_MODEL_PATH
 import logging
 
 # Configure logging
@@ -25,19 +24,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def load_model(model_path: Path = None):
+def load_model(model_path: Path):
     """
     Load the trained model.
     
     Args:
-        model_path: Path to the model file
+        model_path: Path to the model file (required)
         
     Returns:
         Loaded model
     """
-    if model_path is None:
-        model_path = BEST_MODEL_PATH
-    
     if not Path(model_path).exists():
         raise FileNotFoundError(f"Model not found at {model_path}")
     
@@ -50,7 +46,7 @@ def load_model(model_path: Path = None):
     return model
 
 
-def predict_single_image(image_path: str, model_path: Path = None):
+def predict_single_image(image_path: str, model_path: Path):
     """
     Predict segmentation for a single image.
     
@@ -86,7 +82,7 @@ def predict_single_image(image_path: str, model_path: Path = None):
         raise
 
 
-def predict_directory(input_dir: str, model_path: Path = None):
+def predict_directory(input_dir: str, model_path: Path):
     """
     Predict segmentation for all images in a directory.
     
@@ -127,7 +123,7 @@ def main():
     parser.add_argument(
         "--model", 
         type=str, 
-        default=str(BEST_MODEL_PATH),
+        required=True,
         help="Path to trained model"
     )
     parser.add_argument(

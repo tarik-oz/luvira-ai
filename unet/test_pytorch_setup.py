@@ -99,6 +99,15 @@ def test_data_loading():
         logger.info(f"Images directory exists: {IMAGES_DIR.exists()}")
         logger.info(f"Masks directory exists: {MASKS_DIR.exists()}")
         
+        # Test get_data_info method
+        try:
+            data_info = data_loader.get_data_info()
+            logger.info("Dataset information:")
+            for key, value in data_info.items():
+                logger.info(f"  {key}: {value}")
+        except Exception as e:
+            logger.warning(f"Could not get data info: {e}")
+        
         return True
         
     except Exception as e:

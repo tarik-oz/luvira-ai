@@ -28,11 +28,15 @@ def main():
     """
     Main training function.
     """
+    trainer = None
+    data_loader = None
+    dataset_info = None
     try:
         logger.info("Starting hair segmentation training pipeline...")
         
-        # Create trainer
+        # Create trainer and data loader
         trainer = create_trainer()
+        data_loader = create_data_loader()
         
         # Setup model
         logger.info("Setting up U-Net model...")
@@ -41,6 +45,10 @@ def main():
         # Setup data
         logger.info("Setting up training data...")
         train_loader, val_loader = trainer.setup_data(load_processed=True)
+        
+        # Get dataset info for config
+        dataset_info = data_loader.get_data_info()
+        logger.info(f"Dataset info: {dataset_info}")
         
         # Start training
         logger.info("Starting model training...")
@@ -59,6 +67,17 @@ def main():
     except Exception as e:
         logger.error(f"Training failed: {e}")
         raise
+    finally:
+        # Save the model regardless of whether training completed successfully or not
+        try:
+            if trainer is not None and dataset_info is not None:
+                logger.info("Saving trained model with metadata (finalize)...")
+                model_folder = trainer.save_trained_model(dataset_info)
+                logger.info(f"Model saved to: {model_folder}")
+            else:
+                logger.warning("Trainer or dataset_info not initialized, skipping model archiving.")
+        except Exception as e:
+            logger.error(f"Model archiving failed: {e}")
 
 
 if __name__ == "__main__":

@@ -4,6 +4,8 @@ Handles model training with callbacks and logging.
 """
 
 import os
+import json
+from datetime import datetime
 import numpy as np
 import torch
 import torch.nn as nn
@@ -16,10 +18,14 @@ from tqdm import tqdm
 
 from config import (
     TRAINING_CONFIG, CALLBACKS_CONFIG, 
-    BEST_MODEL_PATH, LATEST_MODEL_PATH
+    TRAINED_MODELS_DIR, MODEL_CONFIG, MODEL_DIR
 )
 from models.unet_model import create_unet_model
 from data.data_loader import create_data_loader
+from utils.model_saving import (
+    create_timestamped_folder, save_config_json, 
+    save_training_log, save_models_to_folder
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -54,19 +60,16 @@ class HairSegmentationTrainer:
     """
     
     def __init__(self, 
-                 model_path: Path = BEST_MODEL_PATH,
-                 latest_model_path: Path = LATEST_MODEL_PATH,
                  **training_config):
         """
         Initialize the trainer.
         
         Args:
-            model_path: Path to save the best model
-            latest_model_path: Path to save the latest model
             **training_config: Training configuration parameters
         """
-        self.model_path = Path(model_path)
-        self.latest_model_path = Path(latest_model_path)
+        # Create temporary model paths for training
+        self.model_path = MODEL_DIR / "best_model.pth"
+        self.latest_model_path = MODEL_DIR / "latest_model.pth"
         
         # Create model directory if it doesn't exist
         self.model_path.parent.mkdir(parents=True, exist_ok=True)
@@ -161,6 +164,10 @@ class HairSegmentationTrainer:
                 data = self._process_raw_data()
         else:
             data = self._process_raw_data()
+        
+        # Log dataset information
+        data_info = self.data_loader.get_data_info()
+        logger.info(f"Dataset info: {data_info}")
         
         # Convert to PyTorch tensors and create DataLoaders
         train_images, train_masks, val_images, val_masks = data
@@ -363,25 +370,47 @@ class HairSegmentationTrainer:
             'device_used': str(self.device)
         }
     
-    def load_trained_model(self, model_path: Optional[Path] = None) -> nn.Module:
+    def load_trained_model(self, model_path: Path) -> nn.Module:
         """
         Load a trained model.
         
         Args:
-            model_path: Path to the model file
+            model_path: Path to the model file (required)
             
         Returns:
             Loaded model
         """
-        if model_path is None:
-            model_path = self.model_path
-        
         if not model_path.exists():
             raise FileNotFoundError(f"Model file not found: {model_path}")
         
-        # Create model if not already created
-        if self.model is None:
-            self.setup_model()
+        # Try to find config.json in the same folder as the model
+        config_path = model_path.parent / "config.json"
+        
+        if config_path.exists():
+            # Load model config from JSON
+            try:
+                with open(config_path, 'r') as f:
+                    config_data = json.load(f)
+                
+                model_config = config_data.get("model_config", {})
+                logger.info(f"Loading model with config from: {config_path}")
+                logger.info(f"Model config: {model_config}")
+                
+                # Create model with the loaded config
+                self.model = create_unet_model(**model_config)
+                self.model.to(self.device)
+                
+            except Exception as e:
+                logger.warning(f"Failed to load config from {config_path}: {e}")
+                logger.info("Falling back to default config")
+                # Fallback to default config
+                if self.model is None:
+                    self.setup_model()
+        else:
+            # No config.json found, use default config
+            logger.info(f"No config.json found at {config_path}, using default config")
+            if self.model is None:
+                self.setup_model()
         
         # Load model weights
         self.model.load_state_dict(torch.load(model_path, map_location=self.device))
@@ -389,6 +418,30 @@ class HairSegmentationTrainer:
         
         logger.info(f"Loaded model from {model_path}")
         return self.model
+
+    def save_trained_model(self, dataset_info: Dict[str, Any] = None) -> Path:
+        from config import MODEL_CONFIG
+        summary = self.get_training_summary()
+        if not summary:
+            raise ValueError("No training history available. Train the model first.")
+        folder_path = create_timestamped_folder(TRAINED_MODELS_DIR, summary['best_val_accuracy'])
+        save_config_json(folder_path, MODEL_CONFIG, self.config, dataset_info, summary)
+        save_training_log(folder_path, self.device, self.history, summary)
+        save_models_to_folder(folder_path, self.model_path, self.latest_model_path)
+        
+        # Clean up temporary files from models directory
+        try:
+            if self.model_path.exists():
+                self.model_path.unlink()
+                logger.info(f"Deleted temporary file: {self.model_path}")
+            if self.latest_model_path.exists():
+                self.latest_model_path.unlink()
+                logger.info(f"Deleted temporary file: {self.latest_model_path}")
+        except Exception as e:
+            logger.warning(f"Failed to delete temporary files: {e}")
+        
+        logging.info(f"Model saved successfully to: {folder_path}")
+        return folder_path
 
 
 def create_trainer(**kwargs) -> HairSegmentationTrainer:
