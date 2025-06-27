@@ -2,12 +2,17 @@
 Hair Segmentation U-Net Package with PyTorch
 
 A clean and modular implementation of U-Net for hair segmentation using PyTorch.
-Migrated from TensorFlow for better Windows GPU support and performance.
+Features include:
+- Timestamped model archiving with config.json and training logs
+- Enhanced dataset information and preprocessing
+- Comprehensive training pipeline with early stopping
+- Flexible inference system supporting different model configurations
+- Windows GPU support and optimized performance
 """
 
-__version__ = "3.0.0"
+__version__ = "1.0.0"
 __author__ = "Tarik"
-__description__ = "Clean and modular U-Net implementation for hair segmentation using PyTorch"
+__description__ = "Clean and modular U-Net implementation for hair segmentation using PyTorch with advanced archiving system"
 
 from .models.unet_model import UNetModel, create_unet_model
 from .data.data_loader import HairSegmentationDataLoader, create_data_loader
