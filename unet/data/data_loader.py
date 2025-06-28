@@ -127,27 +127,36 @@ class HairSegmentationDataLoader:
         """
         logger.info("Loading dataset...")
         
-        # Get file paths
-        image_pattern = str(self.images_dir / FILE_PATTERNS["images"])
-        mask_pattern = str(self.masks_dir / FILE_PATTERNS["masks"])
+        # Get file paths for multiple patterns
+        image_paths = []
+        for pattern in FILE_PATTERNS["images"]:
+            pattern_path = str(self.images_dir / pattern)
+            image_paths.extend(glob.glob(pattern_path))
         
-        image_paths = sorted(glob.glob(image_pattern))
-        mask_paths = sorted(glob.glob(mask_pattern))
+        mask_paths = []
+        for pattern in FILE_PATTERNS["masks"]:
+            pattern_path = str(self.masks_dir / pattern)
+            mask_paths.extend(glob.glob(pattern_path))
+        
+        # Sort paths to ensure matching
+        image_paths = sorted(image_paths)
+        mask_paths = sorted(mask_paths)
         
         if not image_paths or not mask_paths:
             raise ValueError(f"No images or masks found in {self.images_dir} or {self.masks_dir}")
         
         if len(image_paths) != len(mask_paths):
-            raise ValueError(f"Number of images ({len(image_paths)}) doesn't match number of masks ({len(mask_paths)})")
+            logger.warning(f"Number of images ({len(image_paths)}) doesn't match number of masks ({len(mask_paths)})")
+            logger.warning("This might cause issues. Make sure image and mask files have matching names.")
         
-        logger.info(f"Found {len(image_paths)} image-mask pairs")
+        logger.info(f"Found {len(image_paths)} images and {len(mask_paths)} masks")
         
         # Load images and masks
         images = []
         masks = []
         
         for img_path, mask_path in tqdm(zip(image_paths, mask_paths), 
-                                       total=len(image_paths), 
+                                       total=min(len(image_paths), len(mask_paths)), 
                                        desc="Loading data"):
             image = self._load_image(Path(img_path))
             mask = self._load_mask(Path(mask_path))

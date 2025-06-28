@@ -7,6 +7,9 @@ unet/models/latest_model.pth
 unet/models/96acc.pth
 unet/models/trained_models/*
 
+unet/venv/*
+
+
 # Python cache files (all directories)
 __pycache__/
 *.pyc

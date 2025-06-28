@@ -39,10 +39,10 @@ MODEL_CONFIG = {
 
 # Training configuration
 TRAINING_CONFIG = {
-    "batch_size": 8,
-    "epochs": 3,
+    "batch_size": 2,
+    "epochs": 1,
     "learning_rate": 1e-4,
-    "validation_split": 0.1,
+    "validation_split": 0.2,
     "random_seed": 42,
     "loss_function": "bce",  # Binary Cross Entropy
     "optimizer": "adam",
@@ -71,8 +71,8 @@ CALLBACKS_CONFIG = {
 
 # File patterns
 FILE_PATTERNS = {
-    "images": "*.jpg",
-    "masks": "*.jpg",
+    "images": ["*.jpg", "*.jpeg", "*.png"],
+    "masks": ["*.webp", "*.png", "*.jpg"],
     "processed_images": "train_images.npy",
     "processed_masks": "train_masks.npy",
     "validation_images": "val_images.npy",
