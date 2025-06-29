@@ -2,11 +2,11 @@
 Model Manager for FastAPI - Singleton pattern to load model once and reuse
 """
 
-import torch
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Any, Optional
 import logging
+
 from training.trainer import create_trainer
 from inference.predictor import create_predictor
 
@@ -19,23 +19,22 @@ class ModelManager:
     Loads model once and reuses it for all requests.
     """
     
-    _instance = None
-    _model = None
-    _predictor = None
-    _model_path = None
+    _instance: Optional['ModelManager'] = None
+    _initialized: bool = False
     
-    def __new__(cls):
+    def __new__(cls) -> 'ModelManager':
         if cls._instance is None:
             cls._instance = super(ModelManager, cls).__new__(cls)
         return cls._instance
     
-    def __init__(self):
+    def __init__(self) -> None:
         # Only initialize once
-        if not hasattr(self, '_initialized'):
-            self._initialized = True
+        if not self._initialized:
             self._model = None
             self._predictor = None
             self._model_path = None
+            self._trainer = None
+            self._initialized = True
     
     def load_model(self, model_path: str) -> bool:
         """
@@ -51,15 +50,15 @@ class ModelManager:
             model_path = Path(model_path)
             
             # Check if model is already loaded
-            if self._model is not None and self._model_path == model_path:
+            if self._is_same_model_loaded(model_path):
                 logger.info("Model already loaded, skipping...")
                 return True
             
             logger.info(f"Loading model from: {model_path}")
             
             # Create trainer and load model
-            trainer = create_trainer()
-            self._model = trainer.load_trained_model(model_path)
+            self._trainer = create_trainer()
+            self._model = self._trainer.load_trained_model(model_path)
             self._model_path = model_path
             
             # Create predictor
@@ -72,14 +71,20 @@ class ModelManager:
             logger.error(f"Failed to load model: {e}")
             return False
     
-    def get_predictor(self):
+    def _is_same_model_loaded(self, model_path: Path) -> bool:
+        """Check if the same model is already loaded."""
+        return (self._model is not None and 
+                self._model_path is not None and 
+                self._model_path == model_path)
+    
+    def get_predictor(self) -> Optional[Any]:
         """
         Get the predictor instance.
         
         Returns:
             Predictor instance or None if model not loaded
         """
-        if self._predictor is None:
+        if not self.is_model_loaded():
             logger.error("Model not loaded. Call load_model() first.")
             return None
         return self._predictor
@@ -93,7 +98,7 @@ class ModelManager:
         """
         return self._predictor is not None
     
-    def get_model_info(self) -> dict:
+    def get_model_info(self) -> Dict[str, Any]:
         """
         Get information about the loaded model.
         
@@ -109,7 +114,7 @@ class ModelManager:
             "device": str(next(self._model.parameters()).device)
         }
         
-        # Try to get config info
+        # Try to get config info from the model directory
         if self._model_path:
             config_path = self._model_path.parent / "config.json"
             if config_path.exists():
@@ -121,6 +126,57 @@ class ModelManager:
                     logger.warning(f"Could not load config: {e}")
         
         return info
+    
+    def reload_model(self, model_path: str) -> bool:
+        """
+        Force reload the model even if it's the same path.
+        
+        Args:
+            model_path: Path to the model file
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        # Backup current model state
+        old_model = self._model
+        old_predictor = self._predictor
+        old_model_path = self._model_path
+        old_trainer = self._trainer
+        
+        # Clear current model
+        self.clear_model()
+        
+        # Try to load new model
+        success = self.load_model(model_path)
+        if success:
+            return True
+        else:
+            # Restore old model if new model failed to load
+            logger.warning(f"Failed to load new model from {model_path}, restoring old model")
+            self._model = old_model
+            self._predictor = old_predictor
+            self._model_path = old_model_path
+            self._trainer = old_trainer
+            return False
+    
+    def clear_model(self) -> None:
+        """
+        Clear the loaded model from memory.
+        """
+        self._model = None
+        self._predictor = None
+        self._model_path = None
+        self._trainer = None
+        logger.info("Model cleared from memory")
+    
+    def get_model_path(self) -> Optional[Path]:
+        """
+        Get the current model path.
+        
+        Returns:
+            Path to the loaded model or None if not loaded
+        """
+        return self._model_path
 
 
 # Global model manager instance
