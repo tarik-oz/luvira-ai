@@ -7,7 +7,8 @@ unet/models/latest_model.pth
 unet/models/96acc.pth
 unet/models/trained_models/*
 unet/demo_hair_color_change/*
-unet/test_results/*
+unet/test_results_binary_mask/*
+unet/test_results_grayscale_mask_1k/*
 
 unet/venv/*
 

@@ -16,6 +16,7 @@ from config import (
     IMAGES_DIR, MASKS_DIR, PROCESSED_DATA_DIR, 
     DATA_CONFIG, TRAINING_CONFIG, FILE_PATTERNS
 )
+from utils.data_timestamp import get_latest_timestamp, save_timestamps, load_timestamps, needs_processing
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -98,7 +99,7 @@ class HairSegmentationDataLoader:
             mask_path: Path to the mask file
             
         Returns:
-            Preprocessed mask as numpy array
+            Preprocessed mask as numpy array (float32, between 0 and 1)
         """
         try:
             mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
@@ -108,9 +109,8 @@ class HairSegmentationDataLoader:
             # Resize mask
             mask = cv2.resize(mask, self.image_size)
             
-            # Binarize mask (threshold at 0)
-            mask[mask > 0] = 1
-            mask = mask.astype(np.uint8)
+            # Normalize mask to 0-1 float
+            mask = mask.astype(np.float32) / 255.0
             
             return mask
             
@@ -233,37 +233,29 @@ class HairSegmentationDataLoader:
     
     def load_processed_data(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
-        Load previously processed data from numpy files.
-        
+        Load processed data if available and up-to-date, otherwise process raw data.
         Returns:
             Tuple of (train_images, train_masks, val_images, val_masks)
         """
-        logger.info("Loading processed data...")
-        
-        # Load training data
-        train_images_path = self.processed_dir / FILE_PATTERNS["processed_images"]
-        train_masks_path = self.processed_dir / FILE_PATTERNS["processed_masks"]
-        
-        if not train_images_path.exists() or not train_masks_path.exists():
-            raise FileNotFoundError("Processed training data not found. Run save_processed_data() first.")
-        
-        self.train_images = np.load(train_images_path)
-        self.train_masks = np.load(train_masks_path)
-        
-        # Load validation data
-        val_images_path = self.processed_dir / FILE_PATTERNS["validation_images"]
-        val_masks_path = self.processed_dir / FILE_PATTERNS["validation_masks"]
-        
-        if not val_images_path.exists() or not val_masks_path.exists():
-            raise FileNotFoundError("Processed validation data not found. Run save_processed_data() first.")
-        
-        self.val_images = np.load(val_images_path)
-        self.val_masks = np.load(val_masks_path)
-        
-        logger.info(f"Loaded training data: {self.train_images.shape}")
-        logger.info(f"Loaded validation data: {self.val_images.shape}")
-        
-        return self.train_images, self.train_masks, self.val_images, self.val_masks
+        # Check if processing is needed
+        if needs_processing(self.images_dir, self.masks_dir, self.processed_dir):
+            logger.info("Detected changes in images or masks. Re-processing data...")
+            self.load_data()
+            data = self.split_data()
+            # Save processed data
+            self.save_processed_data()
+            # Save new timestamps
+            image_ts = get_latest_timestamp(self.images_dir)
+            mask_ts = get_latest_timestamp(self.masks_dir)
+            save_timestamps(self.processed_dir, image_ts, mask_ts)
+            return data
+        # Otherwise, load existing processed data
+        logger.info("Loading up-to-date processed data...")
+        train_images = np.load(self.processed_dir / "train_images.npy")
+        train_masks = np.load(self.processed_dir / "train_masks.npy")
+        val_images = np.load(self.processed_dir / "val_images.npy")
+        val_masks = np.load(self.processed_dir / "val_masks.npy")
+        return train_images, train_masks, val_images, val_masks
     
     def get_data_info(self) -> dict:
         """

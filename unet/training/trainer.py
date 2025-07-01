@@ -87,7 +87,11 @@ class HairSegmentationTrainer:
             'train_loss': [],
             'train_accuracy': [],
             'val_loss': [],
-            'val_accuracy': []
+            'val_accuracy': [],
+            'train_dice': [],
+            'val_dice': [],
+            'train_mse': [],
+            'val_mse': []
         }
         
         # Setup device
@@ -220,17 +224,36 @@ class HairSegmentationTrainer:
     def _calculate_accuracy(self, predictions: torch.Tensor, targets: torch.Tensor) -> float:
         """Calculate accuracy for binary segmentation."""
         with torch.no_grad():
-            # Convert predictions to binary
+            # Convert predictions and targets to binary
             binary_preds = (predictions > 0.5).float()
+            binary_targets = (targets > 0.5).float()
             # Calculate accuracy
-            accuracy = (binary_preds == targets).float().mean().item()
+            accuracy = (binary_preds == binary_targets).float().mean().item()
         return accuracy
     
-    def _train_epoch(self, train_loader: DataLoader) -> Tuple[float, float]:
+    def _calculate_dice(self, predictions: torch.Tensor, targets: torch.Tensor) -> float:
+        """Calculate Dice coefficient for probability masks."""
+        with torch.no_grad():
+            smooth = 1e-6
+            preds = predictions.view(-1)
+            targs = targets.view(-1)
+            intersection = (preds * targs).sum()
+            dice = (2. * intersection + smooth) / (preds.sum() + targs.sum() + smooth)
+        return dice.item()
+
+    def _calculate_mse(self, predictions: torch.Tensor, targets: torch.Tensor) -> float:
+        """Calculate Mean Squared Error for probability masks."""
+        with torch.no_grad():
+            mse = torch.mean((predictions - targets) ** 2)
+        return mse.item()
+    
+    def _train_epoch(self, train_loader: DataLoader) -> Tuple[float, float, float, float]:
         """Train for one epoch."""
         self.model.train()
         total_loss = 0.0
         total_accuracy = 0.0
+        total_dice = 0.0
+        total_mse = 0.0
         num_batches = 0
         
         for batch_idx, (images, masks) in enumerate(tqdm(train_loader, desc="Training")):
@@ -248,18 +271,24 @@ class HairSegmentationTrainer:
             
             # Calculate accuracy
             accuracy = self._calculate_accuracy(predictions, masks)
+            dice = self._calculate_dice(predictions, masks)
+            mse = self._calculate_mse(predictions, masks)
             
             total_loss += loss.item()
             total_accuracy += accuracy
+            total_dice += dice
+            total_mse += mse
             num_batches += 1
         
-        return total_loss / num_batches, total_accuracy / num_batches
+        return (total_loss / num_batches, total_accuracy / num_batches, total_dice / num_batches, total_mse / num_batches)
     
-    def _validate_epoch(self, val_loader: DataLoader) -> Tuple[float, float]:
+    def _validate_epoch(self, val_loader: DataLoader) -> Tuple[float, float, float, float]:
         """Validate for one epoch."""
         self.model.eval()
         total_loss = 0.0
         total_accuracy = 0.0
+        total_dice = 0.0
+        total_mse = 0.0
         num_batches = 0
         
         with torch.no_grad():
@@ -273,12 +302,16 @@ class HairSegmentationTrainer:
                 
                 # Calculate accuracy
                 accuracy = self._calculate_accuracy(predictions, masks)
+                dice = self._calculate_dice(predictions, masks)
+                mse = self._calculate_mse(predictions, masks)
                 
                 total_loss += loss.item()
                 total_accuracy += accuracy
+                total_dice += dice
+                total_mse += mse
                 num_batches += 1
         
-        return total_loss / num_batches, total_accuracy / num_batches
+        return (total_loss / num_batches, total_accuracy / num_batches, total_dice / num_batches, total_mse / num_batches)
     
     def train(self, 
               train_loader: DataLoader,
@@ -317,20 +350,24 @@ class HairSegmentationTrainer:
             logger.info(f"\nEpoch {epoch+1}/{epochs}")
             
             # Training
-            train_loss, train_acc = self._train_epoch(train_loader)
+            train_loss, train_acc, train_dice, train_mse = self._train_epoch(train_loader)
             
             # Validation
-            val_loss, val_acc = self._validate_epoch(val_loader)
+            val_loss, val_acc, val_dice, val_mse = self._validate_epoch(val_loader)
             
             # Log results
-            logger.info(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}")
-            logger.info(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
+            logger.info(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, Train Dice: {train_dice:.4f}, Train MSE: {train_mse:.6f}")
+            logger.info(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}, Val Dice: {val_dice:.4f}, Val MSE: {val_mse:.6f}")
             
             # Save history
             self.history['train_loss'].append(train_loss)
             self.history['train_accuracy'].append(train_acc)
+            self.history['train_dice'].append(train_dice)
+            self.history['train_mse'].append(train_mse)
             self.history['val_loss'].append(val_loss)
             self.history['val_accuracy'].append(val_acc)
+            self.history['val_dice'].append(val_dice)
+            self.history['val_mse'].append(val_mse)
             
             # Save best model
             if val_loss < best_val_loss:
@@ -362,10 +399,16 @@ class HairSegmentationTrainer:
         return {
             'final_train_loss': self.history['train_loss'][-1],
             'final_train_accuracy': self.history['train_accuracy'][-1],
+            'final_train_dice': self.history['train_dice'][-1],
+            'final_train_mse': self.history['train_mse'][-1],
             'final_val_loss': self.history['val_loss'][-1],
             'final_val_accuracy': self.history['val_accuracy'][-1],
+            'final_val_dice': self.history['val_dice'][-1],
+            'final_val_mse': self.history['val_mse'][-1],
             'best_val_loss': min(self.history['val_loss']),
             'best_val_accuracy': max(self.history['val_accuracy']),
+            'best_val_dice': max(self.history['val_dice']),
+            'best_val_mse': min(self.history['val_mse']),
             'total_epochs': len(self.history['train_loss']),
             'device_used': str(self.device)
         }

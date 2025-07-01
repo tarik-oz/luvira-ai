@@ -33,19 +33,25 @@ def save_training_log(folder_path: Path, device, history: dict, summary: dict) -
         f.write(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write(f"Device: {device}\n\n")
         f.write("=== Epoch Details ===\n")
-        for epoch, (train_loss, train_acc, val_loss, val_acc) in enumerate(
-            zip(history['train_loss'], history['train_accuracy'],
-                history['val_loss'], history['val_accuracy']), 1):
+        for epoch, (train_loss, train_acc, train_dice, train_mse, val_loss, val_acc, val_dice, val_mse) in enumerate(
+            zip(history['train_loss'], history['train_accuracy'], history['train_dice'], history['train_mse'],
+                history['val_loss'], history['val_accuracy'], history['val_dice'], history['val_mse']), 1):
             f.write(f"Epoch {epoch}:\n")
-            f.write(f"  Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}\n")
-            f.write(f"  Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}\n\n")
+            f.write(f"  Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, Train Dice: {train_dice:.4f}, Train MSE: {train_mse:.6f}\n")
+            f.write(f"  Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}, Val Dice: {val_dice:.4f}, Val MSE: {val_mse:.6f}\n\n")
         f.write("=== Best Model Info ===\n")
         f.write(f"Best Val Accuracy: {summary.get('best_val_accuracy', 0):.4f}\n")
+        f.write(f"Best Val Dice: {summary.get('best_val_dice', 0):.4f}\n")
+        f.write(f"Best Val MSE: {summary.get('best_val_mse', 0):.6f}\n")
         f.write(f"Best Val Loss: {summary.get('best_val_loss', 0):.4f}\n\n")
         f.write("=== Training Summary ===\n")
         f.write(f"Total Epochs: {summary.get('total_epochs', 0)}\n")
         f.write(f"Final Train Accuracy: {summary.get('final_train_accuracy', 0):.4f}\n")
+        f.write(f"Final Train Dice: {summary.get('final_train_dice', 0):.4f}\n")
+        f.write(f"Final Train MSE: {summary.get('final_train_mse', 0):.6f}\n")
         f.write(f"Final Val Accuracy: {summary.get('final_val_accuracy', 0):.4f}\n")
+        f.write(f"Final Val Dice: {summary.get('final_val_dice', 0):.4f}\n")
+        f.write(f"Final Val MSE: {summary.get('final_val_mse', 0):.6f}\n")
     logging.info(f"Saved training log to: {log_path}")
 
 def save_models_to_folder(folder_path: Path, best_model_path: Path, latest_model_path: Path) -> None:
