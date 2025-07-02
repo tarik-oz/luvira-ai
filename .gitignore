@@ -1,7 +1,10 @@
 # Data directories
 unet/data/images/*
+unet/data/images_500/*
 unet/data/masks/*
+unet/data/masks_500/*
 unet/data/processed/*
+unet/data/processed_500/*
 unet/models/best_model.pth
 unet/models/latest_model.pth
 unet/models/96acc.pth
@@ -9,6 +12,7 @@ unet/models/trained_models/*
 unet/demo_hair_color_change/*
 unet/test_results_binary_mask/*
 unet/test_results_grayscale_mask_1k/*
+unet/test_results_2k/*
 
 unet/venv/*
 

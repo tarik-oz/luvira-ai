@@ -59,7 +59,7 @@ def predict_single_image(image_path: str, model_path: Path):
         model = load_model(model_path)
         
         # Create predictor
-        predictor = create_predictor(model)
+        predictor = create_predictor(model, device=args.device)
         
         # Make prediction
         original_image, predicted_mask, binary_mask = predictor.predict(image_path)
@@ -95,7 +95,7 @@ def predict_directory(input_dir: str, model_path: Path):
         model = load_model(model_path)
         
         # Create predictor
-        predictor = create_predictor(model)
+        predictor = create_predictor(model, device=args.device)
         
         # Predict all images in directory
         results = predictor.predict_directory(Path(input_dir))
@@ -132,6 +132,13 @@ def main():
         choices=["single", "directory"], 
         default="single",
         help="Prediction mode: single image or directory"
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        choices=["auto", "cpu", "cuda"],
+        default="auto",
+        help="Device to use for prediction: auto, cpu, or cuda"
     )
     
     args = parser.parse_args()

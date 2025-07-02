@@ -65,8 +65,8 @@ CALLBACKS_CONFIG = {
     "reduce_lr_patience": 3,
     "reduce_lr_factor": 0.1,
     "reduce_lr_min_lr": 1e-6,
-    "early_stopping_monitor": "val_accuracy",
-    "early_stopping_patience": 3
+    "early_stopping_monitor": "val_dice",
+    "early_stopping_patience": 5
 }
 
 # File patterns
