@@ -41,25 +41,34 @@ def load_model(model_path: Path):
     
     # Create trainer to load model
     trainer = create_trainer()
-    model = trainer.load_trained_model(model_path)
+    model, config = trainer.load_trained_model(model_path)
+    
+    # Log model type information from config
+    model_type = None
+    if config is not None:
+        model_type = config.get("training_config", {}).get("model_type", "unknown")
+    if not model_type:
+        model_type = "unknown"
+    logger.info(f"Model type: {model_type}")
     
     return model
 
 
-def predict_single_image(image_path: str, model_path: Path):
+def predict_single_image(image_path: str, model_path: Path, device: str):
     """
     Predict segmentation for a single image.
     
     Args:
         image_path: Path to the input image
         model_path: Path to the model file
+        device: Device to use for prediction
     """
     try:
         # Load model
         model = load_model(model_path)
         
         # Create predictor
-        predictor = create_predictor(model, device=args.device)
+        predictor = create_predictor(model, device=device)
         
         # Make prediction
         original_image, predicted_mask, binary_mask = predictor.predict(image_path)
@@ -82,20 +91,21 @@ def predict_single_image(image_path: str, model_path: Path):
         raise
 
 
-def predict_directory(input_dir: str, model_path: Path):
+def predict_directory(input_dir: str, model_path: Path, device: str):
     """
     Predict segmentation for all images in a directory.
     
     Args:
         input_dir: Path to the input directory
         model_path: Path to the model file
+        device: Device to use for prediction
     """
     try:
         # Load model
         model = load_model(model_path)
         
         # Create predictor
-        predictor = create_predictor(model, device=args.device)
+        predictor = create_predictor(model, device=device)
         
         # Predict all images in directory
         results = predictor.predict_directory(Path(input_dir))
@@ -146,10 +156,10 @@ def main():
     try:
         if args.mode == "single":
             logger.info(f"Predicting single image: {args.input}")
-            predict_single_image(args.input, Path(args.model))
+            predict_single_image(args.input, Path(args.model), args.device)
         else:
             logger.info(f"Predicting directory: {args.input}")
-            predict_directory(args.input, Path(args.model))
+            predict_directory(args.input, Path(args.model), args.device)
             
     except Exception as e:
         logger.error(f"Prediction failed: {e}")

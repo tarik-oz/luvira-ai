@@ -11,9 +11,9 @@ PROJECT_ROOT = Path(__file__).parent
 
 # Data paths
 DATA_DIR = PROJECT_ROOT / "data"
-IMAGES_DIR = DATA_DIR / "images"
-MASKS_DIR = DATA_DIR / "masks"
-PROCESSED_DATA_DIR = DATA_DIR / "processed"
+IMAGES_DIR = DATA_DIR / "images_500"
+MASKS_DIR = DATA_DIR / "masks_500"
+PROCESSED_DATA_DIR = DATA_DIR / "processed_500"
 
 # Model paths
 MODEL_DIR = PROJECT_ROOT / "models"
@@ -44,7 +44,11 @@ TRAINING_CONFIG = {
     "learning_rate": 1e-4,
     "validation_split": 0.2,
     "random_seed": 42,
-    "loss_function": "bce",  # Binary Cross Entropy
+    "model_type": "unet",  # unet or attention_unet
+    "loss_function": "total",  # bce, focal, combo or total
+    "bce_weight": 0.4,  # For combo/total loss
+    "dice_weight": 0.4, # For combo/total loss
+    "boundary_weight": 0.3, # For total loss
     "optimizer": "adam",
     "metrics": ["accuracy"],
     "device": "auto"  # auto, cpu, or cuda

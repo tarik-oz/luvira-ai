@@ -15,12 +15,14 @@ from pathlib import Path
 from typing import Optional, Dict, Any, Tuple
 import logging
 from tqdm import tqdm
+import torch.nn.functional as F
 
 from config import (
     TRAINING_CONFIG, CALLBACKS_CONFIG, 
     TRAINED_MODELS_DIR, MODEL_CONFIG, MODEL_DIR
 )
 from models.unet_model import create_unet_model
+from models.attention_unet_model import create_attention_unet_model
 from data.data_loader import create_data_loader
 from utils.model_saving import (
     create_timestamped_folder, save_config_json, 
@@ -50,6 +52,68 @@ class EarlyStopping:
             self.counter += 1
             
         return self.counter >= self.patience
+
+
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=0.8, gamma=2):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.bce = nn.BCELoss(reduction='none')
+
+    def forward(self, inputs, targets):
+        bce_loss = self.bce(inputs, targets)
+        pt = torch.exp(-bce_loss)
+        focal_loss = self.alpha * (1 - pt) ** self.gamma * bce_loss
+        return focal_loss.mean()
+
+
+class DiceLoss(nn.Module):
+    def __init__(self, smooth=1.):
+        super(DiceLoss, self).__init__()
+        self.smooth = smooth
+
+    def forward(self, inputs, targets):
+        inputs = inputs.view(-1)
+        targets = targets.view(-1)
+        intersection = (inputs * targets).sum()
+        dice = (2. * intersection + self.smooth) / (inputs.sum() + targets.sum() + self.smooth)
+        return 1 - dice
+
+
+class ComboLoss(nn.Module):
+    def __init__(self, bce_weight=0.5, dice_weight=0.5):
+        super(ComboLoss, self).__init__()
+        self.bce = nn.BCELoss()
+        self.dice = DiceLoss()
+        self.bce_weight = bce_weight
+        self.dice_weight = dice_weight
+
+    def forward(self, inputs, targets):
+        return self.bce_weight * self.bce(inputs, targets) + self.dice_weight * self.dice(inputs, targets)
+
+
+class BoundaryLoss(nn.Module):
+    def __init__(self):
+        super(BoundaryLoss, self).__init__()
+
+    def forward(self, inputs, targets):
+        sobel_x = torch.tensor([[1, 0, -1], [2, 0, -2], [1, 0, -1]], dtype=inputs.dtype, device=inputs.device).unsqueeze(0).unsqueeze(0) / 8.0
+        sobel_y = torch.tensor([[1, 2, 1], [0, 0, 0], [-1, -2, -1]], dtype=inputs.dtype, device=inputs.device).unsqueeze(0).unsqueeze(0) / 8.0
+        edge_pred = F.conv2d(inputs, sobel_x, padding=1) + F.conv2d(inputs, sobel_y, padding=1)
+        edge_true = F.conv2d(targets, sobel_x, padding=1) + F.conv2d(targets, sobel_y, padding=1)
+        return F.l1_loss(edge_pred, edge_true)
+
+
+class TotalLoss(nn.Module):
+    def __init__(self, bce_weight=0.4, dice_weight=0.4, boundary_weight=0.2):
+        super(TotalLoss, self).__init__()
+        self.combo = ComboLoss(bce_weight, dice_weight)
+        self.boundary = BoundaryLoss()
+        self.boundary_weight = boundary_weight
+
+    def forward(self, inputs, targets):
+        return self.combo(inputs, targets) + self.boundary_weight * self.boundary(inputs, targets)
 
 
 class HairSegmentationTrainer:
@@ -110,18 +174,20 @@ class HairSegmentationTrainer:
         
     def setup_model(self, input_shape: tuple = None) -> nn.Module:
         """
-        Setup the U-Net model.
-        
+        Setup the U-Net or Attention U-Net model.
         Args:
             input_shape: Input shape for the model
-            
         Returns:
-            U-Net model
+            Model instance
         """
-        logger.info("Setting up U-Net model...")
-        
-        # Create model
-        self.model = create_unet_model(input_shape=input_shape)
+        logger.info("Setting up model...")
+        model_type = self.config.get("model_type", "unet")
+        if model_type == "attention_unet":
+            logger.info("Using Attention U-Net model.")
+            self.model = create_attention_unet_model(input_shape=input_shape)
+        else:
+            logger.info("Using classic U-Net model.")
+            self.model = create_unet_model(input_shape=input_shape)
         self.model.to(self.device)
         
         # Setup optimizer
@@ -135,8 +201,15 @@ class HairSegmentationTrainer:
         # Setup loss function
         if self.config["loss_function"] == "bce":
             self.criterion = nn.BCELoss()
-        elif self.config["loss_function"] == "bce_with_logits":
-            self.criterion = nn.BCEWithLogitsLoss()
+        elif self.config["loss_function"] == "focal":
+            self.criterion = FocalLoss(alpha=0.8, gamma=2)
+        elif self.config["loss_function"] == "combo":
+            self.criterion = ComboLoss(bce_weight=self.config.get("bce_weight", 0.4),
+                                       dice_weight=self.config.get("dice_weight", 0.4))
+        elif self.config["loss_function"] == "total":
+            self.criterion = TotalLoss(bce_weight=self.config.get("bce_weight", 0.4),
+                                       dice_weight=self.config.get("dice_weight", 0.4),
+                                       boundary_weight=self.config.get("boundary_weight", 0.2))
         else:
             raise ValueError(f"Unsupported loss function: {self.config['loss_function']}")
         
@@ -413,44 +486,43 @@ class HairSegmentationTrainer:
             'device_used': str(self.device)
         }
     
-    def load_trained_model(self, model_path: Path) -> nn.Module:
+    def load_trained_model(self, model_path: Path):
         """
-        Load a trained model.
+        Load a trained model and its config.
         
         Args:
             model_path: Path to the model file (required)
             
         Returns:
-            Loaded model
+            (Loaded model, config dict or None)
         """
         if not model_path.exists():
             raise FileNotFoundError(f"Model file not found: {model_path}")
         
-        # Try to find config.json in the same folder as the model
         config_path = model_path.parent / "config.json"
-        
+        config_data = None
         if config_path.exists():
-            # Load model config from JSON
             try:
                 with open(config_path, 'r') as f:
                     config_data = json.load(f)
-                
                 model_config = config_data.get("model_config", {})
+                model_type = model_config.get("model_type", "unet")
                 logger.info(f"Loading model with config from: {config_path}")
                 logger.info(f"Model config: {model_config}")
                 
-                # Create model with the loaded config
-                self.model = create_unet_model(**model_config)
-                self.model.to(self.device)
+                model_config_clean = {k: v for k, v in model_config.items() if k != "model_type"}
                 
+                if model_type == "attention_unet":
+                    self.model = create_attention_unet_model(**model_config_clean)
+                else:
+                    self.model = create_unet_model(**model_config_clean)
+                self.model.to(self.device)
             except Exception as e:
                 logger.warning(f"Failed to load config from {config_path}: {e}")
                 logger.info("Falling back to default config")
-                # Fallback to default config
                 if self.model is None:
                     self.setup_model()
         else:
-            # No config.json found, use default config
             logger.info(f"No config.json found at {config_path}, using default config")
             if self.model is None:
                 self.setup_model()
@@ -460,15 +532,18 @@ class HairSegmentationTrainer:
         self.model.eval()
         
         logger.info(f"Loaded model from {model_path}")
-        return self.model
+        return self.model, config_data
 
     def save_trained_model(self, dataset_info: Dict[str, Any] = None) -> Path:
         from config import MODEL_CONFIG
         summary = self.get_training_summary()
         if not summary:
             raise ValueError("No training history available. Train the model first.")
+        # Save model_type in config
+        model_config = dict(MODEL_CONFIG)
+        model_config["model_type"] = self.config.get("model_type", "unet")
         folder_path = create_timestamped_folder(TRAINED_MODELS_DIR, summary['best_val_accuracy'])
-        save_config_json(folder_path, MODEL_CONFIG, self.config, dataset_info, summary)
+        save_config_json(folder_path, model_config, self.config, dataset_info, summary)
         save_training_log(folder_path, self.device, self.history, summary)
         save_models_to_folder(folder_path, self.model_path, self.latest_model_path)
         
