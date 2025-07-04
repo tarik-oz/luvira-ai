@@ -1,0 +1,18 @@
+# Core YOLOv8 dependencies
+ultralytics>=8.0.0
+
+# Computer vision
+opencv-python>=4.5.0
+
+# Data processing
+numpy>=1.21.0
+
+# Deep learning
+torch>=1.9.0
+torchvision>=0.10.0
+
+# Visualization
+matplotlib>=3.5.0
+
+# Path handling (built-in, but good to document)
+pathlib2>=2.3.0; python_version < "3.4" 
