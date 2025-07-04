@@ -2,6 +2,7 @@
 API package for UNet hair segmentation
 
 This package provides FastAPI endpoints for hair segmentation using trained U-Net models.
+Currently in demo version with basic endpoints for segmentation and model management.
 """
 
 from .. import __version__, __author__
