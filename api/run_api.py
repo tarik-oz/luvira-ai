@@ -7,11 +7,10 @@ import uvicorn
 import sys
 from pathlib import Path
 
-# Add project root to path
-project_root = Path(__file__).parent
+project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
-from config import API_CONFIG
+from model.config import API_CONFIG
 
 def print_startup_info():
     """Print startup information"""

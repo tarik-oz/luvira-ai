@@ -1,21 +1,21 @@
 # Data directories
-unet/data/images/*
-unet/data/images_500/*
-unet/data/masks/*
-unet/data/masks_500/*
-unet/data/processed/*
-unet/data/processed_500/*
-unet/models/best_model.pth
-unet/models/latest_model.pth
-unet/models/96acc.pth
-unet/models/trained_models/*
-unet/demo_hair_color_change/*
-unet/test_results_binary_mask/*
-unet/test_results_2k/*
-unet/test_results_7k/*
+model/data/images/*
+model/data/images_500/*
+model/data/masks/*
+model/data/masks_500/*
+model/data/processed/*
+model/data/processed_500/*
 
-unet/venv/*
+model/models/best_model.pth
+model/models/latest_model.pth
+model/models/96acc.pth
 
+model/models/trained_models/*
+
+model/demo_hair_color_change/*
+model/test_results_binary_mask/*
+model/test_results_2k/*
+model/test_results_7k/*
 
 # Python cache files (all directories)
 __pycache__/

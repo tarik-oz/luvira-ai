@@ -12,13 +12,13 @@ import cv2
 import numpy as np
 
 from .model_manager import model_manager
-from config import API_CONFIG
+from model.config import API_CONFIG
 from .. import __version__
 
 app = FastAPI(
     title="Hair Segmentation API",
-    description="API for hair segmentation using UNet model",
-    version="1.0.0"
+    description="API for hair segmentation using deep learning model",
+    version="1.1.0"
 )
 
 # CORS middleware
