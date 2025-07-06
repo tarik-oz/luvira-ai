@@ -17,17 +17,30 @@ import logging
 from tqdm import tqdm
 import torch.nn.functional as F
 
-from config import (
-    TRAINING_CONFIG, CALLBACKS_CONFIG, 
-    TRAINED_MODELS_DIR, MODEL_CONFIG, MODEL_DIR
-)
-from models.unet_model import create_unet_model
-from models.attention_unet_model import create_attention_unet_model
-from data.data_loader import create_data_loader
-from utils.model_saving import (
-    create_timestamped_folder, save_config_json, 
-    save_training_log, save_models_to_folder
-)
+try:
+    from ..config import (
+        TRAINING_CONFIG, CALLBACKS_CONFIG, 
+        TRAINED_MODELS_DIR, MODEL_CONFIG, MODEL_DIR
+    )
+    from ..models.unet_model import create_unet_model
+    from ..models.attention_unet_model import create_attention_unet_model
+    from ..data.data_loader import create_data_loader
+    from ..utils.model_saving import (
+        create_timestamped_folder, save_config_json, 
+        save_training_log, save_models_to_folder
+    )
+except ImportError:
+    from config import (
+        TRAINING_CONFIG, CALLBACKS_CONFIG, 
+        TRAINED_MODELS_DIR, MODEL_CONFIG, MODEL_DIR
+    )
+    from models.unet_model import create_unet_model
+    from models.attention_unet_model import create_attention_unet_model
+    from data.data_loader import create_data_loader
+    from utils.model_saving import (
+        create_timestamped_folder, save_config_json, 
+        save_training_log, save_models_to_folder
+    )
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

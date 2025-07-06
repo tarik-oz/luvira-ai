@@ -2,7 +2,10 @@ import os
 import json
 import logging
 from pathlib import Path
-from config import FILE_PATTERNS
+try:
+    from ..config import FILE_PATTERNS
+except ImportError:
+    from config import FILE_PATTERNS
 
 def get_latest_timestamp(directory, patterns=None):
     if patterns is None:

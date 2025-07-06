@@ -13,7 +13,6 @@ model/models/96acc.pth
 model/models/trained_models/*
 
 model/demo_hair_color_change/*
-model/test_results_binary_mask/*
 model/test_results_2k/*
 model/test_results_7k/*
 

@@ -12,8 +12,12 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
-from inference.predictor import create_predictor
-from training.trainer import create_trainer
+try:
+    from .predictor import create_predictor
+    from ..training.trainer import create_trainer
+except ImportError:
+    from predictor import create_predictor
+    from training.trainer import create_trainer
 import logging
 
 # Configure logging

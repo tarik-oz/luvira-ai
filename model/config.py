@@ -82,17 +82,3 @@ FILE_PATTERNS = {
     "validation_images": "val_images.npy",
     "validation_masks": "val_masks.npy"
 }
-
-# API configuration
-API_CONFIG = {
-    "default_model_path": "models/trained_models/2025-06-28_23-25-10_acc0.9822/best_model.pth",
-    "host": "0.0.0.0",
-    "port": 8000,
-    "reload": True,
-    "log_level": "info",
-    "cors_origins": ["*"],
-    "cors_methods": ["*"],
-    "cors_headers": ["*"],
-    "max_file_size": 10 * 1024 * 1024,  # 10MB
-    "allowed_image_types": ["image/jpeg", "image/png", "image/jpg"]
-} 

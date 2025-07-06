@@ -12,11 +12,18 @@ from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 import logging
 
-from config import (
-    IMAGES_DIR, MASKS_DIR, PROCESSED_DATA_DIR, 
-    DATA_CONFIG, TRAINING_CONFIG, FILE_PATTERNS
-)
-from utils.data_timestamp import get_latest_timestamp, save_timestamps, load_timestamps, needs_processing
+try:
+    from ..config import (
+        IMAGES_DIR, MASKS_DIR, PROCESSED_DATA_DIR, 
+        DATA_CONFIG, TRAINING_CONFIG, FILE_PATTERNS
+    )
+    from ..utils.data_timestamp import get_latest_timestamp, save_timestamps, load_timestamps, needs_processing
+except ImportError:
+    from config import (
+        IMAGES_DIR, MASKS_DIR, PROCESSED_DATA_DIR, 
+        DATA_CONFIG, TRAINING_CONFIG, FILE_PATTERNS
+    )
+    from utils.data_timestamp import get_latest_timestamp, save_timestamps, load_timestamps, needs_processing
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

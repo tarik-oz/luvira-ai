@@ -9,7 +9,10 @@ from pathlib import Path
 from typing import List, Tuple
 import logging
 
-from config import IMAGES_DIR, MASKS_DIR, FILE_PATTERNS
+try:
+    from ..config import IMAGES_DIR, MASKS_DIR, FILE_PATTERNS
+except ImportError:
+    from config import IMAGES_DIR, MASKS_DIR, FILE_PATTERNS
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

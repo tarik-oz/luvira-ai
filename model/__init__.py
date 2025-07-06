@@ -24,7 +24,6 @@ from .models.attention_unet_model import AttentionUNetModel, create_attention_un
 from .data.data_loader import HairSegmentationDataLoader, create_data_loader
 from .training.trainer import HairSegmentationTrainer, create_trainer
 from .inference.predictor import HairSegmentationPredictor, create_predictor
-from .api.model_manager import model_manager
 
 __all__ = [
     "UNetModel",
@@ -37,5 +36,4 @@ __all__ = [
     "create_trainer",
     "HairSegmentationPredictor",
     "create_predictor",
-    "model_manager"
 ] 

@@ -5,6 +5,9 @@ This package provides FastAPI endpoints for hair segmentation using trained U-Ne
 Currently in demo version with basic endpoints for segmentation and model management.
 """
 
-from .model_manager import model_manager
+__version__ = "1.1.0"
 
-__all__ = ["model_manager"] 
+from .model_manager import model_manager
+from .dto import *
+
+__all__ = ["model_manager", "dto", "__version__"] 

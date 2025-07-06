@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 import logging
 
-from training.trainer import create_trainer
-from inference.predictor import create_predictor
+from model.training.trainer import create_trainer
+from model.inference.predictor import create_predictor
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ class ModelManager:
             
             # Create trainer and load model
             self._trainer = create_trainer()
-            self._model = self._trainer.load_trained_model(model_path)
+            self._model, _ = self._trainer.load_trained_model(model_path)
             self._model_path = model_path
             
             # Create predictor
@@ -121,9 +121,19 @@ class ModelManager:
                 try:
                     with open(config_path, 'r') as f:
                         config_data = json.load(f)
+                    
+                    # Extract model config information
+                    model_config = config_data.get("model_config", {})
+                    info["model_type"] = model_config.get("model_type", "unknown")
+                    info["input_shape"] = model_config.get("input_shape", [3, 256, 256])
+                    info["output_shape"] = [model_config.get("output_channels", 1), 256, 256]
                     info["config"] = config_data
                 except Exception as e:
                     logger.warning(f"Could not load config: {e}")
+                    # Fallback values
+                    info["model_type"] = "unknown"
+                    info["input_shape"] = [3, 256, 256]
+                    info["output_shape"] = [1, 256, 256]
         
         return info
     

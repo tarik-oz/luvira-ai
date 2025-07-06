@@ -11,10 +11,16 @@ from pathlib import Path
 from typing import Union, Tuple, Optional, List
 import logging
 
-from config import (
-    TEST_IMAGES_DIR, TEST_RESULTS_DIR, 
-    DATA_CONFIG, MODEL_CONFIG
-)
+try:
+    from ..config import (
+        TEST_IMAGES_DIR, TEST_RESULTS_DIR, 
+        DATA_CONFIG, MODEL_CONFIG
+    )
+except ImportError:
+    from config import (
+        TEST_IMAGES_DIR, TEST_RESULTS_DIR, 
+        DATA_CONFIG, MODEL_CONFIG
+    )
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

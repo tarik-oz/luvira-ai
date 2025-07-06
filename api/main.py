@@ -4,16 +4,23 @@ FastAPI application for hair segmentation
 
 import tempfile
 from pathlib import Path
+from typing import Optional
 
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import Response
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
+from fastapi.responses import Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import cv2
 import numpy as np
+import base64
 
 from .model_manager import model_manager
-from model.config import API_CONFIG
-from .. import __version__
+from .dto import (
+    HealthCheckResponse, ModelInfoResponse, ReloadModelRequest, ReloadModelResponse,
+    PredictMaskResponse, ClearModelResponse, RootResponse, ErrorResponse,
+    FileUploadValidator, HealthStatus
+)
+from .config import API_CONFIG
+from . import __version__
 
 app = FastAPI(
     title="Hair Segmentation API",
@@ -24,10 +31,10 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=API_CONFIG["cors_origins"],
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=API_CONFIG["cors_methods"],
-    allow_headers=API_CONFIG["cors_headers"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 DEFAULT_MODEL_PATH = API_CONFIG["default_model_path"]
@@ -44,48 +51,63 @@ async def startup_event():
     except Exception as e:
         print(f"Error loading model: {e}")
 
-@app.get("/")
+@app.get("/", response_model=RootResponse)
 async def root():
     """Health check endpoint"""
-    return {
-        "message": "Hair Segmentation API is running!",
-        "version": __version__,
-        "model_loaded": model_manager.is_model_loaded(),
-        "endpoints": {
+    return RootResponse(
+        message="Hair Segmentation API is running!",
+        version=__version__,
+        model_loaded=model_manager.is_model_loaded(),
+        endpoints={
             "docs": "/docs",
             "health": "/health",
             "model_info": "/model-info",
             "reload_model": "/reload-model",
             "predict_mask": "/predict-mask",
+            "predict_mask_json": "/predict-mask-json",
             "clear_model": "/clear-model"
         }
-    }
+    )
 
-@app.get("/health")
+@app.get("/health", response_model=HealthCheckResponse)
 async def health_check():
     """Detailed health check with model status"""
-    return {
-        "status": "healthy",
-        "model_loaded": model_manager.is_model_loaded(),
-        "model_path": str(model_manager.get_model_path()) if model_manager.get_model_path() else None
-    }
+    status = HealthStatus.HEALTHY if model_manager.is_model_loaded() else HealthStatus.DEGRADED
+    
+    return HealthCheckResponse(
+        status=status,
+        model_loaded=model_manager.is_model_loaded(),
+        model_path=str(model_manager.get_model_path()) if model_manager.get_model_path() else None,
+        version=__version__
+    )
 
-@app.get("/model-info")
+@app.get("/model-info", response_model=ModelInfoResponse)
 async def get_model_info():
     """Get information about the loaded model"""
-    return model_manager.get_model_info()
+    model_info = model_manager.get_model_info()
+    
+    return ModelInfoResponse(
+        model_path=model_info.get("model_path"),
+        model_type=model_info.get("model_type"),
+        input_shape=model_info.get("input_shape"),
+        output_shape=model_info.get("output_shape"),
+        device=model_info.get("device"),
+        is_loaded=model_manager.is_model_loaded()
+    )
 
-@app.post("/reload-model")
-async def reload_model(model_path: str = DEFAULT_MODEL_PATH):
+@app.post("/reload-model", response_model=ReloadModelResponse)
+async def reload_model(request: ReloadModelRequest):
     """
     Reload the model from a different path
     
     Args:
-        model_path: Path to the model file (optional, defaults to DEFAULT_MODEL_PATH)
+        request: ReloadModelRequest containing model path
         
     Returns:
-        Success status and model info
+        ReloadModelResponse with success status and model info
     """
+    model_path = request.model_path or DEFAULT_MODEL_PATH
+    
     # Validate model path exists
     model_file = Path(model_path)
     if not model_file.exists():
@@ -96,11 +118,19 @@ async def reload_model(model_path: str = DEFAULT_MODEL_PATH):
     
     success = model_manager.reload_model(model_path)
     if success:
-        return {
-            "success": True,
-            "message": f"Model reloaded successfully from {model_path}",
-            "model_info": model_manager.get_model_info()
-        }
+        model_info = model_manager.get_model_info()
+        return ReloadModelResponse(
+            success=True,
+            message=f"Model reloaded successfully from {model_path}",
+            model_info=ModelInfoResponse(
+                model_path=model_info.get("model_path"),
+                model_type=model_info.get("model_type"),
+                input_shape=model_info.get("input_shape"),
+                output_shape=model_info.get("output_shape"),
+                device=model_info.get("device"),
+                is_loaded=model_manager.is_model_loaded()
+            )
+        )
     else:
         raise HTTPException(
             status_code=500,
@@ -125,19 +155,10 @@ async def predict_mask(file: UploadFile = File(...)):
             detail="Model not loaded."
         )
     
-    # Validate file type
-    if file.content_type not in API_CONFIG["allowed_image_types"]:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"File type not allowed. Allowed types: {API_CONFIG['allowed_image_types']}"
-        )
-    
-    # Validate file size
-    if file.size and file.size > API_CONFIG["max_file_size"]:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File too large. Maximum size: {API_CONFIG['max_file_size'] // (1024*1024)}MB"
-        )
+    # Validate file using DTO validator
+    validation_error = FileUploadValidator.get_validation_error(file.content_type, file.size)
+    if validation_error:
+        raise HTTPException(status_code=400, detail=validation_error)
     
     temp_input_path = None
     
@@ -197,17 +218,100 @@ async def predict_mask(file: UploadFile = File(...)):
             try:
                 Path(temp_input_path).unlink(missing_ok=True)
             except Exception:
-                pass  # Ignore cleanup errors 
+                pass  # Ignore cleanup errors
 
-@app.post("/clear-model")
+@app.post("/predict-mask-json", response_model=PredictMaskResponse)
+async def predict_mask_json(file: UploadFile = File(...)):
+    """
+    Predict hair mask from uploaded image and return as JSON with base64 encoded mask
+    
+    Args:
+        file: Image file (jpg, png, etc.)
+        
+    Returns:
+        PredictMaskResponse with base64 encoded mask and metadata
+    """
+    # Check if model is loaded
+    if not model_manager.is_model_loaded():
+        raise HTTPException(
+            status_code=500, 
+            detail="Model not loaded."
+        )
+    
+    # Validate file using DTO validator
+    validation_error = FileUploadValidator.get_validation_error(file.content_type, file.size)
+    if validation_error:
+        raise HTTPException(status_code=400, detail=validation_error)
+    
+    temp_input_path = None
+    
+    try:
+        # Read image file
+        image_data = await file.read()
+        
+        # Convert to numpy array
+        nparr = np.frombuffer(image_data, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if image is None:
+            raise HTTPException(
+                status_code=400, 
+                detail="Could not decode image"
+            )
+        
+        # Create temporary input file
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_input:
+            temp_input_path = temp_input.name
+        
+        # Save temporary image for prediction
+        cv2.imwrite(temp_input_path, image)
+        
+        # Get predictor and make prediction
+        predictor = model_manager.get_predictor()
+        original_image, predicted_mask, binary_mask = predictor.predict(temp_input_path)
+        
+        if predicted_mask is None:
+            raise HTTPException(
+                status_code=500, 
+                detail="Failed to generate mask"
+            )
+        
+        # Convert mask to base64
+        mask_255 = (predicted_mask * 255).astype(np.uint8)
+        _, buffer = cv2.imencode('.png', mask_255)
+        mask_base64 = base64.b64encode(buffer).decode('utf-8')
+        
+        # Return DTO response
+        return PredictMaskResponse(
+            success=True,
+            mask_base64=f"data:image/png;base64,{mask_base64}",
+            original_filename=file.filename,
+            mask_shape=list(predicted_mask.shape),
+            confidence_score=float(np.mean(predicted_mask))
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Prediction failed: {str(e)}"
+        )
+    finally:
+        # Clean up only input temp file
+        if temp_input_path:
+            try:
+                Path(temp_input_path).unlink(missing_ok=True)
+            except Exception:
+                pass  # Ignore cleanup errors
+
+@app.post("/clear-model", response_model=ClearModelResponse)
 async def clear_model():
     """Clear the loaded model from memory"""
     try:
         model_manager.clear_model()
-        return {
-            "success": True,
-            "message": "Model cleared from memory"
-        }
+        return ClearModelResponse(
+            success=True,
+            message="Model cleared from memory"
+        )
     except Exception as e:
         raise HTTPException(
             status_code=500,

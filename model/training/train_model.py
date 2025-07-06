@@ -11,9 +11,14 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
-from training.trainer import create_trainer
-from data.data_loader import create_data_loader
-from config import TRAINING_CONFIG
+try:
+    from .trainer import create_trainer
+    from ..data.data_loader import create_data_loader
+    from ..config import TRAINING_CONFIG
+except ImportError:
+    from trainer import create_trainer
+    from data.data_loader import create_data_loader
+    from config import TRAINING_CONFIG
 import logging
 
 # Configure logging

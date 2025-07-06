@@ -10,7 +10,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
-from model.config import API_CONFIG
+from api.config import API_CONFIG
 
 def print_startup_info():
     """Print startup information"""
@@ -30,7 +30,8 @@ def print_startup_info():
     print()
     print("Model Endpoints:")
     print(f"   • Model Info: http://localhost:{API_CONFIG['port']}/model-info")
-    print(f"   • Predict Mask: http://localhost:{API_CONFIG['port']}/predict-mask")
+    print(f"   • Predict Mask (File): http://localhost:{API_CONFIG['port']}/predict-mask")
+    print(f"   • Predict Mask (JSON): http://localhost:{API_CONFIG['port']}/predict-mask-json")
     print()
 
 if __name__ == "__main__":
