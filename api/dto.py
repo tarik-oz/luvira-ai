@@ -68,23 +68,6 @@ class ReloadModelResponse(BaseModel):
     
     model_config = {"protected_namespaces": ()}
 
-
-class PredictMaskResponse(BaseModel):
-    """Mask prediction response DTO"""
-    success: bool = Field(..., description="Operation success status")
-    mask_base64: str = Field(..., description="Base64 encoded mask image")
-    original_filename: str = Field(..., description="Original uploaded filename")
-    mask_shape: List[int] = Field(..., description="Shape of the predicted mask")
-    confidence_score: float = Field(..., description="Prediction confidence score")
-    
-    @validator('confidence_score')
-    def validate_confidence_score(cls, v):
-        """Validate confidence score is between 0 and 1"""
-        if not 0 <= v <= 1:
-            raise ValueError('Confidence score must be between 0 and 1')
-        return v
-
-
 class ClearModelResponse(BaseModel):
     """Clear model response DTO"""
     success: bool = Field(..., description="Operation success status")
@@ -99,34 +82,3 @@ class RootResponse(BaseModel):
     endpoints: Dict[str, str] = Field(..., description="Available API endpoints")
     
     model_config = {"protected_namespaces": ()}
-
-
-# File upload validation
-class FileUploadValidator:
-    """File upload validation helper"""
-    
-    ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/jpg"]
-    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-    
-    @classmethod
-    def validate_file_type(cls, content_type: str) -> bool:
-        """Validate file content type"""
-        return content_type in cls.ALLOWED_IMAGE_TYPES
-    
-    @classmethod
-    def validate_file_size(cls, file_size: Optional[int]) -> bool:
-        """Validate file size"""
-        if file_size is None:
-            return True  # Allow if size is unknown
-        return file_size <= cls.MAX_FILE_SIZE
-    
-    @classmethod
-    def get_validation_error(cls, content_type: str, file_size: Optional[int]) -> Optional[str]:
-        """Get validation error message if any"""
-        if not cls.validate_file_type(content_type):
-            return f"File type not allowed. Allowed types: {cls.ALLOWED_IMAGE_TYPES}"
-        
-        if not cls.validate_file_size(file_size):
-            return f"File too large. Maximum size: {cls.MAX_FILE_SIZE // (1024*1024)}MB"
-        
-        return None 
