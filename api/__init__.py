@@ -7,7 +7,6 @@ Currently in demo version with basic endpoints for segmentation and model manage
 
 __version__ = "1.1.0"
 
-from .model_manager import model_manager
-from .dto import *
+from .schemas import *
 
-__all__ = ["model_manager", "dto", "__version__"] 
+__all__ = ["schemas", "__version__"] 

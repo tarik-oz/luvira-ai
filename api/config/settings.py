@@ -38,7 +38,6 @@ FILE_VALIDATION = {
 # Model settings
 MODEL_CONFIG = {
     "default_model_path": API_CONFIG["default_model_path"],
-    "model_cache_size": 1,  # Number of models to keep in memory
     "prediction_timeout": 30,  # seconds
     "device_preference": "auto"  # auto, cpu or cuda
 } 

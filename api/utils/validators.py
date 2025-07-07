@@ -2,6 +2,7 @@
 File validation utilities for Hair Segmentation API
 """
 
+import logging
 import cv2
 import numpy as np
 from typing import Optional, Tuple
@@ -106,6 +107,10 @@ class FileValidator:
             raise FileValidationException(
                 f"Image too large. Maximum dimensions: {max_width}x{max_height}"
             )
+        
+        # Log validation success
+        logger = logging.getLogger(__name__)
+        logger.debug(f"Image dimensions validated: {width}x{height}")
     
     @staticmethod
     def validate_image_format(image: np.ndarray) -> None:

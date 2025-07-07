@@ -11,6 +11,8 @@ from .exceptions import (
     ImageProcessingException,
     create_error_response
 )
+from .dependencies import get_model_service, get_prediction_service
+from .middleware import LoggingMiddleware, CORSMiddleware
 
 __all__ = [
     "APIException",
@@ -19,5 +21,9 @@ __all__ = [
     "FileValidationException",
     "PredictionException",
     "ImageProcessingException",
-    "create_error_response"
+    "create_error_response",
+    "get_model_service",
+    "get_prediction_service",
+    "LoggingMiddleware",
+    "CORSMiddleware"
 ]
