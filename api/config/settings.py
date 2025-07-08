@@ -39,5 +39,6 @@ FILE_VALIDATION = {
 MODEL_CONFIG = {
     "default_model_path": API_CONFIG["default_model_path"],
     "prediction_timeout": 30,  # seconds
+    "color_change_timeout": 10,  # seconds
     "device_preference": "auto"  # auto, cpu or cuda
 } 

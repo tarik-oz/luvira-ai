@@ -11,7 +11,7 @@ from .exceptions import (
     ImageProcessingException,
     create_error_response
 )
-from .dependencies import get_model_service, get_prediction_service
+from .dependencies import get_model_service, get_prediction_service, get_color_change_service
 from .middleware import LoggingMiddleware, CORSMiddleware
 
 __all__ = [
@@ -24,6 +24,7 @@ __all__ = [
     "create_error_response",
     "get_model_service",
     "get_prediction_service",
+    "get_color_change_service",
     "LoggingMiddleware",
     "CORSMiddleware"
 ]

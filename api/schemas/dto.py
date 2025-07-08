@@ -6,7 +6,7 @@ and API documentation.
 """
 
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 from enum import Enum
 
 
@@ -80,5 +80,12 @@ class RootResponse(BaseModel):
     version: str = Field(..., description="API version")
     model_loaded: bool = Field(..., description="Whether the model is loaded")
     endpoints: Dict[str, str] = Field(..., description="Available API endpoints")
+    
+    model_config = {"protected_namespaces": ()}
+
+
+class ColorChangeRequest(BaseModel):
+    """Color change request DTO"""
+    target_color: List[int] = Field(..., description="Target hair color in RGB format [R, G, B]", min_items=3, max_items=3)
     
     model_config = {"protected_namespaces": ()}

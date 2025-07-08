@@ -24,6 +24,7 @@ async def root(model_service: ModelService = Depends(get_model_service)):
             "model_info": "/model-info",
             "reload_model": "/reload-model",
             "predict_mask": "/predict-mask",
+            "change_hair_color": "/change-hair-color",
             "clear_model": "/clear-model"
         }
     )

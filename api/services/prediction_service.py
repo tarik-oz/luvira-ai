@@ -75,6 +75,7 @@ class PredictionService:
         try:
             # Read image file
             image_data = file.file.read()
+            file.file.seek(0)
             
             # Convert to numpy array
             nparr = np.frombuffer(image_data, np.uint8)
