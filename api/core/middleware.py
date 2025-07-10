@@ -57,52 +57,42 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             raise
 
 
-class CORSMiddleware:
+class CORSMiddleware(BaseHTTPMiddleware):
     """Custom CORS middleware with configurable origins"""
     
     def __init__(self, app: ASGIApp, origins: list = None, methods: list = None, headers: list = None):
-        self.app = app
+        super().__init__(app)
         self.origins = origins or ["*"]
         self.methods = methods or ["*"]
         self.headers = headers or ["*"]
     
-    async def __call__(self, scope, receive, send):
-        if scope["type"] == "http":
-            # Add CORS headers
-            headers = []
-            
-            # Origin header
-            if "*" in self.origins:
-                headers.append((b"access-control-allow-origin", b"*"))
-            else:
-                # Check if origin is in allowed list
-                origin = None
-                for name, value in scope.get("headers", []):
-                    if name == b"origin":
-                        origin = value.decode()
-                        break
-                
-                if origin in self.origins:
-                    headers.append((b"access-control-allow-origin", origin.encode()))
-            
-            # Methods header
-            if "*" in self.methods:
-                headers.append((b"access-control-allow-methods", b"*"))
-            else:
-                methods = ", ".join(self.methods).encode()
-                headers.append((b"access-control-allow-methods", methods))
-            
-            # Headers header
-            if "*" in self.headers:
-                headers.append((b"access-control-allow-headers", b"*"))
-            else:
-                allowed_headers = ", ".join(self.headers).encode()
-                headers.append((b"access-control-allow-headers", allowed_headers))
-            
-            # Credentials header
-            headers.append((b"access-control-allow-credentials", b"true"))
-            
-            # Add headers to scope
-            scope["headers"].extend(headers)
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Handle preflight requests
+        if request.method == "OPTIONS":
+            response = Response()
+        else:
+            response = await call_next(request)
         
-        await self.app(scope, receive, send) 
+        # Add CORS headers to response
+        origin = request.headers.get("origin")
+        
+        # Origin header
+        if "*" in self.origins or (origin and origin in self.origins):
+            response.headers["Access-Control-Allow-Origin"] = "*" if "*" in self.origins else origin
+        
+        # Methods header
+        if "*" in self.methods:
+            response.headers["Access-Control-Allow-Methods"] = "*"
+        else:
+            response.headers["Access-Control-Allow-Methods"] = ", ".join(self.methods)
+        
+        # Headers header
+        if "*" in self.headers:
+            response.headers["Access-Control-Allow-Headers"] = "*"
+        else:
+            response.headers["Access-Control-Allow-Headers"] = ", ".join(self.headers)
+        
+        # Credentials header
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        
+        return response 
