@@ -17,6 +17,7 @@ model/test_results_2k/*
 model/test_results_7k/*
 
 logs/*
+.vscode/*
 
 # Python cache files (all directories)
 __pycache__/
