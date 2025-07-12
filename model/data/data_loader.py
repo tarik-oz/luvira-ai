@@ -18,17 +18,18 @@ try:
         DATA_CONFIG, TRAINING_CONFIG, FILE_PATTERNS
     )
     from ..utils.data_timestamp import get_latest_timestamp, save_timestamps, load_timestamps, needs_processing
+    from .dataset import HairSegmentationDataset
 except ImportError:
     from config import (
         IMAGES_DIR, MASKS_DIR, PROCESSED_DATA_DIR, 
         DATA_CONFIG, TRAINING_CONFIG, FILE_PATTERNS
     )
     from utils.data_timestamp import get_latest_timestamp, save_timestamps, load_timestamps, needs_processing
+    from .dataset import HairSegmentationDataset
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 class HairSegmentationDataLoader:
     """
@@ -69,6 +70,99 @@ class HairSegmentationDataLoader:
         self.train_masks = None
         self.val_images = None
         self.val_masks = None
+        
+        # File paths for lazy loading
+        self.image_paths = []
+        self.mask_paths = []
+        self.train_image_paths = []
+        self.train_mask_paths = []
+        self.val_image_paths = []
+        self.val_mask_paths = []
+        
+    def get_file_paths(self) -> Tuple[List[str], List[str]]:
+        """
+        Get all image and mask file paths.
+        
+        Returns:
+            Tuple of (image_paths, mask_paths)
+        """
+        # Get file paths for multiple patterns
+        image_paths = []
+        for pattern in FILE_PATTERNS["images"]:
+            pattern_path = str(self.images_dir / pattern)
+            image_paths.extend(glob.glob(pattern_path))
+        
+        mask_paths = []
+        for pattern in FILE_PATTERNS["masks"]:
+            pattern_path = str(self.masks_dir / pattern)
+            mask_paths.extend(glob.glob(pattern_path))
+        
+        # Sort paths to ensure matching
+        image_paths = sorted(image_paths)
+        mask_paths = sorted(mask_paths)
+        
+        if not image_paths or not mask_paths:
+            raise ValueError(f"No images or masks found in {self.images_dir} or {self.masks_dir}")
+        
+        if len(image_paths) != len(mask_paths):
+            logger.warning(f"Number of images ({len(image_paths)}) doesn't match number of masks ({len(mask_paths)})")
+            logger.warning("This might cause issues. Make sure image and mask files have matching names.")
+        
+        logger.info(f"Found {len(image_paths)} images and {len(mask_paths)} masks")
+        
+        self.image_paths = image_paths
+        self.mask_paths = mask_paths
+        
+        return image_paths, mask_paths
+        
+    def create_datasets(self, validation_split: float = TRAINING_CONFIG["validation_split"],
+                       random_seed: int = TRAINING_CONFIG["random_seed"]) -> Tuple[HairSegmentationDataset, HairSegmentationDataset]:
+        """
+        Create train and validation datasets with lazy loading.
+        
+        Args:
+            validation_split: Fraction of data to use for validation
+            random_seed: Random seed for reproducibility
+            
+        Returns:
+            Tuple of (train_dataset, val_dataset)
+        """
+        # Get file paths
+        image_paths, mask_paths = self.get_file_paths()
+        
+        # Split paths into train and validation
+        train_img_paths, val_img_paths, train_mask_paths, val_mask_paths = train_test_split(
+            image_paths, 
+            mask_paths, 
+            test_size=validation_split,
+            random_state=random_seed,
+            shuffle=True
+        )
+        
+        # Store paths for info
+        self.train_image_paths = train_img_paths
+        self.train_mask_paths = train_mask_paths
+        self.val_image_paths = val_img_paths
+        self.val_mask_paths = val_mask_paths
+        
+        # Create datasets
+        train_dataset = HairSegmentationDataset(
+            train_img_paths, 
+            train_mask_paths,
+            self.image_size, 
+            self.normalization_factor
+        )
+        
+        val_dataset = HairSegmentationDataset(
+            val_img_paths, 
+            val_mask_paths,
+            self.image_size, 
+            self.normalization_factor
+        )
+        
+        logger.info(f"Created datasets - Train: {len(train_dataset)}, Val: {len(val_dataset)}")
+        
+        return train_dataset, val_dataset
         
     def _load_image(self, image_path: Path) -> np.ndarray:
         """
@@ -201,14 +295,15 @@ class HairSegmentationDataLoader:
         logger.info(f"Splitting data with validation_split={validation_split}")
         
         self.train_images, self.val_images, self.train_masks, self.val_masks = train_test_split(
-            self.images, 
+            self.images,
             self.masks, 
-            test_size=validation_split, 
-            random_state=random_seed
+            test_size=validation_split,
+            random_state=random_seed,
+            shuffle=True
         )
         
-        logger.info(f"Training set: {self.train_images.shape[0]} samples")
-        logger.info(f"Validation set: {self.val_images.shape[0]} samples")
+        logger.info(f"Train set: {len(self.train_images)} samples")
+        logger.info(f"Validation set: {len(self.val_images)} samples")
         
         return self.train_images, self.train_masks, self.val_images, self.val_masks
     
@@ -216,8 +311,7 @@ class HairSegmentationDataLoader:
         """
         Save processed data to numpy files.
         """
-        if (self.train_images is None or self.train_masks is None or 
-            self.val_images is None or self.val_masks is None):
+        if self.train_images is None or self.val_images is None:
             raise ValueError("Data not split. Call split_data() first.")
         
         logger.info("Saving processed data...")
@@ -235,38 +329,87 @@ class HairSegmentationDataLoader:
         
         np.save(val_images_path, self.val_images)
         np.save(val_masks_path, self.val_masks)
+
+        # Save timestamps
+        save_timestamps(self.processed_dir)
         
-        logger.info(f"Data saved to {self.processed_dir}")
+        logger.info(f"Processed data saved to {self.processed_dir}")
     
     def load_processed_data(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
-        Load processed data if available and up-to-date, otherwise process raw data.
+        Load processed data from disk with fallback to reprocessing.
+        
         Returns:
             Tuple of (train_images, train_masks, val_images, val_masks)
         """
-        # Check if processing is needed
-        if needs_processing(self.images_dir, self.masks_dir, self.processed_dir):
-            logger.info("Detected changes in images or masks. Re-processing data...")
-            self.load_data()
-            data = self.split_data()
-            # Save processed data
-            self.save_processed_data()
-            # Save new timestamps
-            image_ts = get_latest_timestamp(self.images_dir)
-            mask_ts = get_latest_timestamp(self.masks_dir)
-            save_timestamps(self.processed_dir, image_ts, mask_ts)
-            return data
-        # Otherwise, load existing processed data
+        # Try to load existing
+        if not needs_processing(self.images_dir, self.masks_dir, self.processed_dir):
+            try:
+                return self._load_existing_data()
+            except Exception as e:
+                logger.warning(f"Failed to load existing data: {e}")
+        
+        # Reprocess
+        logger.info("Processing data from scratch...")
+        try:
+            return self._reprocess_data()
+        except Exception as e:
+            logger.error(f"Failed to process data: {e}")
+            raise RuntimeError(f"Data processing failed: {e}")
+
+    def _load_existing_data(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Load existing processed data from numpy files.
+        
+        Returns:
+            Tuple of (train_images, train_masks, val_images, val_masks)
+        """
         logger.info("Loading up-to-date processed data...")
-        train_images = np.load(self.processed_dir / "train_images.npy")
-        train_masks = np.load(self.processed_dir / "train_masks.npy")
-        val_images = np.load(self.processed_dir / "val_images.npy")
-        val_masks = np.load(self.processed_dir / "val_masks.npy")
+        
+        # Prepare paths
+        train_images_path = self.processed_dir / FILE_PATTERNS["processed_images"]
+        train_masks_path = self.processed_dir / FILE_PATTERNS["processed_masks"]
+        val_images_path = self.processed_dir / FILE_PATTERNS["validation_images"]
+        val_masks_path = self.processed_dir / FILE_PATTERNS["validation_masks"]
+        
+        # Load data
+        train_images = np.load(train_images_path)
+        train_masks = np.load(train_masks_path)
+        val_images = np.load(val_images_path)
+        val_masks = np.load(val_masks_path)
+        
+        # Self assignment
+        self.train_images = train_images
+        self.train_masks = train_masks
+        self.val_images = val_images
+        self.val_masks = val_masks
+        
+        logger.info("Processed data loaded successfully")
+        logger.info(f"Train set: {len(train_images)} samples")
+        logger.info(f"Validation set: {len(val_images)} samples")
+        
         return train_images, train_masks, val_images, val_masks
+
+    def _reprocess_data(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Reprocess data from scratch.
+        
+        Returns:
+            Tuple of (train_images, train_masks, val_images, val_masks)
+        """
+        logger.info("Reprocessing data from scratch...")
+        
+        self.load_data()
+        data = self.split_data()
+        
+        self.save_processed_data()
+        
+        logger.info("Data reprocessing completed successfully")
+        return data
     
     def get_data_info(self) -> dict:
         """
-        Get comprehensive information about the loaded dataset.
+        Get information about the dataset.
         
         Returns:
             Dictionary containing dataset information
@@ -321,15 +464,28 @@ class HairSegmentationDataLoader:
                 "processed_data_loaded": False
             })
         
+        # Lazy loading information
+        if self.train_image_paths and self.val_image_paths:
+            info.update({
+                "lazy_loading_available": True,
+                "lazy_train_samples": len(self.train_image_paths),
+                "lazy_val_samples": len(self.val_image_paths),
+                "lazy_total_samples": len(self.train_image_paths) + len(self.val_image_paths)
+            })
+        else:
+            info.update({
+                "lazy_loading_available": False
+            })
+        
         return info
 
 
 def create_data_loader(**kwargs) -> HairSegmentationDataLoader:
     """
-    Factory function to create a data loader.
+    Create a data loader instance with the given configuration.
     
     Args:
-        **kwargs: Arguments to pass to HairSegmentationDataLoader
+        **kwargs: Configuration parameters to override defaults
         
     Returns:
         HairSegmentationDataLoader instance

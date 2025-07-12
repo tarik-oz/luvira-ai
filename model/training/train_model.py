@@ -49,11 +49,7 @@ def main():
         
         # Setup data
         logger.info("Setting up training data...")
-        train_loader, val_loader = trainer.setup_data(load_processed=True)
-        
-        # Get dataset info for config
-        dataset_info = data_loader.get_data_info()
-        logger.info(f"Dataset info: {dataset_info}")
+        train_loader, val_loader = trainer.setup_data(lazy_loading=True)
         
         # Start training
         logger.info("Starting model training...")

@@ -5,6 +5,8 @@ model/data/masks/*
 model/data/masks_500/*
 model/data/processed/*
 model/data/processed_500/*
+model/data/images.zip
+model/data/masks.zip
 
 model/models/best_model.pth
 model/models/latest_model.pth

@@ -40,16 +40,16 @@ MODEL_CONFIG = {
 # Training configuration
 TRAINING_CONFIG = {
     "batch_size": 8,
-    "epochs": 50,
+    "epochs": 2,
     "learning_rate": 1e-4,
     "validation_split": 0.2,
     "random_seed": 42,
-    "model_type": "unet",  # unet or attention_unet
+    "model_type": "attention_unet",  # Attention U-Net
     "loss_function": "total",  # bce, focal, combo or total
     "bce_weight": 0.4,  # For combo/total loss
     "dice_weight": 0.4, # For combo/total loss
     "boundary_weight": 0.3, # For total loss
-    "optimizer": "adam",
+    "optimizer": "adamw",
     "metrics": ["accuracy"],
     "device": "auto"  # auto, cpu, or cuda
 }

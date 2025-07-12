@@ -24,6 +24,7 @@ except ImportError:
 
 from .models.unet_model import UNetModel, create_unet_model
 from .models.attention_unet_model import AttentionUNetModel, create_attention_unet_model
+from .data.dataset import HairSegmentationDataset
 from .data.data_loader import HairSegmentationDataLoader, create_data_loader
 from .training.trainer import HairSegmentationTrainer, create_trainer
 from .inference.predictor import HairSegmentationPredictor, create_predictor
@@ -33,6 +34,7 @@ __all__ = [
     "create_unet_model", 
     "AttentionUNetModel",
     "create_attention_unet_model",
+    "HairSegmentationDataset",
     "HairSegmentationDataLoader",
     "create_data_loader",
     "HairSegmentationTrainer", 

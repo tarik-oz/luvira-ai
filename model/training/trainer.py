@@ -55,11 +55,18 @@ class EarlyStopping:
         self.min_delta = min_delta
         self.monitor = monitor
         self.counter = 0
-        self.best_loss = float('inf')
+        self.best_metric = float('inf') if monitor.endswith('loss') else float('-inf')
         
-    def __call__(self, val_loss: float) -> bool:
-        if val_loss < self.best_loss - self.min_delta:
-            self.best_loss = val_loss
+    def __call__(self, metric_value: float) -> bool:
+        # For loss metrics: lower is better
+        # For accuracy/dice metrics: higher is better
+        if self.monitor.endswith('loss'):
+            is_better = metric_value < self.best_metric - self.min_delta
+        else:
+            is_better = metric_value > self.best_metric + self.min_delta
+            
+        if is_better:
+            self.best_metric = metric_value
             self.counter = 0
         else:
             self.counter += 1
@@ -206,6 +213,8 @@ class HairSegmentationTrainer:
         # Setup optimizer
         if self.config["optimizer"] == "adam":
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.config["learning_rate"])
+        elif self.config["optimizer"] == "adamw":
+            self.optimizer = optim.AdamW(self.model.parameters(), lr=self.config["learning_rate"])
         elif self.config["optimizer"] == "sgd":
             self.optimizer = optim.SGD(self.model.parameters(), lr=self.config["learning_rate"])
         else:
@@ -231,12 +240,12 @@ class HairSegmentationTrainer:
         
         return self.model
     
-    def setup_data(self, load_processed: bool = True) -> Tuple[DataLoader, DataLoader]:
+    def setup_data(self, lazy_loading: bool = True) -> Tuple[DataLoader, DataLoader]:
         """
         Setup training and validation data.
         
         Args:
-            load_processed: Whether to load processed data or process raw data
+            lazy_loading: Whether to use lazy loading (recommended for large datasets)
             
         Returns:
             Tuple of (train_loader, val_loader)
@@ -245,67 +254,71 @@ class HairSegmentationTrainer:
         
         self.data_loader = create_data_loader()
         
-        if load_processed:
-            try:
-                data = self.data_loader.load_processed_data()
-                logger.info("Loaded processed data successfully")
-            except FileNotFoundError:
-                logger.warning("Processed data not found. Processing raw data...")
-                data = self._process_raw_data()
+        if lazy_loading:
+            logger.info("Using lazy loading...")
+            train_dataset, val_dataset = self.data_loader.create_datasets(
+                validation_split=self.config["validation_split"],
+                random_seed=self.config["random_seed"]
+            )
+            
+            # Log dataset info for debugging
+            data_info = self.data_loader.get_data_info()
+            logger.info(f"Dataset info: {data_info}")
+            
+            # Create data loaders
+            train_loader = DataLoader(
+                train_dataset, 
+                batch_size=self.config["batch_size"], 
+                shuffle=True,
+                num_workers=0
+            )
+            val_loader = DataLoader(
+                val_dataset, 
+                batch_size=self.config["batch_size"], 
+                shuffle=False,
+                num_workers=0
+            )
+            
+            return train_loader, val_loader
+        
         else:
-            data = self._process_raw_data()
-        
-        # Log dataset information
-        data_info = self.data_loader.get_data_info()
-        logger.info(f"Dataset info: {data_info}")
-        
-        # Convert to PyTorch tensors and create DataLoaders
-        train_images, train_masks, val_images, val_masks = data
-        
-        # Convert to PyTorch format (NCHW)
-        train_images = torch.FloatTensor(train_images).permute(0, 3, 1, 2)
-        train_masks = torch.FloatTensor(train_masks).unsqueeze(1)  # Add channel dimension
-        val_images = torch.FloatTensor(val_images).permute(0, 3, 1, 2)
-        val_masks = torch.FloatTensor(val_masks).unsqueeze(1)  # Add channel dimension
-        
-        # Create datasets
-        train_dataset = TensorDataset(train_images, train_masks)
-        val_dataset = TensorDataset(val_images, val_masks)
-        
-        # Create data loaders
-        train_loader = DataLoader(
-            train_dataset, 
-            batch_size=self.config["batch_size"], 
-            shuffle=True,
-            num_workers=0  # Set to 0 for Windows compatibility
-        )
-        val_loader = DataLoader(
-            val_dataset, 
-            batch_size=self.config["batch_size"], 
-            shuffle=False,
-            num_workers=0  # Set to 0 for Windows compatibility
-        )
-        
-        return train_loader, val_loader
-    
-    def _process_raw_data(self) -> tuple:
-        """
-        Process raw data from images and masks directories.
-        
-        Returns:
-            Tuple of (train_images, train_masks, val_images, val_masks)
-        """
-        # Load and process raw data
-        self.data_loader.load_data()
-        data = self.data_loader.split_data(
-            validation_split=self.config["validation_split"],
-            random_seed=self.config["random_seed"]
-        )
-        
-        # Save processed data for future use
-        self.data_loader.save_processed_data()
-        
-        return data
+            # Traditional loading (loads all data into memory)
+            logger.info("Using traditional data loading...")
+            # DataLoader handles all logic: check timestamps, load existing or process raw
+            data = self.data_loader.load_processed_data()
+            
+            # Log dataset info for debugging
+            data_info = self.data_loader.get_data_info()
+            logger.info(f"Dataset info: {data_info}")
+            
+            # Convert to PyTorch tensors and create DataLoaders
+            train_images, train_masks, val_images, val_masks = data
+            
+            # Convert to PyTorch format (NCHW)
+            train_images = torch.FloatTensor(train_images).permute(0, 3, 1, 2)
+            train_masks = torch.FloatTensor(train_masks).unsqueeze(1)  # Add channel dimension
+            val_images = torch.FloatTensor(val_images).permute(0, 3, 1, 2)
+            val_masks = torch.FloatTensor(val_masks).unsqueeze(1)  # Add channel dimension
+            
+            # Create datasets
+            train_dataset = TensorDataset(train_images, train_masks)
+            val_dataset = TensorDataset(val_images, val_masks)
+            
+            # Create data loaders
+            train_loader = DataLoader(
+                train_dataset, 
+                batch_size=self.config["batch_size"], 
+                shuffle=True,
+                num_workers=0  # Set to 0 for Windows compatibility
+            )
+            val_loader = DataLoader(
+                val_dataset, 
+                batch_size=self.config["batch_size"], 
+                shuffle=False,
+                num_workers=0  # Set to 0 for Windows compatibility
+            )
+            
+            return train_loader, val_loader
     
     def _calculate_accuracy(self, predictions: torch.Tensor, targets: torch.Tensor) -> float:
         """Calculate accuracy for binary segmentation."""
@@ -333,7 +346,7 @@ class HairSegmentationTrainer:
             mse = torch.mean((predictions - targets) ** 2)
         return mse.item()
     
-    def _train_epoch(self, train_loader: DataLoader) -> Tuple[float, float, float, float]:
+    def _train_epoch(self, train_loader: DataLoader, epoch: int = 0, total_epochs: int = 1) -> Tuple[float, float, float, float]:
         """Train for one epoch."""
         self.model.train()
         total_loss = 0.0
@@ -342,7 +355,7 @@ class HairSegmentationTrainer:
         total_mse = 0.0
         num_batches = 0
         
-        for batch_idx, (images, masks) in enumerate(tqdm(train_loader, desc="Training")):
+        for batch_idx, (images, masks) in enumerate(tqdm(train_loader, desc=f"Training Epoch {epoch+1}/{total_epochs}")):
             images = images.to(self.device)
             masks = masks.to(self.device)
             
@@ -368,7 +381,7 @@ class HairSegmentationTrainer:
         
         return (total_loss / num_batches, total_accuracy / num_batches, total_dice / num_batches, total_mse / num_batches)
     
-    def _validate_epoch(self, val_loader: DataLoader) -> Tuple[float, float, float, float]:
+    def _validate_epoch(self, val_loader: DataLoader, epoch: int = 0, total_epochs: int = 1) -> Tuple[float, float, float, float]:
         """Validate for one epoch."""
         self.model.eval()
         total_loss = 0.0
@@ -378,7 +391,7 @@ class HairSegmentationTrainer:
         num_batches = 0
         
         with torch.no_grad():
-            for batch_idx, (images, masks) in enumerate(tqdm(val_loader, desc="Validation")):
+            for batch_idx, (images, masks) in enumerate(tqdm(val_loader, desc=f"Validation Epoch {epoch+1}/{total_epochs}")):
                 images = images.to(self.device)
                 masks = masks.to(self.device)
                 
@@ -420,9 +433,17 @@ class HairSegmentationTrainer:
         epochs = kwargs.get('epochs', self.config['epochs'])
         
         logger.info("Starting training...")
-        logger.info(f"Training samples: {len(train_loader.dataset)}")
-        logger.info(f"Validation samples: {len(val_loader.dataset)}")
-        logger.info(f"Epochs: {epochs}")
+        logger.info(f"Dataset Info:")
+        logger.info(f" - Training samples: {len(train_loader.dataset)}")
+        logger.info(f" - Validation samples: {len(val_loader.dataset)}")
+        logger.info(f" - Batches per epoch: {len(train_loader)}")
+        logger.info(f" - Total epochs: {epochs}")
+        logger.info(f" - Batch size: {self.config['batch_size']}")
+        logger.info(f" - Learning rate: {self.config['learning_rate']}")
+        logger.info(f" - Optimizer: {self.config['optimizer']}")
+        logger.info(f" - Model: {self.config['model_type']}")
+        logger.info(f" - Loss function: {self.config['loss_function']}")
+        logger.info(f" - Device: {self.device}")
         
         # Setup callbacks
         early_stopping = EarlyStopping(
@@ -433,17 +454,24 @@ class HairSegmentationTrainer:
         best_val_loss = float('inf')
         
         for epoch in range(epochs):
-            logger.info(f"\nEpoch {epoch+1}/{epochs}")
+            logger.info(f"\n{'='*60}")
+            logger.info(f" Epoch {epoch+1}/{epochs} Started")
+            logger.info(f"{'='*60}")
             
             # Training
-            train_loss, train_acc, train_dice, train_mse = self._train_epoch(train_loader)
+            train_loss, train_acc, train_dice, train_mse = self._train_epoch(train_loader, epoch, epochs)
             
             # Validation
-            val_loss, val_acc, val_dice, val_mse = self._validate_epoch(val_loader)
+            val_loss, val_acc, val_dice, val_mse = self._validate_epoch(val_loader, epoch, epochs)
             
-            # Log results
-            logger.info(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, Train Dice: {train_dice:.4f}, Train MSE: {train_mse:.6f}")
-            logger.info(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}, Val Dice: {val_dice:.4f}, Val MSE: {val_mse:.6f}")
+            # Log results with better formatting
+            logger.info(f"Epoch {epoch+1}/{epochs} Results:")
+            logger.info(f"   Train → Loss: {train_loss:.4f} | Acc: {train_acc:.4f} | Dice: {train_dice:.4f} | MSE: {train_mse:.6f}")
+            logger.info(f"   Val   → Loss: {val_loss:.4f} | Acc: {val_acc:.4f} | Dice: {val_dice:.4f} | MSE: {val_mse:.6f}")
+            
+            # Epoch completed message
+            logger.info(f" Epoch {epoch+1}/{epochs} Completed!")
+            logger.info(f"{'='*60}")
             
             # Save history
             self.history['train_loss'].append(train_loss)
@@ -465,11 +493,25 @@ class HairSegmentationTrainer:
             torch.save(self.model.state_dict(), self.latest_model_path)
             
             # Early stopping
-            if early_stopping(val_loss):
-                logger.info("Early stopping triggered")
+            monitor_metric = val_loss if CALLBACKS_CONFIG["early_stopping_monitor"] == "val_loss" else val_dice
+            if early_stopping(monitor_metric):
+                logger.info(f"Early stopping triggered based on {CALLBACKS_CONFIG['early_stopping_monitor']}")
                 break
+            
+            # Progress information
+            remaining_epochs = epochs - (epoch + 1)
+            progress_percent = ((epoch + 1) / epochs) * 100
+            logger.info(f"Training Progress: {progress_percent:.1f}% | Remaining Epochs: {remaining_epochs}")
         
-        logger.info("Training completed!")
+        logger.info(f"\n{'='*60}")
+        logger.info("Training Completed!")
+        logger.info(f"{'='*60}")
+        logger.info(f"Final Results:")
+        logger.info(f"   - Total Epochs: {len(self.history['train_loss'])}")
+        logger.info(f"   - Best Val Loss: {min(self.history['val_loss']):.4f}")
+        logger.info(f"   - Best Val Acc: {max(self.history['val_accuracy']):.3f}")
+        logger.info(f"   - Best Val Dice: {max(self.history['val_dice']):.3f}")
+        logger.info(f"{'='*60}")
         return self.history
     
     def get_training_summary(self) -> Dict[str, Any]:
