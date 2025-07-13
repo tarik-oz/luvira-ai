@@ -17,124 +17,57 @@ import logging
 from tqdm import tqdm
 import torch.nn.functional as F
 
+# Config imports
 try:
     from ..config import (
         TRAINING_CONFIG, CALLBACKS_CONFIG, 
-        TRAINED_MODELS_DIR, MODEL_CONFIG, MODEL_DIR
+        TRAINED_MODELS_DIR, MODEL_CONFIG,
+        DATA_CONFIG
     )
+except ImportError:
+    from config import (
+        TRAINING_CONFIG, CALLBACKS_CONFIG, 
+        TRAINED_MODELS_DIR, MODEL_CONFIG,
+        DATA_CONFIG
+    )
+
+# Model imports
+try:
     from ..models.unet_model import create_unet_model
     from ..models.attention_unet_model import create_attention_unet_model
-    from ..data.data_loader import create_data_loader
+except ImportError:
+    from models.unet_model import create_unet_model
+    from models.attention_unet_model import create_attention_unet_model
+
+# Data loader imports
+try:
+    from ..data_loader.factory_data_loader import create_auto_data_loader
+except ImportError:
+    from data_loader.factory_data_loader import create_auto_data_loader
+
+# Utils imports
+try:
     from ..utils.model_saving import (
         create_timestamped_folder, save_config_json, 
         save_training_log, save_models_to_folder
     )
 except ImportError:
-    from config import (
-        TRAINING_CONFIG, CALLBACKS_CONFIG, 
-        TRAINED_MODELS_DIR, MODEL_CONFIG, MODEL_DIR
-    )
-    from models.unet_model import create_unet_model
-    from models.attention_unet_model import create_attention_unet_model
-    from data.data_loader import create_data_loader
     from utils.model_saving import (
         create_timestamped_folder, save_config_json, 
         save_training_log, save_models_to_folder
     )
 
+# Training imports
+try:
+    from .callbacks import EarlyStopping, FocalLoss, DiceLoss, ComboLoss, BoundaryLoss, TotalLoss
+    from .metrics import calculate_accuracy, calculate_dice, calculate_mse
+except ImportError:
+    from callbacks import EarlyStopping, FocalLoss, DiceLoss, ComboLoss, BoundaryLoss, TotalLoss
+    from metrics import calculate_accuracy, calculate_dice, calculate_mse
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-class EarlyStopping:
-    """Early stopping callback for PyTorch training."""
-    
-    def __init__(self, patience: int = 7, min_delta: float = 0, monitor: str = 'val_loss'):
-        self.patience = patience
-        self.min_delta = min_delta
-        self.monitor = monitor
-        self.counter = 0
-        self.best_metric = float('inf') if monitor.endswith('loss') else float('-inf')
-        
-    def __call__(self, metric_value: float) -> bool:
-        # For loss metrics: lower is better
-        # For accuracy/dice metrics: higher is better
-        if self.monitor.endswith('loss'):
-            is_better = metric_value < self.best_metric - self.min_delta
-        else:
-            is_better = metric_value > self.best_metric + self.min_delta
-            
-        if is_better:
-            self.best_metric = metric_value
-            self.counter = 0
-        else:
-            self.counter += 1
-            
-        return self.counter >= self.patience
-
-
-class FocalLoss(nn.Module):
-    def __init__(self, alpha=0.8, gamma=2):
-        super(FocalLoss, self).__init__()
-        self.alpha = alpha
-        self.gamma = gamma
-        self.bce = nn.BCELoss(reduction='none')
-
-    def forward(self, inputs, targets):
-        bce_loss = self.bce(inputs, targets)
-        pt = torch.exp(-bce_loss)
-        focal_loss = self.alpha * (1 - pt) ** self.gamma * bce_loss
-        return focal_loss.mean()
-
-
-class DiceLoss(nn.Module):
-    def __init__(self, smooth=1.):
-        super(DiceLoss, self).__init__()
-        self.smooth = smooth
-
-    def forward(self, inputs, targets):
-        inputs = inputs.view(-1)
-        targets = targets.view(-1)
-        intersection = (inputs * targets).sum()
-        dice = (2. * intersection + self.smooth) / (inputs.sum() + targets.sum() + self.smooth)
-        return 1 - dice
-
-
-class ComboLoss(nn.Module):
-    def __init__(self, bce_weight=0.5, dice_weight=0.5):
-        super(ComboLoss, self).__init__()
-        self.bce = nn.BCELoss()
-        self.dice = DiceLoss()
-        self.bce_weight = bce_weight
-        self.dice_weight = dice_weight
-
-    def forward(self, inputs, targets):
-        return self.bce_weight * self.bce(inputs, targets) + self.dice_weight * self.dice(inputs, targets)
-
-
-class BoundaryLoss(nn.Module):
-    def __init__(self):
-        super(BoundaryLoss, self).__init__()
-
-    def forward(self, inputs, targets):
-        sobel_x = torch.tensor([[1, 0, -1], [2, 0, -2], [1, 0, -1]], dtype=inputs.dtype, device=inputs.device).unsqueeze(0).unsqueeze(0) / 8.0
-        sobel_y = torch.tensor([[1, 2, 1], [0, 0, 0], [-1, -2, -1]], dtype=inputs.dtype, device=inputs.device).unsqueeze(0).unsqueeze(0) / 8.0
-        edge_pred = F.conv2d(inputs, sobel_x, padding=1) + F.conv2d(inputs, sobel_y, padding=1)
-        edge_true = F.conv2d(targets, sobel_x, padding=1) + F.conv2d(targets, sobel_y, padding=1)
-        return F.l1_loss(edge_pred, edge_true)
-
-
-class TotalLoss(nn.Module):
-    def __init__(self, bce_weight=0.4, dice_weight=0.4, boundary_weight=0.2):
-        super(TotalLoss, self).__init__()
-        self.combo = ComboLoss(bce_weight, dice_weight)
-        self.boundary = BoundaryLoss()
-        self.boundary_weight = boundary_weight
-
-    def forward(self, inputs, targets):
-        return self.combo(inputs, targets) + self.boundary_weight * self.boundary(inputs, targets)
-
 
 class HairSegmentationTrainer:
     """
@@ -152,8 +85,8 @@ class HairSegmentationTrainer:
             **training_config: Training configuration parameters
         """
         # Create temporary model paths for training
-        self.model_path = MODEL_DIR / "best_model.pth"
-        self.latest_model_path = MODEL_DIR / "latest_model.pth"
+        self.model_path = TRAINED_MODELS_DIR / "best_model.pth"
+        self.latest_model_path = TRAINED_MODELS_DIR / "latest_model.pth"
         
         # Create model directory if it doesn't exist
         self.model_path.parent.mkdir(parents=True, exist_ok=True)
@@ -240,111 +173,64 @@ class HairSegmentationTrainer:
         
         return self.model
     
-    def setup_data(self, lazy_loading: bool = True) -> Tuple[DataLoader, DataLoader]:
+    def setup_data(self, lazy_loading: bool = None) -> Tuple[DataLoader, DataLoader]:
         """
-        Setup training and validation data.
+        Setup training and validation data using factory pattern.
         
         Args:
-            lazy_loading: Whether to use lazy loading (recommended for large datasets)
+            lazy_loading: Whether to use lazy loading (if None, uses config value)
             
         Returns:
             Tuple of (train_loader, val_loader)
         """
-        logger.info("Setting up data...")
+        # Use config value if not specified
+        if lazy_loading is None:
+            lazy_loading = DATA_CONFIG.get("lazy_loading", False)
         
-        self.data_loader = create_data_loader()
+        logger.info(f"Setting up data with {'lazy' if lazy_loading else 'traditional'} loading...")
         
+        # Create appropriate data loader using factory
+        self.data_loader = create_auto_data_loader(lazy_loading=lazy_loading)
+        
+        # Get datasets from data loader
         if lazy_loading:
-            logger.info("Using lazy loading...")
             train_dataset, val_dataset = self.data_loader.create_datasets(
                 validation_split=self.config["validation_split"],
                 random_seed=self.config["random_seed"]
             )
-            
-            # Log dataset info for debugging
-            data_info = self.data_loader.get_data_info()
-            logger.info(f"Dataset info: {data_info}")
-            
-            # Create data loaders
-            train_loader = DataLoader(
-                train_dataset, 
-                batch_size=self.config["batch_size"], 
-                shuffle=True,
-                num_workers=0
-            )
-            val_loader = DataLoader(
-                val_dataset, 
-                batch_size=self.config["batch_size"], 
-                shuffle=False,
-                num_workers=0
-            )
-            
-            return train_loader, val_loader
-        
         else:
-            # Traditional loading (loads all data into memory)
-            logger.info("Using traditional data loading...")
-            # DataLoader handles all logic: check timestamps, load existing or process raw
-            data = self.data_loader.load_processed_data()
-            
-            # Log dataset info for debugging
-            data_info = self.data_loader.get_data_info()
-            logger.info(f"Dataset info: {data_info}")
-            
-            # Convert to PyTorch tensors and create DataLoaders
-            train_images, train_masks, val_images, val_masks = data
+            # Load processed data and convert to datasets
+            train_images, train_masks, val_images, val_masks = self.data_loader.load_processed_data()
             
             # Convert to PyTorch format (NCHW)
             train_images = torch.FloatTensor(train_images).permute(0, 3, 1, 2)
-            train_masks = torch.FloatTensor(train_masks).unsqueeze(1)  # Add channel dimension
+            train_masks = torch.FloatTensor(train_masks).unsqueeze(1)
             val_images = torch.FloatTensor(val_images).permute(0, 3, 1, 2)
-            val_masks = torch.FloatTensor(val_masks).unsqueeze(1)  # Add channel dimension
+            val_masks = torch.FloatTensor(val_masks).unsqueeze(1)
             
-            # Create datasets
             train_dataset = TensorDataset(train_images, train_masks)
             val_dataset = TensorDataset(val_images, val_masks)
-            
-            # Create data loaders
-            train_loader = DataLoader(
-                train_dataset, 
-                batch_size=self.config["batch_size"], 
-                shuffle=True,
-                num_workers=0  # Set to 0 for Windows compatibility
-            )
-            val_loader = DataLoader(
-                val_dataset, 
-                batch_size=self.config["batch_size"], 
-                shuffle=False,
-                num_workers=0  # Set to 0 for Windows compatibility
-            )
-            
-            return train_loader, val_loader
-    
-    def _calculate_accuracy(self, predictions: torch.Tensor, targets: torch.Tensor) -> float:
-        """Calculate accuracy for binary segmentation."""
-        with torch.no_grad():
-            # Convert predictions and targets to binary
-            binary_preds = (predictions > 0.5).float()
-            binary_targets = (targets > 0.5).float()
-            # Calculate accuracy
-            accuracy = (binary_preds == binary_targets).float().mean().item()
-        return accuracy
-    
-    def _calculate_dice(self, predictions: torch.Tensor, targets: torch.Tensor) -> float:
-        """Calculate Dice coefficient for probability masks."""
-        with torch.no_grad():
-            smooth = 1e-6
-            preds = predictions.view(-1)
-            targs = targets.view(-1)
-            intersection = (preds * targs).sum()
-            dice = (2. * intersection + smooth) / (preds.sum() + targs.sum() + smooth)
-        return dice.item()
-
-    def _calculate_mse(self, predictions: torch.Tensor, targets: torch.Tensor) -> float:
-        """Calculate Mean Squared Error for probability masks."""
-        with torch.no_grad():
-            mse = torch.mean((predictions - targets) ** 2)
-        return mse.item()
+        
+        # Log dataset info
+        data_info = self.data_loader.get_data_info()
+        logger.info(f"Dataset info: {data_info}")
+        
+        # Create data loaders
+        train_loader = DataLoader(
+            train_dataset, 
+            batch_size=self.config["batch_size"], 
+            shuffle=True,
+            num_workers=0  # Set to 0 for Windows compatibility
+        )
+        val_loader = DataLoader(
+            val_dataset, 
+            batch_size=self.config["batch_size"], 
+            shuffle=False,
+            num_workers=0  # Set to 0 for Windows compatibility
+        )
+        
+        logger.info(f"Created data loaders: {len(train_loader)} train batches, {len(val_loader)} val batches")
+        return train_loader, val_loader
     
     def _train_epoch(self, train_loader: DataLoader, epoch: int = 0, total_epochs: int = 1) -> Tuple[float, float, float, float]:
         """Train for one epoch."""
@@ -368,10 +254,10 @@ class HairSegmentationTrainer:
             loss.backward()
             self.optimizer.step()
             
-            # Calculate accuracy
-            accuracy = self._calculate_accuracy(predictions, masks)
-            dice = self._calculate_dice(predictions, masks)
-            mse = self._calculate_mse(predictions, masks)
+            # Calculate metrics
+            accuracy = calculate_accuracy(predictions, masks)
+            dice = calculate_dice(predictions, masks)
+            mse = calculate_mse(predictions, masks)
             
             total_loss += loss.item()
             total_accuracy += accuracy
@@ -399,10 +285,10 @@ class HairSegmentationTrainer:
                 predictions = self.model(images)
                 loss = self.criterion(predictions, masks)
                 
-                # Calculate accuracy
-                accuracy = self._calculate_accuracy(predictions, masks)
-                dice = self._calculate_dice(predictions, masks)
-                mse = self._calculate_mse(predictions, masks)
+                # Calculate metrics
+                accuracy = calculate_accuracy(predictions, masks)
+                dice = calculate_dice(predictions, masks)
+                mse = calculate_mse(predictions, masks)
                 
                 total_loss += loss.item()
                 total_accuracy += accuracy
@@ -430,7 +316,7 @@ class HairSegmentationTrainer:
         if self.model is None:
             raise ValueError("Model not setup. Call setup_model() first.")
         
-        epochs = kwargs.get('epochs', self.config['epochs'])
+        epochs = self.config['epochs']
         
         logger.info("Starting training...")
         logger.info(f"Dataset Info:")
@@ -590,7 +476,6 @@ class HairSegmentationTrainer:
         return self.model, config_data
 
     def save_trained_model(self, dataset_info: Dict[str, Any] = None) -> Path:
-        from config import MODEL_CONFIG
         summary = self.get_training_summary()
         if not summary:
             raise ValueError("No training history available. Train the model first.")

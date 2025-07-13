@@ -13,12 +13,10 @@ sys.path.append(str(project_root))
 
 try:
     from .trainer import create_trainer
-    from ..data.data_loader import create_data_loader
-    from ..config import TRAINING_CONFIG
+    from ..data_loader.factory_data_loader import create_auto_data_loader
 except ImportError:
     from trainer import create_trainer
-    from data.data_loader import create_data_loader
-    from config import TRAINING_CONFIG
+    from data_loader.factory_data_loader import create_auto_data_loader
 import logging
 
 # Configure logging
@@ -34,30 +32,24 @@ def main():
     Main training function.
     """
     trainer = None
-    data_loader = None
-    dataset_info = None
     try:
         logger.info("Starting hair segmentation training pipeline...")
         
-        # Create trainer and data loader
+        # Create trainer
         trainer = create_trainer()
-        data_loader = create_data_loader()
         
-        # Setup model
+        # Setup model and data (data_loader otomatik oluşturulur)
         logger.info("Setting up U-Net model...")
         trainer.setup_model()
         
-        # Setup data
         logger.info("Setting up training data...")
-        train_loader, val_loader = trainer.setup_data(lazy_loading=True)
+        train_loader, val_loader = trainer.setup_data()  # Uses config value for lazy loading
         
         # Start training
         logger.info("Starting model training...")
         history = trainer.train(
             train_loader=train_loader,
-            val_loader=val_loader,
-            epochs=TRAINING_CONFIG["epochs"],
-            batch_size=TRAINING_CONFIG["batch_size"]
+            val_loader=val_loader
         )
         
         # Get training summary
@@ -71,12 +63,13 @@ def main():
     finally:
         # Save the model regardless of whether training completed successfully or not
         try:
-            if trainer is not None and dataset_info is not None:
+            if trainer is not None:
                 logger.info("Saving trained model with metadata (finalize)...")
+                dataset_info = trainer.data_loader.get_data_info()
                 model_folder = trainer.save_trained_model(dataset_info)
                 logger.info(f"Model saved to: {model_folder}")
             else:
-                logger.warning("Trainer or dataset_info not initialized, skipping model archiving.")
+                logger.warning("Trainer not initialized, skipping model archiving.")
         except Exception as e:
             logger.error(f"Model archiving failed: {e}")
 

@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class HairSegmentationDataset(Dataset):
+class LazyDataset(Dataset):
     """
     PyTorch Dataset for hair segmentation that loads images on-demand.
     This prevents loading all images into memory at once.
@@ -30,8 +30,7 @@ class HairSegmentationDataset(Dataset):
                 image_paths: List[str], 
                 mask_paths: List[str], 
                 image_size: Tuple[int, int] = DATA_CONFIG["image_size"],
-                normalization_factor: float = DATA_CONFIG["normalization_factor"],
-                lazy_loading: bool = True):
+                normalization_factor: float = DATA_CONFIG["normalization_factor"]):
         """
         Initialize the dataset.
         
@@ -40,7 +39,6 @@ class HairSegmentationDataset(Dataset):
             mask_paths: List of mask file paths
             image_size: Target size for images (height, width)
             normalization_factor: Factor to normalize pixel values
-            lazy_loading: Whether to use lazy loading (always True for this dataset)
         """
         self.image_paths = image_paths
         self.mask_paths = mask_paths
@@ -50,11 +48,11 @@ class HairSegmentationDataset(Dataset):
         if len(image_paths) != len(mask_paths):
             raise ValueError(f"Number of images ({len(image_paths)}) doesn't match number of masks ({len(mask_paths)})")
     
-    def __len__(self):
+    def __len__(self) -> int:
         """Return the number of samples in the dataset."""
         return len(self.image_paths)
     
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Load and return a single image-mask pair.
         
@@ -67,11 +65,13 @@ class HairSegmentationDataset(Dataset):
         # Load image
         image = cv2.imread(self.image_paths[idx], cv2.IMREAD_COLOR)
         if image is None:
+            logger.error(f"Could not load image: {self.image_paths[idx]}")
             raise ValueError(f"Could not load image: {self.image_paths[idx]}")
         
         # Load mask
         mask = cv2.imread(self.mask_paths[idx], cv2.IMREAD_GRAYSCALE)
         if mask is None:
+            logger.error(f"Could not load mask: {self.mask_paths[idx]}")
             raise ValueError(f"Could not load mask: {self.mask_paths[idx]}")
         
         # Resize
@@ -89,3 +89,4 @@ class HairSegmentationDataset(Dataset):
         mask = torch.from_numpy(mask).unsqueeze(0)
         
         return image, mask
+ 

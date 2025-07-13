@@ -24,8 +24,11 @@ except ImportError:
 
 from .models.unet_model import UNetModel, create_unet_model
 from .models.attention_unet_model import AttentionUNetModel, create_attention_unet_model
-from .data.dataset import HairSegmentationDataset
-from .data.data_loader import HairSegmentationDataLoader, create_data_loader
+from .data_loader.lazy_dataset import LazyDataset
+from .data_loader.base_data_loader import BaseDataLoader
+from .data_loader.traditional_data_loader import TraditionalDataLoader, create_traditional_data_loader
+from .data_loader.lazy_data_loader import LazyDataLoader, create_lazy_data_loader
+from .data_loader.factory_data_loader import FactoryDataLoader, create_auto_data_loader
 from .training.trainer import HairSegmentationTrainer, create_trainer
 from .inference.predictor import HairSegmentationPredictor, create_predictor
 
@@ -34,9 +37,14 @@ __all__ = [
     "create_unet_model", 
     "AttentionUNetModel",
     "create_attention_unet_model",
-    "HairSegmentationDataset",
-    "HairSegmentationDataLoader",
-    "create_data_loader",
+    "LazyDataset",
+    "BaseDataLoader",
+    "TraditionalDataLoader",
+    "create_traditional_data_loader",
+    "LazyDataLoader",
+    "create_lazy_data_loader",
+    "FactoryDataLoader",
+    "create_auto_data_loader",
     "HairSegmentationTrainer", 
     "create_trainer",
     "HairSegmentationPredictor",

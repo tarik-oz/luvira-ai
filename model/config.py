@@ -9,15 +9,17 @@ from pathlib import Path
 # Project root directory
 PROJECT_ROOT = Path(__file__).parent
 
-# Data paths
-DATA_DIR = PROJECT_ROOT / "data"
-IMAGES_DIR = DATA_DIR / "images_500"
-MASKS_DIR = DATA_DIR / "masks_500"
-PROCESSED_DATA_DIR = DATA_DIR / "processed_500"
+# Dataset path
+DATASET_DIR = "small"
 
-# Model paths
-MODEL_DIR = PROJECT_ROOT / "models"
-TRAINED_MODELS_DIR = MODEL_DIR / "trained_models"
+# Data paths
+DATA_DIR = PROJECT_ROOT / "datasets"
+IMAGES_DIR = DATA_DIR / DATASET_DIR / "images"
+MASKS_DIR = DATA_DIR / DATASET_DIR / "masks"
+PROCESSED_DATA_DIR = DATA_DIR / DATASET_DIR / "processed"
+
+# Trained models paths
+TRAINED_MODELS_DIR = PROJECT_ROOT / "trained_models"
 
 # Test paths
 TEST_IMAGES_DIR = PROJECT_ROOT / "test_images"
@@ -25,7 +27,7 @@ TEST_RESULTS_DIR = PROJECT_ROOT / "test_results"
 
 # Create directories if they don't exist
 for directory in [DATA_DIR, IMAGES_DIR, MASKS_DIR, PROCESSED_DATA_DIR, 
-                  MODEL_DIR, TRAINED_MODELS_DIR, TEST_IMAGES_DIR, TEST_RESULTS_DIR]:
+                  TRAINED_MODELS_DIR, TEST_IMAGES_DIR, TEST_RESULTS_DIR]:
     directory.mkdir(parents=True, exist_ok=True)
 
 # Model configuration
@@ -34,7 +36,7 @@ MODEL_CONFIG = {
     "num_filters": [64, 128, 256, 512],
     "bridge_filters": 256,
     "output_channels": 1,
-    "activation": "sigmoid"
+    "activation": "sigmoid" # sigmoid or softmax
 }
 
 # Training configuration
@@ -49,8 +51,7 @@ TRAINING_CONFIG = {
     "bce_weight": 0.4,  # For combo/total loss
     "dice_weight": 0.4, # For combo/total loss
     "boundary_weight": 0.3, # For total loss
-    "optimizer": "adamw",
-    "metrics": ["accuracy"],
+    "optimizer": "adamw", # adam, adamw or sgd
     "device": "auto"  # auto, cpu, or cuda
 }
 
@@ -58,7 +59,8 @@ TRAINING_CONFIG = {
 DATA_CONFIG = {
     "image_size": (256, 256),
     "normalization_factor": 255.0,
-    "mask_threshold": 0.5
+    "mask_threshold": 0.5,
+    "lazy_loading": False  # True or False (Enable lazy loading for memory efficiency)
 }
 
 # Callbacks configuration
