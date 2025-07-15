@@ -7,16 +7,11 @@ This script handles the complete training pipeline.
 import sys
 from pathlib import Path
 
-# Add project root to path
-project_root = Path(__file__).parent.parent
+# Add project root to path so that we can use absolute imports
+project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(project_root))
 
-try:
-    from .trainer import create_trainer
-    from ..data_loader.factory_data_loader import create_auto_data_loader
-except ImportError:
-    from trainer import create_trainer
-    from data_loader.factory_data_loader import create_auto_data_loader
+from model.training.trainer import create_trainer
 import logging
 
 # Configure logging
@@ -39,14 +34,13 @@ def main():
         trainer = create_trainer()
         
         # Setup model and data (data_loader otomatik oluşturulur)
-        logger.info("Setting up U-Net model...")
+        logger.info("Setting up model...")
         trainer.setup_model()
         
         logger.info("Setting up training data...")
         train_loader, val_loader = trainer.setup_data()  # Uses config value for lazy loading
         
         # Start training
-        logger.info("Starting model training...")
         history = trainer.train(
             train_loader=train_loader,
             val_loader=val_loader
@@ -55,7 +49,6 @@ def main():
         # Get training summary
         summary = trainer.get_training_summary()
         logger.info("Training completed successfully!")
-        logger.info(f"Training summary: {summary}")
         
     except Exception as e:
         logger.error(f"Training failed: {e}")
@@ -65,9 +58,12 @@ def main():
         try:
             if trainer is not None:
                 logger.info("Saving trained model with metadata (finalize)...")
-                dataset_info = trainer.data_loader.get_data_info()
-                model_folder = trainer.save_trained_model(dataset_info)
-                logger.info(f"Model saved to: {model_folder}")
+                if trainer.data_loader:
+                    dataset_info = trainer.data_loader.get_data_info()
+                    model_folder = trainer.save_trained_model(dataset_info)
+                    logger.info(f"Model saved to: {model_folder}")
+                else:
+                    logger.warning("Data loader not initialized, skipping model save with metadata.")
             else:
                 logger.warning("Trainer not initialized, skipping model archiving.")
         except Exception as e:

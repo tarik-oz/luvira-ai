@@ -3,10 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import Tuple, List
 
-try:
-    from ..config import MODEL_CONFIG
-except ImportError:
-    from config import MODEL_CONFIG
+from model.config import MODEL_CONFIG
 
 class AttentionBlock(nn.Module):
     def __init__(self, F_g, F_l, F_int):

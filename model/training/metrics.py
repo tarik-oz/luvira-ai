@@ -5,10 +5,7 @@ Metrics calculation functions for hair segmentation training.
 import torch
 import logging
 
-try:
-    from ..config import DATA_CONFIG
-except ImportError:
-    from config import DATA_CONFIG
+from model.config import DATA_CONFIG
 
 logger = logging.getLogger(__name__)
 

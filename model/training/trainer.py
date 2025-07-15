@@ -3,67 +3,32 @@ Training module for hair segmentation U-Net model.
 Handles model training with callbacks and logging.
 """
 
-import os
-import json
-from datetime import datetime
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, TensorDataset
 from pathlib import Path
 from typing import Optional, Dict, Any, Tuple
 import logging
+import json
 from tqdm import tqdm
-import torch.nn.functional as F
+import numpy as np
 
-# Config imports
-try:
-    from ..config import (
-        TRAINING_CONFIG, CALLBACKS_CONFIG, 
-        TRAINED_MODELS_DIR, MODEL_CONFIG,
-        DATA_CONFIG
-    )
-except ImportError:
-    from config import (
-        TRAINING_CONFIG, CALLBACKS_CONFIG, 
-        TRAINED_MODELS_DIR, MODEL_CONFIG,
-        DATA_CONFIG
-    )
-
-# Model imports
-try:
-    from ..models.unet_model import create_unet_model
-    from ..models.attention_unet_model import create_attention_unet_model
-except ImportError:
-    from models.unet_model import create_unet_model
-    from models.attention_unet_model import create_attention_unet_model
-
-# Data loader imports
-try:
-    from ..data_loader.factory_data_loader import create_auto_data_loader
-except ImportError:
-    from data_loader.factory_data_loader import create_auto_data_loader
-
-# Utils imports
-try:
-    from ..utils.model_saving import (
-        create_timestamped_folder, save_config_json, 
-        save_training_log, save_models_to_folder
-    )
-except ImportError:
-    from utils.model_saving import (
-        create_timestamped_folder, save_config_json, 
-        save_training_log, save_models_to_folder
-    )
-
-# Training imports
-try:
-    from .callbacks import EarlyStopping, FocalLoss, DiceLoss, ComboLoss, BoundaryLoss, TotalLoss
-    from .metrics import calculate_accuracy, calculate_dice, calculate_mse
-except ImportError:
-    from callbacks import EarlyStopping, FocalLoss, DiceLoss, ComboLoss, BoundaryLoss, TotalLoss
-    from metrics import calculate_accuracy, calculate_dice, calculate_mse
+from model.config import (
+    TRAINING_CONFIG, CALLBACKS_CONFIG, 
+    TRAINED_MODELS_DIR, MODEL_CONFIG,
+    DATA_CONFIG
+)
+from model.models.unet_model import create_unet_model
+from model.models.attention_unet_model import create_attention_unet_model
+from model.data_loader.factory_data_loader import create_auto_data_loader
+from model.utils.model_saving import (
+    create_timestamped_folder, save_config_json, 
+    save_training_log, save_models_to_folder
+)
+from model.training.callbacks import EarlyStopping, FocalLoss, DiceLoss, ComboLoss, BoundaryLoss, TotalLoss
+from model.training.metrics import calculate_accuracy, calculate_dice, calculate_mse
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -100,6 +65,7 @@ class HairSegmentationTrainer:
         self.device = None
         self.optimizer = None
         self.criterion = None
+        self.scheduler = None
         self.history = {
             'train_loss': [],
             'train_accuracy': [],
@@ -116,9 +82,7 @@ class HairSegmentationTrainer:
         
     def _setup_device(self):
         """Setup device (CPU/GPU) for training."""
-        if self.config["device"] == "auto":
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        elif self.config["device"] == "cuda":
+        if self.config["device"] in ["auto", "cuda"]:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         else:
             self.device = torch.device("cpu")
@@ -134,7 +98,7 @@ class HairSegmentationTrainer:
             Model instance
         """
         logger.info("Setting up model...")
-        model_type = self.config.get("model_type", "unet")
+        model_type = MODEL_CONFIG.get("model_type", "unet")
         if model_type == "attention_unet":
             logger.info("Using Attention U-Net model.")
             self.model = create_attention_unet_model(input_shape=input_shape)
@@ -168,8 +132,21 @@ class HairSegmentationTrainer:
         else:
             raise ValueError(f"Unsupported loss function: {self.config['loss_function']}")
         
+        # Setup learning rate scheduler
+        self.scheduler = ReduceLROnPlateau(
+            self.optimizer,
+            mode='min',
+            factor=CALLBACKS_CONFIG.get("reduce_lr_factor", 0.1),
+            patience=CALLBACKS_CONFIG.get("reduce_lr_patience", 3),
+            min_lr=CALLBACKS_CONFIG.get("reduce_lr_min_lr", 1e-6),
+            verbose=True
+        )
+        
         logger.info("Model setup complete")
-        self.model.summary()
+        
+        # Print model summary if available
+        if hasattr(self.model, 'summary'):
+            self.model.summary()
         
         return self.model
     
@@ -193,23 +170,10 @@ class HairSegmentationTrainer:
         self.data_loader = create_auto_data_loader(lazy_loading=lazy_loading)
         
         # Get datasets from data loader
-        if lazy_loading:
-            train_dataset, val_dataset = self.data_loader.create_datasets(
-                validation_split=self.config["validation_split"],
-                random_seed=self.config["random_seed"]
-            )
-        else:
-            # Load processed data and convert to datasets
-            train_images, train_masks, val_images, val_masks = self.data_loader.load_processed_data()
-            
-            # Convert to PyTorch format (NCHW)
-            train_images = torch.FloatTensor(train_images).permute(0, 3, 1, 2)
-            train_masks = torch.FloatTensor(train_masks).unsqueeze(1)
-            val_images = torch.FloatTensor(val_images).permute(0, 3, 1, 2)
-            val_masks = torch.FloatTensor(val_masks).unsqueeze(1)
-            
-            train_dataset = TensorDataset(train_images, train_masks)
-            val_dataset = TensorDataset(val_images, val_masks)
+        train_dataset, val_dataset = self.data_loader.get_datasets(
+            validation_split=self.config["validation_split"],
+            random_seed=self.config["random_seed"]
+        )
         
         # Log dataset info
         data_info = self.data_loader.get_data_info()
@@ -220,13 +184,17 @@ class HairSegmentationTrainer:
             train_dataset, 
             batch_size=self.config["batch_size"], 
             shuffle=True,
-            num_workers=0  # Set to 0 for Windows compatibility
+            num_workers=DATA_CONFIG.get("num_workers", 0),
+            pin_memory=torch.cuda.is_available(),  # Auto-detect GPU
+            drop_last=True
         )
         val_loader = DataLoader(
             val_dataset, 
             batch_size=self.config["batch_size"], 
             shuffle=False,
-            num_workers=0  # Set to 0 for Windows compatibility
+            num_workers=DATA_CONFIG.get("num_workers", 0),
+            pin_memory=torch.cuda.is_available(),  # Auto-detect GPU
+            drop_last=False 
         )
         
         logger.info(f"Created data loaders: {len(train_loader)} train batches, {len(val_loader)} val batches")
@@ -298,6 +266,34 @@ class HairSegmentationTrainer:
         
         return (total_loss / num_batches, total_accuracy / num_batches, total_dice / num_batches, total_mse / num_batches)
     
+    def _save_best_model(self, val_loss: float, val_dice: float, best_val_loss: float, best_val_dice: float) -> Tuple[float, float]:
+        """Save the best model based on configured monitor metric."""
+        checkpoint_monitor = CALLBACKS_CONFIG.get("checkpoint_monitor", "val_loss")
+        if checkpoint_monitor == "val_dice":
+            if val_dice > best_val_dice:
+                best_val_dice = val_dice
+                torch.save(self.model.state_dict(), self.model_path)
+                logger.info(f"Saved best model with val_dice: {val_dice:.4f}")
+        else:  # val_loss
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                torch.save(self.model.state_dict(), self.model_path)
+                logger.info(f"Saved best model with val_loss: {val_loss:.4f}")
+        
+        # Save latest model
+        torch.save(self.model.state_dict(), self.latest_model_path)
+        
+        return best_val_loss, best_val_dice
+    
+    def _update_learning_rate(self, val_loss: float, val_dice: float):
+        """Update learning rate using ReduceLROnPlateau scheduler."""
+        current_lr = self.optimizer.param_groups[0]['lr']
+        reduce_lr_metric = val_loss if CALLBACKS_CONFIG.get("reduce_lr_monitor", "val_loss") == "val_loss" else val_dice
+        self.scheduler.step(reduce_lr_metric)
+        new_lr = self.optimizer.param_groups[0]['lr']
+        if new_lr < current_lr:
+            logger.info(f"Learning rate reduced from {current_lr:.2e} to {new_lr:.2e}")
+
     def train(self, 
               train_loader: DataLoader,
               val_loader: DataLoader,
@@ -327,7 +323,7 @@ class HairSegmentationTrainer:
         logger.info(f" - Batch size: {self.config['batch_size']}")
         logger.info(f" - Learning rate: {self.config['learning_rate']}")
         logger.info(f" - Optimizer: {self.config['optimizer']}")
-        logger.info(f" - Model: {self.config['model_type']}")
+        logger.info(f" - Model: {MODEL_CONFIG['model_type']}")
         logger.info(f" - Loss function: {self.config['loss_function']}")
         logger.info(f" - Device: {self.device}")
         
@@ -338,10 +334,11 @@ class HairSegmentationTrainer:
         )
         
         best_val_loss = float('inf')
+        best_val_dice = 0.0
         
         for epoch in range(epochs):
             logger.info(f"\n{'='*60}")
-            logger.info(f" Epoch {epoch+1}/{epochs} Started")
+            logger.info(f" Epoch {epoch+1}/{epochs}")
             logger.info(f"{'='*60}")
             
             # Training
@@ -355,10 +352,6 @@ class HairSegmentationTrainer:
             logger.info(f"   Train → Loss: {train_loss:.4f} | Acc: {train_acc:.4f} | Dice: {train_dice:.4f} | MSE: {train_mse:.6f}")
             logger.info(f"   Val   → Loss: {val_loss:.4f} | Acc: {val_acc:.4f} | Dice: {val_dice:.4f} | MSE: {val_mse:.6f}")
             
-            # Epoch completed message
-            logger.info(f" Epoch {epoch+1}/{epochs} Completed!")
-            logger.info(f"{'='*60}")
-            
             # Save history
             self.history['train_loss'].append(train_loss)
             self.history['train_accuracy'].append(train_acc)
@@ -369,14 +362,11 @@ class HairSegmentationTrainer:
             self.history['val_dice'].append(val_dice)
             self.history['val_mse'].append(val_mse)
             
-            # Save best model
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
-                torch.save(self.model.state_dict(), self.model_path)
-                logger.info(f"Saved best model with val_loss: {val_loss:.4f}")
+            # Save best model (with configurable monitor)
+            best_val_loss, best_val_dice = self._save_best_model(val_loss, val_dice, best_val_loss, best_val_dice)
             
-            # Save latest model
-            torch.save(self.model.state_dict(), self.latest_model_path)
+            # Learning rate scheduling (reduce on plateau)
+            self._update_learning_rate(val_loss, val_dice)
             
             # Early stopping
             monitor_metric = val_loss if CALLBACKS_CONFIG["early_stopping_monitor"] == "val_loss" else val_dice
@@ -391,7 +381,6 @@ class HairSegmentationTrainer:
         
         logger.info(f"\n{'='*60}")
         logger.info("Training Completed!")
-        logger.info(f"{'='*60}")
         logger.info(f"Final Results:")
         logger.info(f"   - Total Epochs: {len(self.history['train_loss'])}")
         logger.info(f"   - Best Val Loss: {min(self.history['val_loss']):.4f}")
@@ -410,6 +399,13 @@ class HairSegmentationTrainer:
         if not self.history['train_loss']:
             return {}
         
+        # Find the best epoch based on the checkpoint monitor
+        monitor = CALLBACKS_CONFIG.get("checkpoint_monitor", "val_loss")
+        if "loss" in monitor or "mse" in monitor:
+            best_epoch_idx = np.argmin(self.history[monitor])
+        else: # dice, accuracy
+            best_epoch_idx = np.argmax(self.history[monitor])
+
         return {
             'final_train_loss': self.history['train_loss'][-1],
             'final_train_accuracy': self.history['train_accuracy'][-1],
@@ -419,10 +415,10 @@ class HairSegmentationTrainer:
             'final_val_accuracy': self.history['val_accuracy'][-1],
             'final_val_dice': self.history['val_dice'][-1],
             'final_val_mse': self.history['val_mse'][-1],
-            'best_val_loss': min(self.history['val_loss']),
-            'best_val_accuracy': max(self.history['val_accuracy']),
-            'best_val_dice': max(self.history['val_dice']),
-            'best_val_mse': min(self.history['val_mse']),
+            'best_val_loss': self.history['val_loss'][best_epoch_idx],
+            'best_val_accuracy': self.history['val_accuracy'][best_epoch_idx],
+            'best_val_dice': self.history['val_dice'][best_epoch_idx],
+            'best_val_mse': self.history['val_mse'][best_epoch_idx],
             'total_epochs': len(self.history['train_loss']),
             'device_used': str(self.device)
         }
@@ -448,8 +444,7 @@ class HairSegmentationTrainer:
                     config_data = json.load(f)
                 model_config = config_data.get("model_config", {})
                 model_type = model_config.get("model_type", "unet")
-                logger.info(f"Loading model with config from: {config_path}")
-                logger.info(f"Model config: {model_config}")
+                logger.info(f"Loading model configuration from: {config_path}")
                 
                 model_config_clean = {k: v for k, v in model_config.items() if k != "model_type"}
                 
@@ -481,9 +476,10 @@ class HairSegmentationTrainer:
             raise ValueError("No training history available. Train the model first.")
         # Save model_type in config
         model_config = dict(MODEL_CONFIG)
-        model_config["model_type"] = self.config.get("model_type", "unet")
+        training_config = dict(self.config)
+
         folder_path = create_timestamped_folder(TRAINED_MODELS_DIR, summary['best_val_accuracy'])
-        save_config_json(folder_path, model_config, self.config, dataset_info, summary)
+        save_config_json(folder_path, model_config, training_config, CALLBACKS_CONFIG, dataset_info, summary)
         save_training_log(folder_path, self.device, self.history, summary)
         save_models_to_folder(folder_path, self.model_path, self.latest_model_path)
         

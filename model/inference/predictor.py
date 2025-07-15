@@ -11,16 +11,10 @@ from pathlib import Path
 from typing import Union, Tuple, Optional, List
 import logging
 
-try:
-    from ..config import (
-        TEST_IMAGES_DIR, TEST_RESULTS_DIR, 
-        DATA_CONFIG, MODEL_CONFIG
-    )
-except ImportError:
-    from config import (
-        TEST_IMAGES_DIR, TEST_RESULTS_DIR, 
-        DATA_CONFIG, MODEL_CONFIG
-    )
+from model.config import (
+    TEST_IMAGES_DIR, TEST_RESULTS_DIR, 
+    DATA_CONFIG, MODEL_CONFIG
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -138,7 +132,6 @@ class HairSegmentationPredictor:
         image_batch = image_batch.to(self.device)
         
         # Make prediction
-        logger.info(f"Predicting segmentation for {image_path}")
         with torch.no_grad():
             prediction = self.model(image_batch)
             predicted_mask = prediction[0].cpu().numpy()  # Remove batch dimension
@@ -235,13 +228,15 @@ class HairSegmentationPredictor:
     
     def predict_and_save(self, 
                         image_path: Union[str, Path],
-                        output_name: Optional[str] = None) -> bool:
+                        output_name: Optional[str] = None,
+                        show_visualization: bool = False) -> bool:
         """
         Predict segmentation and save results.
         
         Args:
             image_path: Path to the image file
             output_name: Name for output files (without extension)
+            show_visualization: Whether to show visualization plots
             
         Returns:
             True if successful, False otherwise
@@ -271,10 +266,10 @@ class HairSegmentationPredictor:
             viz_path = self.test_results_dir / f"{output_name}_visualization.png"
             self.visualize_prediction(
                 original_image, predicted_mask, binary_mask,
-                save_path=viz_path, show_plot=False
+                save_path=viz_path, show_plot=show_visualization
             )
             
-            logger.info(f"Results saved for {image_path}")
+            logger.info(f"Results saved:")
             logger.info(f"  - Binary mask: {mask_path}")
             logger.info(f"  - Probability mask: {prob_mask_path}")
             logger.info(f"  - Visualization: {viz_path}")
@@ -286,13 +281,15 @@ class HairSegmentationPredictor:
     
     def predict_batch(self, 
                      image_paths: List[Union[str, Path]],
-                     output_names: Optional[List[str]] = None) -> List[bool]:
+                     output_names: Optional[List[str]] = None,
+                     show_visualization: bool = False) -> List[bool]:
         """
         Predict segmentation for multiple images.
         
         Args:
             image_paths: List of image paths
             output_names: List of output names (optional)
+            show_visualization: Whether to show visualization plots
             
         Returns:
             List of success status for each image
@@ -301,20 +298,22 @@ class HairSegmentationPredictor:
         
         for i, image_path in enumerate(image_paths):
             output_name = output_names[i] if output_names else None
-            success = self.predict_and_save(image_path, output_name)
+            success = self.predict_and_save(image_path, output_name, show_visualization)
             results.append(success)
         
         return results
     
     def predict_directory(self, 
                          input_dir: Optional[Path] = None,
-                         file_pattern: str = "*.jpg") -> List[bool]:
+                         file_pattern: str = "*.jpg",
+                         show_visualization: bool = False) -> List[bool]:
         """
         Predict segmentation for all images in a directory.
         
         Args:
             input_dir: Input directory (uses test_images_dir if None)
             file_pattern: File pattern to match
+            show_visualization: Whether to show visualization plots
             
         Returns:
             List of success status for each image
@@ -332,7 +331,7 @@ class HairSegmentationPredictor:
         logger.info(f"Found {len(image_paths)} images to process")
         
         # Process all images
-        return self.predict_batch(image_paths)
+        return self.predict_batch(image_paths, show_visualization=show_visualization)
 
 
 def create_predictor(model, **kwargs) -> HairSegmentationPredictor:

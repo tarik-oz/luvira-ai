@@ -9,14 +9,11 @@ from typing import Tuple
 from sklearn.model_selection import train_test_split
 import logging
 
-try:
-    from ..config import TRAINING_CONFIG
-    from .base_data_loader import BaseDataLoader
-    from .lazy_dataset import LazyDataset
-except ImportError:
-    from config import TRAINING_CONFIG
-    from .base_data_loader import BaseDataLoader
-    from .lazy_dataset import LazyDataset
+
+from model.config import TRAINING_CONFIG, DATA_CONFIG
+from model.data_loader.base_data_loader import BaseDataLoader
+from model.data_loader.lazy_dataset import LazyDataset
+
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +26,9 @@ class LazyDataLoader(BaseDataLoader):
     
     def __init__(self, **kwargs):
         """Initialize lazy data loader."""
+        # Pop augmentation setting before calling super
+        self.use_augmentation = kwargs.pop('use_augmentation', DATA_CONFIG.get('use_augmentation', False))
+
         super().__init__(**kwargs)
         
         # Path storage for lazy loading
@@ -36,6 +36,9 @@ class LazyDataLoader(BaseDataLoader):
         self.train_mask_paths = []
         self.val_image_paths = []
         self.val_mask_paths = []
+        
+        if self.use_augmentation:
+            logger.info("Data augmentation enabled for lazy loading")
         
     def load_data(self) -> Tuple[list, list]:
         """
@@ -113,19 +116,37 @@ class LazyDataLoader(BaseDataLoader):
             train_img_paths, 
             train_mask_paths,
             self.image_size, 
-            self.normalization_factor
+            self.normalization_factor,
+            use_augmentation=self.use_augmentation,
+            is_training=True
         )
         
         val_dataset = LazyDataset(
             val_img_paths, 
             val_mask_paths,
             self.image_size, 
-            self.normalization_factor
+            self.normalization_factor,
+            use_augmentation=False,  # No augmentation for validation
+            is_training=False
         )
         
         logger.info(f"Created lazy datasets - Train: {len(train_dataset)}, Val: {len(val_dataset)}")
         
         return train_dataset, val_dataset
+    
+    def get_datasets(self, validation_split: float = TRAINING_CONFIG["validation_split"],
+                    random_seed: int = TRAINING_CONFIG["random_seed"]) -> Tuple[LazyDataset, LazyDataset]:
+        """
+        Get PyTorch datasets for training and validation.
+        
+        Args:
+            validation_split: Fraction of data to use for validation
+            random_seed: Random seed for reproducibility
+            
+        Returns:
+            Tuple of (train_dataset, val_dataset)
+        """
+        return self.create_datasets(validation_split, random_seed)
     
     def get_data_info(self) -> dict:
         """
@@ -136,24 +157,27 @@ class LazyDataLoader(BaseDataLoader):
         """
         info = super().get_data_info()
         
-        # Lazy loading specific information
+        # Add sample counts and augmentation info
         if self.train_image_paths and self.val_image_paths:
             info.update({
-                "lazy_loading": True,
                 "train_samples": len(self.train_image_paths),
                 "val_samples": len(self.val_image_paths),
                 "total_samples": len(self.train_image_paths) + len(self.val_image_paths),
-                "memory_efficient": True,
-                "data_loaded": False  # No data in memory
+                "augmentation_enabled": self.use_augmentation,
+                "augmentations": [
+                    "HorizontalFlip",
+                    "RandomRotation",
+                    "ColorJitter",
+                    "RandomBrightnessContrast",
+                    "ElasticTransform (mild)"
+                ] if self.use_augmentation else []
             })
         else:
             info.update({
-                "lazy_loading": True,
                 "train_samples": 0,
                 "val_samples": 0,
                 "total_samples": 0,
-                "memory_efficient": True,
-                "data_loaded": False
+                "augmentation_enabled": self.use_augmentation
             })
         
         return info

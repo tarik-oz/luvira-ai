@@ -8,10 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import Tuple, List
 
-try:
-    from ..config import MODEL_CONFIG
-except ImportError:
-    from config import MODEL_CONFIG
+from model.config import MODEL_CONFIG
 
 
 class DoubleConv(nn.Module):

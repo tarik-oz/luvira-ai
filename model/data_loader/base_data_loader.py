@@ -11,16 +11,10 @@ from typing import Tuple, List, Optional
 from abc import ABC, abstractmethod
 import logging
 
-try:
-    from ..config import (
-        IMAGES_DIR, MASKS_DIR, PROCESSED_DATA_DIR, 
-        DATA_CONFIG, TRAINING_CONFIG, FILE_PATTERNS
-    )
-except ImportError:
-    from config import (
-        IMAGES_DIR, MASKS_DIR, PROCESSED_DATA_DIR, 
-        DATA_CONFIG, TRAINING_CONFIG, FILE_PATTERNS
-    )
+from model.config import (
+    IMAGES_DIR, MASKS_DIR, PROCESSED_DATA_DIR, 
+    DATA_CONFIG, TRAINING_CONFIG, FILE_PATTERNS
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -170,20 +164,32 @@ class BaseDataLoader(ABC):
         """
         pass
     
+    @abstractmethod
+    def get_datasets(self, validation_split: float = TRAINING_CONFIG["validation_split"],
+                    random_seed: int = TRAINING_CONFIG["random_seed"]):
+        """
+        Abstract method for getting PyTorch datasets.
+        Must be implemented by subclasses.
+        
+        Args:
+            validation_split: Fraction of data to use for validation
+            random_seed: Random seed for reproducibility
+            
+        Returns:
+            Tuple of (train_dataset, val_dataset)
+        """
+        pass
+    
     def get_data_info(self) -> dict:
         """
-        Get information about the dataset.
+        Get key information about the dataset configuration.
         
         Returns:
-            Dictionary containing dataset information
+            Dictionary containing essential dataset information
         """
         info = {
             "image_size": self.image_size,
-            "normalization_factor": self.normalization_factor,
-            "images_dir_exists": self.images_dir.exists(),
-            "masks_dir_exists": self.masks_dir.exists(),
-            "processed_dir_exists": self.processed_dir.exists(),
-            "total_file_paths": len(self.image_paths)
+            "normalization_factor": self.normalization_factor
         }
         
         return info

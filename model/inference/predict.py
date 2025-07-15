@@ -8,16 +8,12 @@ import sys
 import argparse
 from pathlib import Path
 
-# Add project root to path
-project_root = Path(__file__).parent.parent
+# Add project root to path so that we can use absolute imports
+project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(project_root))
 
-try:
-    from .predictor import create_predictor
-    from ..training.trainer import create_trainer
-except ImportError:
-    from predictor import create_predictor
-    from training.trainer import create_trainer
+from model.inference.predictor import create_predictor
+from model.training.trainer import create_trainer
 import logging
 
 # Configure logging
@@ -50,7 +46,7 @@ def load_model(model_path: Path):
     # Log model type information from config
     model_type = None
     if config is not None:
-        model_type = config.get("training_config", {}).get("model_type", "unknown")
+        model_type = config.get("model_config", {}).get("model_type", "unknown")
     if not model_type:
         model_type = "unknown"
     logger.info(f"Model type: {model_type}")
@@ -58,7 +54,7 @@ def load_model(model_path: Path):
     return model
 
 
-def predict_single_image(image_path: str, model_path: Path, device: str):
+def predict_single_image(image_path: str, model_path: Path, device: str, visualize: bool = False):
     """
     Predict segmentation for a single image.
     
@@ -66,6 +62,7 @@ def predict_single_image(image_path: str, model_path: Path, device: str):
         image_path: Path to the input image
         model_path: Path to the model file
         device: Device to use for prediction
+        visualize: Whether to show visualization plots
     """
     try:
         # Load model
@@ -74,28 +71,21 @@ def predict_single_image(image_path: str, model_path: Path, device: str):
         # Create predictor
         predictor = create_predictor(model, device=device)
         
-        # Make prediction
-        original_image, predicted_mask, binary_mask = predictor.predict(image_path)
-        
-        if original_image is None:
-            logger.error("Failed to process image")
-            return
-        
-        # Visualize results
-        predictor.visualize_prediction(original_image, predicted_mask, binary_mask)
-        
-        # Save results
+        # Save results (this includes prediction and visualization)
         output_name = Path(image_path).stem
-        predictor.predict_and_save(image_path, output_name)
+        success = predictor.predict_and_save(image_path, output_name, show_visualization=visualize)
         
-        logger.info(f"Prediction completed for {image_path}")
+        if success:
+            logger.info(f"Prediction completed successfully for {image_path}")
+        else:
+            logger.error(f"Prediction failed for {image_path}")
         
     except Exception as e:
         logger.error(f"Prediction failed: {e}")
         raise
 
 
-def predict_directory(input_dir: str, model_path: Path, device: str):
+def predict_directory(input_dir: str, model_path: Path, device: str, visualize: bool = False):
     """
     Predict segmentation for all images in a directory.
     
@@ -103,6 +93,7 @@ def predict_directory(input_dir: str, model_path: Path, device: str):
         input_dir: Path to the input directory
         model_path: Path to the model file
         device: Device to use for prediction
+        visualize: Whether to show visualization plots
     """
     try:
         # Load model
@@ -112,7 +103,7 @@ def predict_directory(input_dir: str, model_path: Path, device: str):
         predictor = create_predictor(model, device=device)
         
         # Predict all images in directory
-        results = predictor.predict_directory(Path(input_dir))
+        results = predictor.predict_directory(Path(input_dir), show_visualization=visualize)
         
         successful = sum(results)
         total = len(results)
@@ -154,16 +145,26 @@ def main():
         default="auto",
         help="Device to use for prediction: auto, cpu, or cuda"
     )
+    parser.add_argument(
+        "--visualize",
+        type=str,
+        choices=["true", "false"],
+        default="false",
+        help="Show visualization plots: true or false"
+    )
     
     args = parser.parse_args()
     
     try:
+        # Convert visualize string to boolean
+        visualize = args.visualize.lower() == "true"
+        
         if args.mode == "single":
             logger.info(f"Predicting single image: {args.input}")
-            predict_single_image(args.input, Path(args.model), args.device)
+            predict_single_image(args.input, Path(args.model), args.device, visualize)
         else:
             logger.info(f"Predicting directory: {args.input}")
-            predict_directory(args.input, Path(args.model), args.device)
+            predict_directory(args.input, Path(args.model), args.device, visualize)
             
     except Exception as e:
         logger.error(f"Prediction failed: {e}")

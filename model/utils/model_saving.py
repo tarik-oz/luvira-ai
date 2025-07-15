@@ -13,10 +13,11 @@ def create_timestamped_folder(trained_models_dir: Path, best_val_accuracy: float
     logging.info(f"Created model folder: {folder_path}")
     return folder_path
 
-def save_config_json(folder_path: Path, model_config: dict, training_config: dict, dataset_info: dict, training_results: dict) -> None:
+def save_config_json(folder_path: Path, model_config: dict, training_config: dict, callbacks_config: dict, dataset_info: dict, training_results: dict) -> None:
     config_data = {
         "model_config": model_config,
         "training_config": training_config,
+        "callbacks_config": callbacks_config,
         "dataset_info": dataset_info or {},
         "training_results": training_results,
         "timestamp": datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

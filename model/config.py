@@ -36,22 +36,22 @@ MODEL_CONFIG = {
     "num_filters": [64, 128, 256, 512],
     "bridge_filters": 256,
     "output_channels": 1,
-    "activation": "sigmoid" # sigmoid or softmax
+    "activation": "sigmoid", # sigmoid or softmax
+    "model_type": "unet"  # unet or attention_unet
 }
 
 # Training configuration
 TRAINING_CONFIG = {
     "batch_size": 8,
     "epochs": 2,
-    "learning_rate": 1e-4,
+    "learning_rate": 2e-4,
     "validation_split": 0.2,
     "random_seed": 42,
-    "model_type": "attention_unet",  # Attention U-Net
     "loss_function": "total",  # bce, focal, combo or total
-    "bce_weight": 0.4,  # For combo/total loss
-    "dice_weight": 0.4, # For combo/total loss
-    "boundary_weight": 0.3, # For total loss
-    "optimizer": "adamw", # adam, adamw or sgd
+    "bce_weight": 0.3,  # For combo/total loss
+    "dice_weight": 0.3, # For combo/total loss
+    "boundary_weight": 0.4, # For total loss
+    "optimizer": "adam", # adam, adamw or sgd
     "device": "auto"  # auto, cpu, or cuda
 }
 
@@ -60,18 +60,19 @@ DATA_CONFIG = {
     "image_size": (256, 256),
     "normalization_factor": 255.0,
     "mask_threshold": 0.5,
-    "lazy_loading": False  # True or False (Enable lazy loading for memory efficiency)
+    "lazy_loading": False,  # True or False (Enable lazy loading for memory efficiency)
+    "use_augmentation": False,  # True or False (Enable data augmentation)
+    "num_workers": 0  # 0 for Windows, 2-8 for Linux/Mac
 }
 
 # Callbacks configuration
 CALLBACKS_CONFIG = {
-    "checkpoint_monitor": "val_loss",
-    "checkpoint_save_best_only": True,
-    "reduce_lr_monitor": "val_loss",
+    "checkpoint_monitor": "val_dice", # val_dice or val_loss
+    "reduce_lr_monitor": "val_loss", # val_dice or val_loss
     "reduce_lr_patience": 3,
     "reduce_lr_factor": 0.1,
     "reduce_lr_min_lr": 1e-6,
-    "early_stopping_monitor": "val_dice",
+    "early_stopping_monitor": "val_dice", # val_dice or val_loss
     "early_stopping_patience": 5
 }
 

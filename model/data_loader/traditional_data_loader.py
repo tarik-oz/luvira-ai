@@ -4,20 +4,20 @@ Loads all data into memory at once.
 """
 
 import numpy as np
+import torch
+import cv2
+from torch.utils.data import Dataset
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, List
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 import logging
 
-try:
-    from ..config import TRAINING_CONFIG
-    from ..utils.data_timestamp import get_latest_timestamp, save_timestamps, load_timestamps, needs_processing
-    from .base_data_loader import BaseDataLoader
-except ImportError:
-    from config import TRAINING_CONFIG
-    from utils.data_timestamp import get_latest_timestamp, save_timestamps, load_timestamps, needs_processing
-    from .base_data_loader import BaseDataLoader
+from model.config import TRAINING_CONFIG, DATA_CONFIG
+from model.utils.data_timestamp import get_latest_timestamp, save_timestamps, load_timestamps, needs_processing
+from model.utils.augmentation import Augmentation
+from model.data_loader.base_data_loader import BaseDataLoader
+from model.data_loader.traditional_dataset import TraditionalDataset
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,9 @@ class TraditionalDataLoader(BaseDataLoader):
     
     def __init__(self, **kwargs):
         """Initialize traditional data loader."""
+        # Pop augmentation setting before calling super
+        self.use_augmentation = kwargs.pop('use_augmentation', DATA_CONFIG.get('use_augmentation', False))
+
         super().__init__(**kwargs)
         
         # Data storage for traditional loading
@@ -39,6 +42,9 @@ class TraditionalDataLoader(BaseDataLoader):
         self.train_masks = None
         self.val_images = None
         self.val_masks = None
+        
+        if self.use_augmentation:
+            logger.info("Data augmentation enabled for traditional loading")
         
     def load_data(self) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -209,6 +215,38 @@ class TraditionalDataLoader(BaseDataLoader):
         logger.info("Data reprocessing completed successfully")
         return data
     
+    def get_datasets(self, validation_split: float = TRAINING_CONFIG["validation_split"],
+                    random_seed: int = TRAINING_CONFIG["random_seed"]) -> Tuple[Dataset, Dataset]:
+        """
+        Get PyTorch datasets for training and validation.
+        
+        Args:
+            validation_split: Fraction of data to use for validation
+            random_seed: Random seed for reproducibility
+            
+        Returns:
+            Tuple of (train_dataset, val_dataset)
+        """
+        # Load processed data
+        train_images, train_masks, val_images, val_masks = self.load_processed_data()
+        
+        # Create custom datasets with augmentation support
+        train_dataset = TraditionalDataset(
+            train_images, 
+            train_masks,
+            use_augmentation=self.use_augmentation,
+            is_training=True
+        )
+        
+        val_dataset = TraditionalDataset(
+            val_images, 
+            val_masks,
+            use_augmentation=False,  # No augmentation for validation
+            is_training=False
+        )
+        
+        return train_dataset, val_dataset
+    
     def get_data_info(self) -> dict:
         """
         Get information about the dataset.
@@ -218,51 +256,27 @@ class TraditionalDataLoader(BaseDataLoader):
         """
         info = super().get_data_info()
         
-        # Add loading type information
-        info.update({
-            "loading_type": "traditional",
-            "lazy_loading": False
-        })
-        
-        # Traditional loading specific information
-        if self.images is not None and len(self.images) > 0:
-            # Check if data is numpy array or list
-            if hasattr(self.images, 'shape'):
-                # Data is numpy array
-                info.update({
-                    "data_loaded": True,
-                    "total_samples": len(self.images),
-                    "images_shape": self.images.shape,
-                    "masks_shape": self.masks.shape
-                })
-            else:
-                # Data is still in list format
-                info.update({
-                    "data_loaded": True,
-                    "total_samples": len(self.images),
-                    "images_shape": f"list with {len(self.images)} items",
-                    "masks_shape": f"list with {len(self.masks)} items",
-                })
-        else:
+        # Add sample counts and augmentation info
+        if self.train_images is not None and self.val_images is not None:
             info.update({
-                "data_loaded": False,
-                "total_samples": 0
-            })
-        
-        # Processed data information
-        if self.train_images is not None:
-            info.update({
-                "data_split": True,
                 "train_samples": len(self.train_images),
                 "val_samples": len(self.val_images),
-                "train_images_shape": self.train_images.shape,
-                "train_masks_shape": self.train_masks.shape,
-                "val_images_shape": self.val_images.shape,
-                "val_masks_shape": self.val_masks.shape
+                "total_samples": len(self.train_images) + len(self.val_images),
+                "augmentation_enabled": self.use_augmentation,
+                "augmentations": [
+                    "HorizontalFlip",
+                    "RandomRotation",
+                    "ColorJitter",
+                    "RandomBrightnessContrast",
+                    "ElasticTransform (mild)"
+                ] if self.use_augmentation else []
             })
         else:
             info.update({
-                "data_split": False
+                "train_samples": 0,
+                "val_samples": 0,
+                "total_samples": 0,
+                "augmentation_enabled": self.use_augmentation
             })
         
         return info
