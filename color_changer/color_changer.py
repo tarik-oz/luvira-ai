@@ -56,24 +56,15 @@ class HairColorChanger:
         hair_brightness = np.mean(hair_pixels)
         target_brightness = np.mean(target_rgb)
         brightness_diff = abs(hair_brightness - target_brightness)
-        
-        # Determine change intensity based on brightness difference
-        is_major_change = brightness_diff > 0.3
-        is_moderate_change = brightness_diff > 0.15
-        
-        if is_major_change:
-            alpha = 0.9
-            saturation_factor = 1.4
-            brightness_adjustment = 0.6
-        elif is_moderate_change:
-            alpha = 0.8
-            saturation_factor = 1.2
-            brightness_adjustment = 0.4
-        else:
-            alpha = 0.7
-            saturation_factor = 1.1
-            brightness_adjustment = 0.2
-        
+
+        # Continuous parameter adjustment based on brightness difference
+        max_diff = 0.4  # Lowered for stronger effect even on smaller differences
+        norm_diff = min(1.0, brightness_diff / max_diff)
+
+        alpha = 0.7 + 0.25 * norm_diff  # Softer range: 0.7 - 0.95
+        saturation_factor = 1.1 + 0.4 * norm_diff  # 1.1 - 1.5
+        brightness_adjustment = 0.3 + 0.4 * norm_diff  # 0.3 - 0.7
+
         return alpha, saturation_factor, brightness_adjustment
 
     @staticmethod
@@ -94,48 +85,163 @@ class HairColorChanger:
         """
         result_hsv = image_hsv.copy()
         
-        # HUE: Gentle transition
+        # HUE: Softer blend towards target hue
         hue_diff = target_hsv[0] - image_hsv[:,:,0]
-        # Handle hue wrapping (0-179 in OpenCV)
         hue_diff = np.where(hue_diff > 90, hue_diff - 180, hue_diff)
         hue_diff = np.where(hue_diff < -90, hue_diff + 180, hue_diff)
-        
         result_hsv[:,:,0] = np.where(mask_normalized > 0.1, 
-                                    image_hsv[:,:,0] + hue_diff * alpha,
-                                    image_hsv[:,:,0])
-        result_hsv[:,:,0] = np.clip(result_hsv[:,:,0], 0, 179)
+                                     image_hsv[:,:,0] + hue_diff * (alpha * 0.8),  # Softer hue shift
+                                     image_hsv[:,:,0])
+        result_hsv[:,:,0] = np.clip(result_hsv[:,:,0] % 180, 0, 179)
         
-        # SATURATION: Gentle boost
+        # SATURATION: Restore conditional boost, with extra for fantasy
         original_saturation = image_hsv[:,:,1]
         saturation_boost = np.where(original_saturation > 200, 1.0, saturation_factor)
         result_hsv[:,:,1] = np.where(mask_normalized > 0.1,
-                                    np.clip(original_saturation * saturation_boost, 0, 255),
-                                    original_saturation)
+                                     np.clip(original_saturation * saturation_boost, 0, 255),
+                                     original_saturation)
+        if target_hsv[1] > 200:  # Fantasy high-sat colors
+            result_hsv[:,:,1] = np.where(mask_normalized > 0.1,
+                                         np.clip(result_hsv[:,:,1] + (target_hsv[1] - result_hsv[:,:,1]) * alpha * 0.5, 0, 255),
+                                         result_hsv[:,:,1])
         
-        # VALUE (BRIGHTNESS): Preserve natural lighting
+        # VALUE: Restore conditional brighten/darken for natural preservation
         original_value = image_hsv[:,:,2]
-        
-        # Calculate hair brightness for comparison
-        hair_pixels = (image_hsv[:,:,2] * mask_normalized)[mask_normalized > 0.1]
+        hair_pixels = (original_value * mask_normalized)[mask_normalized > 0.1]
         if len(hair_pixels) > 0:
             hair_brightness = np.mean(hair_pixels) / 255.0
             target_brightness = target_hsv[2] / 255.0
             
             if hair_brightness < target_brightness:
-                # Brighten
                 brightness_boost = 1.0 + (brightness_adjustment * (target_brightness - hair_brightness) / target_brightness)
                 brightness_boost = np.where(original_value > 180, 1.0, brightness_boost)
                 result_hsv[:,:,2] = np.where(mask_normalized > 0.1,
-                                           np.clip(original_value * brightness_boost, 0, 255),
-                                           original_value)
+                                             np.clip(original_value * brightness_boost, 0, 255),
+                                             original_value)
             elif hair_brightness > target_brightness:
-                # Darken
                 darkness_factor = 1.0 - (brightness_adjustment * (hair_brightness - target_brightness) / hair_brightness)
                 darkness_factor = np.where(original_value < 50, 1.0, darkness_factor)
                 result_hsv[:,:,2] = np.where(mask_normalized > 0.1,
-                                           np.clip(original_value * darkness_factor, 0, 255),
-                                           original_value)
+                                             np.clip(original_value * darkness_factor, 0, 255),
+                                             original_value)
         
+        is_grey_target = target_hsv[1] < 60
+        
+        if is_grey_target:
+            hair_pixels = (original_value * mask_normalized)[mask_normalized > 0.1]
+            avg_hair_brightness = np.mean(hair_pixels) if len(hair_pixels) > 0 else 0
+            
+            sat_reduction = 0.9 if avg_hair_brightness < 50 else 0.95
+            result_hsv[:,:,1] = np.where(mask_normalized > 0.1,
+                                        np.clip(original_saturation * (1 - alpha * sat_reduction), 0, 255),
+                                        original_saturation)
+            
+            target_value_factor = target_hsv[2] / 255.0
+            if avg_hair_brightness < 50:
+                value_boost = 1.0 + (target_value_factor - 0.1) * alpha * 1.2  # Daha güçlü boost
+                result_hsv[:,:,2] = np.where(mask_normalized > 0.1,
+                                            np.clip(original_value * value_boost, 0, 255),
+                                            original_value)
+            else:
+                if target_value_factor < 0.3:
+                    result_hsv[:,:,2] = np.where(mask_normalized > 0.1,
+                                                np.clip(original_value * (0.3 + target_value_factor * 0.8), 0, 255),  # Daha güçlü
+                                                original_value)
+                elif target_value_factor > 0.7:
+                    result_hsv[:,:,2] = np.where(mask_normalized > 0.1,
+                                                np.clip(original_value * (0.7 + target_value_factor * 0.4), 0, 255),  # Daha güçlü
+                                                original_value)
+                else:
+                    result_hsv[:,:,2] = np.where(mask_normalized > 0.1,
+                                                np.clip(original_value * (0.5 + target_value_factor * 0.6), 0, 255),  # Daha güçlü
+                                                original_value)
+            
+            result_hsv[:,:,0] = np.where(mask_normalized > 0.1,
+                                        image_hsv[:,:,0] * (1 - alpha * 0.4),
+                                        image_hsv[:,:,0])
+        
+            # ===== PRECISE COOL COLOR HANDLING =====
+            hue = target_hsv[0]
+            sat = target_hsv[1]
+            
+            # More precise hue ranges with saturation thresholds
+            is_blue = (95 <= hue <= 120) and (sat > 150)    # Narrower blue range
+            is_purple = (130 <= hue <= 155) and (sat > 150) # Narrower purple range
+            
+            if is_blue or is_purple:
+                # Enhanced hue transformation for color purity
+                if is_blue:
+                    # Shift blue toward cyan to prevent purple tint
+                    target_hue = max(105, min(hue, 115))  # Optimal blue range
+                else:  # Purple
+                    # Shift purple toward violet to prevent pink tint
+                    target_hue = max(135, min(hue, 150))  # Optimal purple range
+                    
+                # Apply precise hue shift with saturation boost
+                result_hsv[:,:,0] = np.where(
+                    mask_normalized > 0.1,
+                    target_hue,
+                    image_hsv[:,:,0]
+                )
+                
+                # Strong saturation enhancement for vibrant colors
+                saturation_boost = 2.2 if sat > 200 else 1.8
+                min_saturation = max(200, sat * 0.85)  # Ensure vibrant color
+                boosted_sat = np.clip(image_hsv[:,:,1] * saturation_boost, 0, 255)
+                result_hsv[:,:,1] = np.where(
+                    mask_normalized > 0.1,
+                    np.maximum(boosted_sat, min_saturation),
+                    image_hsv[:,:,1]
+                )
+                
+                # Special brightness adjustment for cool colors
+                current_value = result_hsv[:,:,2]
+                if is_blue:
+                    # Blue needs more brightness to appear vibrant
+                    value_adjust = np.where(
+                        current_value < 160,
+                        (160 - current_value) * 0.8,  # Stronger boost for dark areas
+                        0
+                    )
+                    max_value = 230  # Prevent overexposure
+                else:  # Purple
+                    # Purple needs balanced brightness
+                    value_adjust = np.where(
+                        current_value < 140,
+                        (140 - current_value) * 0.6,  # Moderate boost
+                        np.where(current_value > 200, 
+                                (current_value - 200) * -0.4,  # Reduce highlights
+                                0)
+                    )
+                    max_value = 210  # Keep purple deep and rich
+                
+                result_hsv[:,:,2] = np.where(
+                    mask_normalized > 0.1,
+                    np.clip(current_value + value_adjust, 30, max_value),
+                    current_value
+                )
+                
+                # Secondary hue correction to eliminate color impurities
+                if is_blue:
+                    # Correct any residual red/purple tones
+                    blue_deviation = np.abs(result_hsv[:,:,0] - target_hue)
+                    correction_mask = (blue_deviation > 15) & (mask_normalized > 0.1)
+                    result_hsv[:,:,0] = np.where(
+                        correction_mask,
+                        target_hue,
+                        result_hsv[:,:,0]
+                    )
+                else:  # Purple
+                    # Correct any residual pink/red tones
+                    purple_deviation = np.abs(result_hsv[:,:,0] - target_hue)
+                    correction_mask = (purple_deviation > 20) & (mask_normalized > 0.1)
+                    result_hsv[:,:,0] = np.where(
+                        correction_mask,
+                        target_hue,
+                        result_hsv[:,:,0]
+                    )
+
+
         return result_hsv
 
     @staticmethod
