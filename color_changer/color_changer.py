@@ -61,9 +61,9 @@ class HairColorChanger:
         max_diff = 0.4  # Lowered for stronger effect even on smaller differences
         norm_diff = min(1.0, brightness_diff / max_diff)
 
-        alpha = 0.7 + 0.25 * norm_diff  # Softer range: 0.7 - 0.95
-        saturation_factor = 1.1 + 0.4 * norm_diff  # 1.1 - 1.5
-        brightness_adjustment = 0.3 + 0.4 * norm_diff  # 0.3 - 0.7
+        alpha = 0.8 + 0.15 * norm_diff
+        saturation_factor = 1.2 + 0.5 * norm_diff
+        brightness_adjustment = 0.3 + 0.4 * norm_diff
 
         return alpha, saturation_factor, brightness_adjustment
 
@@ -89,8 +89,9 @@ class HairColorChanger:
         hue_diff = target_hsv[0] - image_hsv[:,:,0]
         hue_diff = np.where(hue_diff > 90, hue_diff - 180, hue_diff)
         hue_diff = np.where(hue_diff < -90, hue_diff + 180, hue_diff)
+
         result_hsv[:,:,0] = np.where(mask_normalized > 0.1, 
-                                     image_hsv[:,:,0] + hue_diff * (alpha * 0.8),  # Softer hue shift
+                                     image_hsv[:,:,0] + hue_diff * (alpha * 0.95),
                                      image_hsv[:,:,0])
         result_hsv[:,:,0] = np.clip(result_hsv[:,:,0] % 180, 0, 179)
         
@@ -164,86 +165,109 @@ class HairColorChanger:
             hue = target_hsv[0]
             sat = target_hsv[1]
             
-            # More precise hue ranges with saturation thresholds
-            is_blue = (95 <= hue <= 120) and (sat > 150)    # Narrower blue range
-            is_purple = (130 <= hue <= 155) and (sat > 150) # Narrower purple range
+            # Identify blue and purple targets with precise hue ranges
+            is_blue = (110 <= hue <= 125) and (sat > 150)
+            is_purple = (145 <= hue <= 160) and (sat > 150)
             
-            if is_blue or is_purple:
-                # Enhanced hue transformation for color purity
-                if is_blue:
-                    # Shift blue toward cyan to prevent purple tint
-                    target_hue = max(105, min(hue, 115))  # Optimal blue range
-                else:  # Purple
-                    # Shift purple toward violet to prevent pink tint
-                    target_hue = max(135, min(hue, 150))  # Optimal purple range
-                    
-                # Apply precise hue shift with saturation boost
+            # ===== SPECIALIZED BLUE TRANSFORMATION =====
+            if is_blue:
+                # Shift hue toward true blue (120°)
+                blue_hue = 120.0
+                
+                # Apply hue transformation with anti-purple bias
+                hue_diff = blue_hue - image_hsv[:,:,0]
+                # Adjust large differences to avoid wrapping issues
+                hue_diff = np.where(hue_diff > 90, hue_diff - 180, hue_diff)
+                hue_diff = np.where(hue_diff < -90, hue_diff + 180, hue_diff)
+                
                 result_hsv[:,:,0] = np.where(
                     mask_normalized > 0.1,
-                    target_hue,
+                    image_hsv[:,:,0] + hue_diff * 0.95,  # Strong shift to true blue
                     image_hsv[:,:,0]
                 )
                 
-                # Strong saturation enhancement for vibrant colors
-                saturation_boost = 2.2 if sat > 200 else 1.8
-                min_saturation = max(200, sat * 0.85)  # Ensure vibrant color
-                boosted_sat = np.clip(image_hsv[:,:,1] * saturation_boost, 0, 255)
+                # Saturation boost with blue-specific curve
+                blue_sat_curve = np.clip(image_hsv[:,:,1] * 1.6, 0, 255)
+                blue_sat_curve = np.where(blue_sat_curve < 180, 180, blue_sat_curve)  # Minimum saturation
                 result_hsv[:,:,1] = np.where(
                     mask_normalized > 0.1,
-                    np.maximum(boosted_sat, min_saturation),
+                    blue_sat_curve,
                     image_hsv[:,:,1]
                 )
                 
-                # Special brightness adjustment for cool colors
-                current_value = result_hsv[:,:,2]
-                if is_blue:
-                    # Blue needs more brightness to appear vibrant
-                    value_adjust = np.where(
-                        current_value < 160,
-                        (160 - current_value) * 0.8,  # Stronger boost for dark areas
-                        0
-                    )
-                    max_value = 230  # Prevent overexposure
-                else:  # Purple
-                    # Purple needs balanced brightness
-                    value_adjust = np.where(
-                        current_value < 140,
-                        (140 - current_value) * 0.6,  # Moderate boost
-                        np.where(current_value > 200, 
-                                (current_value - 200) * -0.4,  # Reduce highlights
-                                0)
-                    )
-                    max_value = 210  # Keep purple deep and rich
-                
+                # Brightness mapping for blue vibrancy
+                current_val = result_hsv[:,:,2]
+                # Boost mid-tones for maximum blue impact
+                val_adjust = np.clip((current_val - 100) * 0.4, 0, 80)
+                # Preserve highlights
+                val_adjust = np.where(current_val > 180, 0, val_adjust)
                 result_hsv[:,:,2] = np.where(
                     mask_normalized > 0.1,
-                    np.clip(current_value + value_adjust, 30, max_value),
-                    current_value
+                    np.clip(current_val + val_adjust, 0, 220),
+                    current_val
                 )
                 
-                # Secondary hue correction to eliminate color impurities
-                if is_blue:
-                    # Correct any residual red/purple tones
-                    blue_deviation = np.abs(result_hsv[:,:,0] - target_hue)
-                    correction_mask = (blue_deviation > 15) & (mask_normalized > 0.1)
-                    result_hsv[:,:,0] = np.where(
-                        correction_mask,
-                        target_hue,
-                        result_hsv[:,:,0]
+                # Anti-purple correction
+                purple_mask = (result_hsv[:,:,0] > 130) & (mask_normalized > 0.1)
+                result_hsv[:,:,0] = np.where(
+                    purple_mask,
+                    np.clip(result_hsv[:,:,0] - 15, 100, 130),  # Shift away from purple
+                    result_hsv[:,:,0]
+                )
+            
+            # ===== SPECIALIZED PURPLE TRANSFORMATION =====
+            elif is_purple:
+                # Target true purple (150°)
+                purple_hue = 150.0
+                
+                # Apply hue transformation with anti-pink bias
+                hue_diff = purple_hue - image_hsv[:,:,0]
+                # Adjust large differences to avoid wrapping issues
+                hue_diff = np.where(hue_diff > 90, hue_diff - 180, hue_diff)
+                hue_diff = np.where(hue_diff < -90, hue_diff + 180, hue_diff)
+                
+                result_hsv[:,:,0] = np.where(
+                    mask_normalized > 0.1,
+                    image_hsv[:,:,0] + hue_diff * 0.92,  # Strong shift to true purple
+                    image_hsv[:,:,0]
+                )
+                
+                # Saturation boost with purple-specific curve
+                purple_sat_curve = np.clip(image_hsv[:,:,1] * 1.8, 0, 255)
+                purple_sat_curve = np.where(purple_sat_curve < 190, 190, purple_sat_curve)  # Minimum saturation
+                result_hsv[:,:,1] = np.where(
+                    mask_normalized > 0.1,
+                    purple_sat_curve,
+                    image_hsv[:,:,1]
+                )
+                
+                # Brightness mapping for rich purple
+                current_val = result_hsv[:,:,2]
+                # Balanced adjustment curve
+                val_adjust = np.where(
+                    current_val < 100,
+                    (100 - current_val) * 0.5,  # Boost shadows
+                    np.where(current_val > 180,
+                            (current_val - 180) * -0.4,  # Reduce highlights
+                            0  # Leave mid-tones
                     )
-                else:  # Purple
-                    # Correct any residual pink/red tones
-                    purple_deviation = np.abs(result_hsv[:,:,0] - target_hue)
-                    correction_mask = (purple_deviation > 20) & (mask_normalized > 0.1)
-                    result_hsv[:,:,0] = np.where(
-                        correction_mask,
-                        target_hue,
-                        result_hsv[:,:,0]
-                    )
-
+                )
+                result_hsv[:,:,2] = np.where(
+                    mask_normalized > 0.1,
+                    np.clip(current_val + val_adjust, 50, 200),
+                    current_val
+                )
+                
+                # Anti-pink correction
+                pink_mask = (result_hsv[:,:,0] < 140) & (mask_normalized > 0.1)
+                result_hsv[:,:,0] = np.where(
+                    pink_mask,
+                    np.clip(result_hsv[:,:,0] + 10, 140, 160),  # Shift away from pink
+                    result_hsv[:,:,0]
+                )
 
         return result_hsv
-
+    
     @staticmethod
     def _apply_natural_blending(image_float, result_rgb, mask_3ch, alpha):
         """

@@ -7,14 +7,22 @@ Designed to work with segmentation masks and user-specified RGB colors.
 Suitable for research, prototyping, and integration into larger pipelines.
 """
 
-try:
-    from .. import __version__, __author__, __description__
-except ImportError:
-    # Fallback for when running as top-level module
-    __version__ = "2.0.0"
-    __author__ = "Tarik"
-    __description__ = "Advanced hair color change utilities for image segmentation tasks."
+__version__ = "2.0.0"
+__author__ = "Tarik"
+__description__ = "Advanced hair color change utilities for image segmentation tasks."
 
-from .color_changer import HairColorChanger
+from .core.color_transformer import ColorTransformer
+from .config.color_config import COLORS
+from .utils.image_utils import ImageUtils
+from .utils.color_utils import ColorUtils
+from .utils.preview_runner import PreviewRunner
+from .utils.visualization import Visualizer
 
-__all__ = ["HairColorChanger"] 
+__all__ = [
+    "ColorTransformer",
+    "COLORS",
+    "ImageUtils",
+    "ColorUtils",
+    "PreviewRunner",
+    "Visualizer"
+] 
