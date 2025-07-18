@@ -15,6 +15,7 @@ from model.config import (
     TEST_IMAGES_DIR, TEST_RESULTS_DIR, 
     DATA_CONFIG, MODEL_CONFIG
 )
+from model.utils.validators import ImageValidator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -40,7 +41,7 @@ class HairSegmentationPredictor:
         Initialize the predictor.
         
         Args:
-            model: Trained U-Net model
+            model: Trained U-Net model (can be None for validation only)
             test_images_dir: Directory containing test images
             test_results_dir: Directory to save prediction results
             image_size: Target size for images (height, width)
@@ -54,6 +55,7 @@ class HairSegmentationPredictor:
         self.image_size = image_size
         self.normalization_factor = normalization_factor
         self.mask_threshold = mask_threshold
+        self.validator = ImageValidator()
         
         # Setup device
         if device == "auto":
@@ -63,12 +65,10 @@ class HairSegmentationPredictor:
         else:
             self.device = torch.device("cpu")
         
-        # Move model to device
-        self.model.to(self.device)
-        self.model.eval()
-        
-        # Create results directory if it doesn't exist
-        self.test_results_dir.mkdir(parents=True, exist_ok=True)
+        # Move model to device if provided
+        if self.model is not None:
+            self.model.to(self.device)
+            self.model.eval()
         
         logger.info(f"Using device: {self.device}")
         
@@ -242,6 +242,13 @@ class HairSegmentationPredictor:
             True if successful, False otherwise
         """
         try:
+            # Ensure model is loaded
+            if self.model is None:
+                raise ValueError("No model loaded - predictor is in validation-only mode")
+                
+            # Create results directory if it doesn't exist
+            self.test_results_dir.mkdir(parents=True, exist_ok=True)
+            
             # Generate output name if not provided
             if output_name is None:
                 output_name = Path(image_path).stem
@@ -279,59 +286,73 @@ class HairSegmentationPredictor:
             logger.error(f"Error processing {image_path}: {e}")
             return False
     
+    def validate_input_directory(self, input_dir: Optional[Path] = None) -> Path:
+        """Wrapper for ImageValidator.validate_input_directory"""
+        return self.validator.validate_input_directory(input_dir, self.test_images_dir)
+    
+    def validate_image_names(self, image_names: List[str], input_dir: Path) -> None:
+        """Wrapper for ImageValidator.validate_image_names"""
+        self.validator.validate_image_names(image_names, input_dir)
+    
+    def find_valid_images(self, input_dir: Path) -> List[str]:
+        """Wrapper for ImageValidator.find_valid_images"""
+        return self.validator.find_valid_images(input_dir)
+
     def predict_batch(self, 
-                     image_paths: List[Union[str, Path]],
+                     image_names: List[str],
                      output_names: Optional[List[str]] = None,
-                     show_visualization: bool = False) -> List[bool]:
+                     show_visualization: bool = False,
+                     input_dir: Optional[Path] = None) -> List[bool]:
         """
         Predict segmentation for multiple images.
         
         Args:
-            image_paths: List of image paths
+            image_names: List of image names to process (looked up in input_dir)
             output_names: List of output names (optional)
             show_visualization: Whether to show visualization plots
+            input_dir: Directory containing images (uses test_images_dir if None)
             
         Returns:
             List of success status for each image
         """
-        results = []
+        # Validate input directory and images
+        search_dir = self.validate_input_directory(input_dir)
+        self.validate_image_names(image_names, search_dir)
         
+        # Convert image names to full paths
+        image_paths = [str(search_dir / name) for name in image_names]
+        
+        results = []
         for i, image_path in enumerate(image_paths):
             output_name = output_names[i] if output_names else None
             success = self.predict_and_save(image_path, output_name, show_visualization)
             results.append(success)
         
         return results
-    
+        
     def predict_directory(self, 
                          input_dir: Optional[Path] = None,
-                         file_pattern: str = "*.jpg",
                          show_visualization: bool = False) -> List[bool]:
         """
         Predict segmentation for all images in a directory.
         
         Args:
             input_dir: Input directory (uses test_images_dir if None)
-            file_pattern: File pattern to match
             show_visualization: Whether to show visualization plots
             
         Returns:
             List of success status for each image
         """
-        if input_dir is None:
-            input_dir = self.test_images_dir
+        # Validate input directory and find valid images
+        search_dir = self.validate_input_directory(input_dir)
+        image_names = self.find_valid_images(search_dir)
         
-        # Find all matching files
-        image_paths = list(input_dir.glob(file_pattern))
-        
-        if not image_paths:
-            logger.warning(f"No images found in {input_dir} matching pattern {file_pattern}")
-            return []
-        
-        logger.info(f"Found {len(image_paths)} images to process")
-        
-        # Process all images
-        return self.predict_batch(image_paths, show_visualization=show_visualization)
+        # Process all valid images
+        return self.predict_batch(
+            image_names,
+            show_visualization=show_visualization,
+            input_dir=search_dir
+        )
 
 
 def create_predictor(model, **kwargs) -> HairSegmentationPredictor:

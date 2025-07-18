@@ -21,13 +21,16 @@ PROCESSED_DATA_DIR = DATA_DIR / DATASET_DIR / "processed"
 # Trained models paths
 TRAINED_MODELS_DIR = PROJECT_ROOT / "trained_models"
 
+# Default model path for inference
+DEFAULT_MODEL_PATH = TRAINED_MODELS_DIR / "2025-07-14_02-57-22_acc0.9708/best_model.pth"
+
 # Test paths
 TEST_IMAGES_DIR = PROJECT_ROOT / "test_images"
 TEST_RESULTS_DIR = PROJECT_ROOT / "test_results"
 
 # Create directories if they don't exist
 for directory in [DATA_DIR, IMAGES_DIR, MASKS_DIR, PROCESSED_DATA_DIR, 
-                  TRAINED_MODELS_DIR, TEST_IMAGES_DIR, TEST_RESULTS_DIR]:
+                  TRAINED_MODELS_DIR, TEST_IMAGES_DIR]:
     directory.mkdir(parents=True, exist_ok=True)
 
 # Model configuration
@@ -37,7 +40,7 @@ MODEL_CONFIG = {
     "bridge_filters": 256,
     "output_channels": 1,
     "activation": "sigmoid", # sigmoid or softmax
-    "model_type": "unet"  # unet or attention_unet
+    "model_type": "attention_unet"  # unet or attention_unet
 }
 
 # Training configuration
@@ -61,7 +64,7 @@ DATA_CONFIG = {
     "normalization_factor": 255.0,
     "mask_threshold": 0.5,
     "lazy_loading": False,  # True or False (Enable lazy loading for memory efficiency)
-    "use_augmentation": False,  # True or False (Enable data augmentation)
+    "use_augmentation": True,  # True or False (Enable data augmentation)
     "num_workers": 0  # 0 for Windows, 2-8 for Linux/Mac
 }
 
