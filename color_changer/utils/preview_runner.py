@@ -4,10 +4,13 @@ Preview runner for hair color change operations.
 
 import os
 import cv2
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, TYPE_CHECKING
 
-from color_changer.core.color_transformer import ColorTransformer
 from color_changer.config.color_config import COLORS
+
+# Lazy import to avoid circular dependency
+if TYPE_CHECKING:
+    from color_changer.core.color_transformer import ColorTransformer
 
 
 class PreviewRunner:
@@ -25,10 +28,18 @@ class PreviewRunner:
         """
         self.images_dir = images_dir
         self.results_dir = results_dir
-        self.transformer = ColorTransformer()
+        self._transformer = None  # Lazy initialization
         
         # Create results directory if it doesn't exist
         os.makedirs(results_dir, exist_ok=True)
+    
+    @property
+    def transformer(self):
+        """Lazy initialization of ColorTransformer to avoid circular imports."""
+        if self._transformer is None:
+            from color_changer.core.color_transformer import ColorTransformer
+            self._transformer = ColorTransformer()
+        return self._transformer
     
     def find_preview_images(self) -> List[str]:
         """

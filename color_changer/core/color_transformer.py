@@ -4,10 +4,12 @@ Main color transformer class that orchestrates the hair color transformation pro
 
 import cv2
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Union
 
 from color_changer.transformers.hsv_transformer import HsvTransformer
 from color_changer.transformers.blender import Blender
+from color_changer.utils.color_utils import ColorUtils
+from color_changer.config.color_config import TONE_TYPES, INTENSITY_LEVELS
 
 
 class ColorTransformer:
@@ -63,6 +65,147 @@ class ColorTransformer:
         result_rgb = np.clip(result * 255, 0, 255).astype(np.uint8)
         return result_rgb  # Return RGB format for web API
     
+    def change_hair_color_with_tone(
+        self, 
+        image: np.ndarray, 
+        mask: np.ndarray, 
+        base_color: List[int], 
+        tone_type: str = "natural",
+        intensity: str = "moderate"
+    ) -> np.ndarray:
+        """
+        Apply hair color change with specific toning.
+        
+        Args:
+            image: Original image (BGR format, np.ndarray)
+            mask: Grayscale mask (0-255, np.ndarray)
+            base_color: Base hair color [R, G, B] (0-255)
+            tone_type: Type of tone to apply ("light", "natural", "vibrant", "deep", "muted")
+            intensity: Intensity level ("subtle", "moderate", "strong", "maximum")
+            
+        Returns:
+            Recolored image (RGB format, np.ndarray)
+        """
+        # Get tone configuration
+        if tone_type not in TONE_TYPES:
+            raise ValueError(f"Invalid tone type: {tone_type}. Available: {list(TONE_TYPES.keys())}")
+        
+        if intensity not in INTENSITY_LEVELS:
+            raise ValueError(f"Invalid intensity: {intensity}. Available: {list(INTENSITY_LEVELS.keys())}")
+        
+        tone_config = TONE_TYPES[tone_type]
+        intensity_factor = INTENSITY_LEVELS[intensity]
+        
+        # Generate toned color
+        toned_color = ColorUtils.create_custom_tone(
+            base_color,
+            saturation_factor=tone_config["saturation_factor"],
+            brightness_factor=tone_config["brightness_factor"],
+            intensity=intensity_factor
+        )
+        
+        # Apply the toned color
+        return self.change_hair_color(image, mask, toned_color)
+    
+    def generate_tone_previews(
+        self, 
+        image: np.ndarray, 
+        mask: np.ndarray, 
+        base_color: List[int],
+        intensity: str = "moderate"
+    ) -> Dict[str, np.ndarray]:
+        """
+        Generate previews for all available tones of a base color.
+        
+        Args:
+            image: Original image (BGR format, np.ndarray)
+            mask: Grayscale mask (0-255, np.ndarray)
+            base_color: Base hair color [R, G, B] (0-255)
+            intensity: Intensity level ("subtle", "moderate", "strong", "maximum")
+            
+        Returns:
+            Dictionary mapping tone names to result images
+        """
+        previews = {}
+        
+        for tone_type in TONE_TYPES.keys():
+            try:
+                result = self.change_hair_color_with_tone(
+                    image, mask, base_color, tone_type, intensity
+                )
+                previews[tone_type] = result
+            except Exception as e:
+                print(f"Error generating preview for tone '{tone_type}': {e}")
+                previews[tone_type] = None
+                
+        return previews
+    
+    def get_available_tones(self) -> Dict[str, Dict]:
+        """
+        Get all available tone types and their configurations.
+        
+        Returns:
+            Dictionary of tone configurations
+        """
+        return TONE_TYPES.copy()
+    
+    def get_available_intensities(self) -> Dict[str, float]:
+        """
+        Get all available intensity levels.
+        
+        Returns:
+            Dictionary of intensity levels
+        """
+        return INTENSITY_LEVELS.copy()
+    
+    def get_tone_info(self, base_color: List[int], tone_type: str = "natural") -> Dict:
+        """
+        Get information about a specific tone of a color.
+        
+        Args:
+            base_color: Base RGB color [R, G, B] (0-255)
+            tone_type: Type of tone
+            
+        Returns:
+            Dictionary with tone information
+        """
+        if tone_type not in TONE_TYPES:
+            raise ValueError(f"Invalid tone type: {tone_type}")
+        
+        tone_config = TONE_TYPES[tone_type]
+        
+        # Generate the toned color
+        toned_color = ColorUtils.create_custom_tone(
+            base_color,
+            saturation_factor=tone_config["saturation_factor"],
+            brightness_factor=tone_config["brightness_factor"],
+            intensity=1.0
+        )
+        
+        # Get color information
+        base_info = ColorUtils.get_color_info(base_color)
+        toned_info = ColorUtils.get_color_info(toned_color)
+        
+        return {
+            "tone_type": tone_type,
+            "tone_name": tone_config["name"],
+            "description": tone_config["description"],
+            "base_color": {
+                "rgb": base_color,
+                "hex": base_info["hex"],
+                "info": base_info
+            },
+            "toned_color": {
+                "rgb": toned_color,
+                "hex": toned_info["hex"],
+                "info": toned_info
+            },
+            "adjustments": {
+                "saturation_factor": tone_config["saturation_factor"],
+                "brightness_factor": tone_config["brightness_factor"]
+            }
+        }
+
     def _preprocess_inputs(self, image: np.ndarray, mask: np.ndarray, target_color: List[int]) -> Tuple:
         """
         Preprocess and validate input images and mask.

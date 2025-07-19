@@ -1,25 +1,14 @@
-# Data directories
-model/data/images/*
-model/data/images_500/*
-model/data/masks/*
-model/data/masks_500/*
-model/data/processed/*
-model/data/processed_500/*
-model/data/images.zip
-model/data/masks.zip
+model/datasets/*
+model/trained_models/*
 
-model/models/best_model.pth
-model/models/latest_model.pth
-model/models/96acc.pth
+model/test_results/*
 
-model/models/trained_models/*
-
-model/demo_hair_color_change/*
-model/test_results_2k/*
-model/test_results_7k/*
+color_changer/test_results/*
 
 logs/*
 .vscode/*
+
+hair_segmentation_kaggle_*
 
 # Python cache files (all directories)
 __pycache__/

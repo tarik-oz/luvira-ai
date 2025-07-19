@@ -3,6 +3,7 @@ Special color handler for colors needing specific treatment.
 """
 
 import numpy as np
+import cv2
 
 class SpecialColorHandler:
     """
@@ -11,65 +12,53 @@ class SpecialColorHandler:
     """
     
     def handle_blue_color(
-        self,
-        result_hsv: np.ndarray,
-        image_hsv: np.ndarray,
-        mask_normalized: np.ndarray
+        self, result_hsv: np.ndarray, image_hsv: np.ndarray, mask_normalized: np.ndarray
     ) -> np.ndarray:
         """
         Apply specialized transformation for blue hair.
         
         Args:
-            result_hsv: Current result HSV image
-            image_hsv: Original HSV image
-            mask_normalized: Normalized mask
+            result_hsv: Current HSV result to modify
+            image_hsv: Original image in HSV
+            mask_normalized: Hair mask (0-1 range)
             
         Returns:
             np.ndarray: Transformed HSV image for blue hair
         """
-        # Shift hue toward true blue (120°)
-        blue_hue = 120.0
+        # Convert RGB blue [0,0,255] to HSV to get the target hue
+        blue_rgb = np.uint8([[[0, 0, 255]]])
+        blue_hsv = cv2.cvtColor(blue_rgb, cv2.COLOR_RGB2HSV)
+        target_hue = float(blue_hsv[0][0][0])  # Should be around 120 in OpenCV HSV
         
-        # Apply hue transformation with anti-purple bias
-        hue_diff = blue_hue - image_hsv[:,:,0]
-        # Adjust large differences to avoid wrapping issues
+        # Get current hue and calculate shortest path to target
+        current_hue = image_hsv[:,:,0]
+        hue_diff = target_hue - current_hue
+        
+        # Ensure we take the shortest path around the hue circle (OpenCV HSV: 0-180)
         hue_diff = np.where(hue_diff > 90, hue_diff - 180, hue_diff)
         hue_diff = np.where(hue_diff < -90, hue_diff + 180, hue_diff)
         
-        result_hsv[:,:,0] = np.where(
-            mask_normalized > 0.1,
-            image_hsv[:,:,0] + hue_diff * 0.95,  # Strong shift to true blue
-            image_hsv[:,:,0]
-        )
+        # Apply smooth hue transition
+        new_hue = np.mod(current_hue + hue_diff * mask_normalized, 180)
         
-        # Saturation boost with blue-specific curve
-        blue_sat_curve = np.clip(image_hsv[:,:,1] * 1.6, 0, 255)
-        blue_sat_curve = np.where(blue_sat_curve < 180, 180, blue_sat_curve)  # Minimum saturation
-        result_hsv[:,:,1] = np.where(
-            mask_normalized > 0.1,
-            blue_sat_curve,
-            image_hsv[:,:,1]
-        )
+        # Moderate saturation boost with lower minimum
+        sat_boost = np.clip(image_hsv[:,:,1] * 1.3, 0, 255)  # Reduced from 1.6
+        min_sat = 140  # Reduced from 180
+        new_sat = np.where(sat_boost < min_sat, min_sat, sat_boost)
         
-        # Brightness mapping for blue vibrancy
-        current_val = result_hsv[:,:,2]
-        # Boost mid-tones for maximum blue impact
-        val_adjust = np.clip((current_val - 100) * 0.4, 0, 80)
-        # Preserve highlights
-        val_adjust = np.where(current_val > 180, 0, val_adjust)
-        result_hsv[:,:,2] = np.where(
-            mask_normalized > 0.1,
-            np.clip(current_val + val_adjust, 0, 220),
-            current_val
+        # Brightness adjustment: boost shadows and mid-tones while preserving highlights
+        val = image_hsv[:,:,2]
+        new_val = np.where(
+            val < 128,
+            val * 1.4,  # Boost shadows more
+            val * 1.2   # Boost mid-tones less
         )
+        new_val = np.clip(new_val, 0, 255)
         
-        # Anti-purple correction
-        purple_mask = (result_hsv[:,:,0] > 130) & (mask_normalized > 0.1)
-        result_hsv[:,:,0] = np.where(
-            purple_mask,
-            np.clip(result_hsv[:,:,0] - 15, 100, 130),  # Shift away from purple
-            result_hsv[:,:,0]
-        )
+        # Combine channels with mask blending
+        result_hsv[:,:,0] = new_hue * mask_normalized + result_hsv[:,:,0] * (1 - mask_normalized)
+        result_hsv[:,:,1] = new_sat * mask_normalized + result_hsv[:,:,1] * (1 - mask_normalized)
+        result_hsv[:,:,2] = new_val * mask_normalized + result_hsv[:,:,2] * (1 - mask_normalized)
         
         return result_hsv
     

@@ -42,6 +42,121 @@ class ColorUtils:
         return rgb.tolist()
     
     @staticmethod
+    def generate_tonal_variations(
+        base_rgb: List[int], 
+        tone_configs: Dict[str, Dict] = None
+    ) -> Dict[str, List[int]]:
+        """
+        Generate tonal variations of a base color using HSV adjustments.
+        
+        Args:
+            base_rgb: Base RGB color [R, G, B] (0-255)
+            tone_configs: Dictionary of tone configurations with saturation and brightness factors
+                         Format: {"tone_name": {"saturation_factor": float, "brightness_factor": float}}
+        
+        Returns:
+            Dictionary mapping tone names to RGB colors
+        """
+        if tone_configs is None:
+            # Default tone configurations
+            tone_configs = {
+                "light": {"saturation_factor": 0.7, "brightness_factor": 1.3},
+                "natural": {"saturation_factor": 1.0, "brightness_factor": 1.0},
+                "vibrant": {"saturation_factor": 1.4, "brightness_factor": 1.1},
+                "deep": {"saturation_factor": 1.2, "brightness_factor": 0.8},
+                "muted": {"saturation_factor": 0.5, "brightness_factor": 0.9}
+            }
+        
+        # Convert base color to HSV
+        base_hsv = ColorUtils.rgb_to_hsv(base_rgb)
+        h, s, v = base_hsv
+        
+        tonal_variations = {}
+        
+        for tone_name, config in tone_configs.items():
+            # Apply saturation and brightness adjustments
+            new_s = int(np.clip(s * config["saturation_factor"], 0, 255))
+            new_v = int(np.clip(v * config["brightness_factor"], 0, 255))
+            
+            # Keep the same hue, adjust saturation and value
+            new_hsv = [h, new_s, new_v]
+            new_rgb = ColorUtils.hsv_to_rgb(new_hsv)
+            
+            tonal_variations[tone_name] = new_rgb
+            
+        return tonal_variations
+    
+    @staticmethod
+    def create_custom_tone(
+        base_rgb: List[int],
+        saturation_factor: float = 1.0,
+        brightness_factor: float = 1.0,
+        intensity: float = 1.0
+    ) -> List[int]:
+        """
+        Create a custom tonal variation with specific parameters.
+        
+        Args:
+            base_rgb: Base RGB color [R, G, B] (0-255)
+            saturation_factor: Saturation adjustment factor (0.0 to 2.0)
+            brightness_factor: Brightness adjustment factor (0.0 to 2.0)
+            intensity: Overall intensity of the effect (0.0 to 1.0)
+        
+        Returns:
+            RGB color with applied toning
+        """
+        # Convert to HSV
+        base_hsv = ColorUtils.rgb_to_hsv(base_rgb)
+        h, s, v = base_hsv
+        
+        # Apply intensity-modulated adjustments
+        sat_adjustment = 1.0 + (saturation_factor - 1.0) * intensity
+        bright_adjustment = 1.0 + (brightness_factor - 1.0) * intensity
+        
+        # Apply adjustments
+        new_s = int(np.clip(s * sat_adjustment, 0, 255))
+        new_v = int(np.clip(v * bright_adjustment, 0, 255))
+        
+        # Convert back to RGB
+        new_hsv = [h, new_s, new_v]
+        return ColorUtils.hsv_to_rgb(new_hsv)
+    
+    @staticmethod
+    def get_color_info(rgb: List[int]) -> Dict[str, any]:
+        """
+        Get comprehensive information about a color.
+        
+        Args:
+            rgb: RGB color [R, G, B] (0-255)
+            
+        Returns:
+            Dictionary with color information
+        """
+        hsv = ColorUtils.rgb_to_hsv(rgb)
+        
+        # Calculate color properties
+        brightness = sum(rgb) / (3 * 255)  # Normalized brightness
+        saturation = hsv[1] / 255  # Normalized saturation
+        
+        # Determine color temperature (rough estimation)
+        r, g, b = rgb
+        if r > g and r > b:
+            temp = "warm"
+        elif b > r and b > g:
+            temp = "cool"
+        else:
+            temp = "neutral"
+        
+        return {
+            "rgb": rgb,
+            "hsv": hsv,
+            "brightness": round(brightness, 2),
+            "saturation": round(saturation, 2),
+            "temperature": temp,
+            "hex": f"#{r:02x}{g:02x}{b:02x}"
+        }
+
+    @staticmethod
     def create_color_gradient(
         start_rgb: List[int], 
         end_rgb: List[int], 
