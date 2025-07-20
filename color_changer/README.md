@@ -138,7 +138,6 @@ resized = ImageUtils.resize_image(image, max_dimension=600)
 
 # Color utilities
 hsv = ColorUtils.rgb_to_hsv([255, 0, 0])  # Convert RGB to HSV
-complementary_colors = ColorUtils.generate_complementary_colors([255, 0, 0])
 
 # Preview runner for batch processing
 runner = PreviewRunner()

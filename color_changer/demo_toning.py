@@ -25,7 +25,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from color_changer import ColorTransformer, COLORS, TONE_TYPES, INTENSITY_LEVELS
+from color_changer import ColorTransformer, COLORS
 from color_changer.utils.color_utils import ColorUtils
 from color_changer.config.color_config import PREVIEW_IMAGES_DIR
 
@@ -74,10 +74,11 @@ def show_color_info(color):
     
     # Tonal variations
     print(f"\n=== Tonal Variations ===")
-    variations = ColorUtils.generate_tonal_variations(rgb, TONE_TYPES)
+    tone_types = ColorUtils.get_available_tones()
+    variations = ColorUtils.generate_tonal_variations(rgb, tone_types)
     
     for tone_name, tone_rgb in variations.items():
-        tone_config = TONE_TYPES[tone_name]
+        tone_config = tone_types[tone_name]
         print(f"{tone_config['name']:8} ({tone_name:7}): RGB{tone_rgb} - {tone_config['description']}")
 
 
@@ -158,7 +159,7 @@ def demonstrate_toning(image_path, color, tone_type=None, intensity="moderate", 
             print(f"Result saved: {output_path}")
             
             # Show tone info
-            tone_info = transformer.get_tone_info(base_rgb, tone_type)
+            tone_info = ColorUtils.get_tone_info(base_rgb, tone_type)
             print(f"\nTone Information:")
             print(f"  Type: {tone_info['tone_name']}")
             print(f"  Description: {tone_info['description']}")
@@ -181,7 +182,8 @@ def demonstrate_toning(image_path, color, tone_type=None, intensity="moderate", 
                 if result is not None:
                     output_path = f"demo_preview_{color}_{tone_name}_{intensity}.jpg"
                     cv2.imwrite(output_path, cv2.cvtColor(result, cv2.COLOR_RGB2BGR))
-                    print(f"  {TONE_TYPES[tone_name]['name']:8}: {output_path}")
+                    tone_config = ColorUtils.get_available_tones()[tone_name]
+                    print(f"  {tone_config['name']:8}: {output_path}")
                 else:
                     print(f"  {tone_name:8}: Failed")
                     
@@ -196,11 +198,13 @@ def list_available_options():
         print(f"{name:8}: RGB{rgb}")
     
     print(f"\n=== Available Tones ===")
-    for tone_key, tone_config in TONE_TYPES.items():
+    tones = ColorUtils.get_available_tones()
+    for tone_key, tone_config in tones.items():
         print(f"{tone_config['name']:8} ({tone_key:7}): {tone_config['description']}")
     
     print(f"\n=== Available Intensities ===")
-    for intensity_key, intensity_value in INTENSITY_LEVELS.items():
+    intensities = ColorUtils.get_available_intensities()
+    for intensity_key, intensity_value in intensities.items():
         print(f"{intensity_key:8}: {intensity_value}")
 
 
@@ -213,10 +217,10 @@ def main():
     parser.add_argument('--color', type=str,
                         help='Color name (e.g., "red") or RGB values (e.g., "[255,0,0]")')
     
-    parser.add_argument('--tone', type=str, choices=list(TONE_TYPES.keys()),
+    parser.add_argument('--tone', type=str, choices=list(ColorUtils.get_available_tones().keys()),
                         help='Specific tone to apply (default: show all tones)')
     
-    parser.add_argument('--intensity', type=str, choices=list(INTENSITY_LEVELS.keys()),
+    parser.add_argument('--intensity', type=str, choices=list(ColorUtils.get_available_intensities().keys()),
                         default='moderate', help='Intensity level (default: moderate)')
     
     parser.add_argument('--mask', type=str,

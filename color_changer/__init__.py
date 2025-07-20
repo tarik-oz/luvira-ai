@@ -14,7 +14,7 @@ __author__ = "Tarik"
 __description__ = "Advanced hair color change utilities with toning functionality for image segmentation tasks."
 
 from .core.color_transformer import ColorTransformer
-from .config.color_config import COLORS, TONE_TYPES, INTENSITY_LEVELS
+from .config.color_config import COLORS
 from .utils.image_utils import ImageUtils
 from .utils.color_utils import ColorUtils
 from .utils.preview_runner import PreviewRunner
@@ -23,8 +23,6 @@ from .utils.visualization import Visualizer
 __all__ = [
     "ColorTransformer",
     "COLORS",
-    "TONE_TYPES", 
-    "INTENSITY_LEVELS",
     "ImageUtils",
     "ColorUtils",
     "PreviewRunner",

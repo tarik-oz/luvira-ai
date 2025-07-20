@@ -86,7 +86,7 @@ class HsvTransformer:
         
         # Apply special color transformations if needed
         if is_grey_target:
-            result_hsv = self._apply_grey_transformations(
+            result_hsv = self.special_color_handler.handle_grey_color(
                 result_hsv, image_hsv, mask_normalized, target_hsv, alpha
             )
         else:
@@ -109,64 +109,3 @@ class HsvTransformer:
                 )
             
         return result_hsv
-    
-    def _apply_grey_transformations(
-        self, 
-        result_hsv: np.ndarray, 
-        image_hsv: np.ndarray, 
-        mask_normalized: np.ndarray, 
-        target_hsv: np.ndarray, 
-        alpha: float
-    ) -> np.ndarray:
-        """
-        Apply transformations specific to grey/silver hair colors.
-        
-        Args:
-            result_hsv: Current result in HSV
-            image_hsv: Original image in HSV
-            mask_normalized: Normalized mask
-            target_hsv: Target color in HSV
-            alpha: Blending factor
-            
-        Returns:
-            np.ndarray: Transformed HSV image for grey color
-        """
-        original_saturation = image_hsv[:,:,1]
-        original_value = image_hsv[:,:,2]
-        
-        hair_pixels = (original_value * mask_normalized)[mask_normalized > 0.1]
-        avg_hair_brightness = np.mean(hair_pixels) if len(hair_pixels) > 0 else 0
-        
-        # Reduce saturation for grey colors
-        sat_reduction = 0.9 if avg_hair_brightness < 50 else 0.95
-        result_hsv[:,:,1] = np.where(mask_normalized > 0.1,
-                                    np.clip(original_saturation * (1 - alpha * sat_reduction), 0, 255),
-                                    original_saturation)
-        
-        # Adjust value/brightness based on target
-        target_value_factor = target_hsv[2] / 255.0
-        if avg_hair_brightness < 50:
-            value_boost = 1.0 + (target_value_factor - 0.1) * alpha * 1.2
-            result_hsv[:,:,2] = np.where(mask_normalized > 0.1,
-                                        np.clip(original_value * value_boost, 0, 255),
-                                        original_value)
-        else:
-            if target_value_factor < 0.3:
-                result_hsv[:,:,2] = np.where(mask_normalized > 0.1,
-                                            np.clip(original_value * (0.3 + target_value_factor * 0.8), 0, 255),
-                                            original_value)
-            elif target_value_factor > 0.7:
-                result_hsv[:,:,2] = np.where(mask_normalized > 0.1,
-                                            np.clip(original_value * (0.7 + target_value_factor * 0.4), 0, 255),
-                                            original_value)
-            else:
-                result_hsv[:,:,2] = np.where(mask_normalized > 0.1,
-                                            np.clip(original_value * (0.5 + target_value_factor * 0.6), 0, 255),
-                                            original_value)
-        
-        # Reduce hue influence for grey
-        result_hsv[:,:,0] = np.where(mask_normalized > 0.1,
-                                    image_hsv[:,:,0] * (1 - alpha * 0.4),
-                                    image_hsv[:,:,0])
-        
-        return result_hsv 

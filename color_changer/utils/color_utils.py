@@ -157,125 +157,74 @@ class ColorUtils:
         }
 
     @staticmethod
-    def create_color_gradient(
-        start_rgb: List[int], 
-        end_rgb: List[int], 
-        steps: int = 10
-    ) -> List[List[int]]:
+    def get_available_tones() -> Dict[str, Dict]:
         """
-        Create a gradient between two colors.
+        Get all available tone types and their configurations.
         
-        Args:
-            start_rgb: Start RGB color [R, G, B] (0-255)
-            end_rgb: End RGB color [R, G, B] (0-255)
-            steps: Number of gradient steps
-            
         Returns:
-            List of RGB colors in the gradient
+            Dictionary of tone configurations
         """
-        # Convert to numpy arrays
-        start = np.array(start_rgb)
-        end = np.array(end_rgb)
-        
-        # Create gradient
-        gradient = []
-        for i in range(steps):
-            # Linear interpolation
-            t = i / (steps - 1) if steps > 1 else 0
-            color = np.round(start * (1 - t) + end * t).astype(int)
-            gradient.append(color.tolist())
-            
-        return gradient
+        from color_changer.config.color_config import TONE_TYPES
+        return TONE_TYPES.copy()
     
     @staticmethod
-    def validate_rgb(rgb: List[int]) -> bool:
+    def get_available_intensities() -> Dict[str, float]:
         """
-        Validate RGB color values.
+        Get all available intensity levels.
         
-        Args:
-            rgb: RGB color [R, G, B]
-            
         Returns:
-            True if valid, False otherwise
+            Dictionary of intensity levels
         """
-        if not isinstance(rgb, list) or len(rgb) != 3:
-            return False
-            
-        return all(isinstance(c, int) and 0 <= c <= 255 for c in rgb)
+        from color_changer.config.color_config import INTENSITY_LEVELS
+        return INTENSITY_LEVELS.copy()
     
     @staticmethod
-    def dominant_colors(image: np.ndarray, k: int = 5, mask: np.ndarray = None) -> List[Tuple[List[int], float]]:
+    def get_tone_info(base_color: List[int], tone_type: str = "natural") -> Dict:
         """
-        Extract dominant colors from an image.
+        Get information about a specific tone of a color.
         
         Args:
-            image: BGR image
-            k: Number of dominant colors to extract
-            mask: Optional mask to limit color extraction to specific areas
+            base_color: Base RGB color [R, G, B] (0-255)
+            tone_type: Type of tone
             
         Returns:
-            List of (RGB color, percentage)
+            Dictionary with tone information
         """
-        # Reshape image for clustering
-        pixels = image.reshape(-1, 3).astype(np.float32)
+        from color_changer.config.color_config import TONE_TYPES
         
-        # Apply mask if provided
-        if mask is not None:
-            flat_mask = mask.flatten() > 0
-            pixels = pixels[flat_mask]
+        if tone_type not in TONE_TYPES:
+            raise ValueError(f"Invalid tone type: {tone_type}")
         
-        # Must have at least k pixels
-        if len(pixels) < k:
-            return []
-            
-        # Apply k-means clustering
-        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
-        _, labels, centers = cv2.kmeans(pixels, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+        tone_config = TONE_TYPES[tone_type]
         
-        # Count occurrences of each cluster
-        counts = np.bincount(labels.flatten())
+        # Generate the toned color
+        toned_color = ColorUtils.create_custom_tone(
+            base_color,
+            saturation_factor=tone_config["saturation_factor"],
+            brightness_factor=tone_config["brightness_factor"],
+            intensity=1.0
+        )
         
-        # Sort by frequency
-        indices = np.argsort(counts)[::-1]
-        total_pixels = len(labels)
+        # Get color information
+        base_info = ColorUtils.get_color_info(base_color)
+        toned_info = ColorUtils.get_color_info(toned_color)
         
-        # Create result list
-        result = []
-        for i in indices:
-            percentage = counts[i] / total_pixels
-            # Convert BGR to RGB
-            center = centers[i].astype(int)[::-1]  # BGR to RGB
-            result.append((center.tolist(), percentage))
-            
-        return result
-    
-    @staticmethod
-    def generate_complementary_colors(rgb: List[int]) -> List[List[int]]:
-        """
-        Generate complementary and related colors for a given RGB color.
-        
-        Args:
-            rgb: RGB color [R, G, B] (0-255)
-            
-        Returns:
-            List of related colors: [complementary, analogous1, analogous2, triadic1, triadic2]
-        """
-        # Convert to HSV for easier color manipulation
-        hsv = ColorUtils.rgb_to_hsv(rgb)
-        h, s, v = hsv
-        
-        # Calculate related colors in HSV
-        complementary_h = (h + 90) % 180  # 180 degrees in OpenCV HSV (H range: 0-179)
-        analogous1_h = (h + 30) % 180     # 60 degrees
-        analogous2_h = (h - 30) % 180     # -60 degrees
-        triadic1_h = (h + 60) % 180       # 120 degrees
-        triadic2_h = (h - 60) % 180       # -120 degrees
-        
-        # Convert back to RGB
-        complementary = ColorUtils.hsv_to_rgb([complementary_h, s, v])
-        analogous1 = ColorUtils.hsv_to_rgb([analogous1_h, s, v])
-        analogous2 = ColorUtils.hsv_to_rgb([analogous2_h, s, v])
-        triadic1 = ColorUtils.hsv_to_rgb([triadic1_h, s, v])
-        triadic2 = ColorUtils.hsv_to_rgb([triadic2_h, s, v])
-        
-        return [complementary, analogous1, analogous2, triadic1, triadic2] 
+        return {
+            "tone_type": tone_type,
+            "tone_name": tone_config["name"],
+            "description": tone_config["description"],
+            "base_color": {
+                "rgb": base_color,
+                "hex": base_info["hex"],
+                "info": base_info
+            },
+            "toned_color": {
+                "rgb": toned_color,
+                "hex": toned_info["hex"],
+                "info": toned_info
+            },
+            "adjustments": {
+                "saturation_factor": tone_config["saturation_factor"],
+                "brightness_factor": tone_config["brightness_factor"]
+            }
+        }
