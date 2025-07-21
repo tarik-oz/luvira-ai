@@ -4,7 +4,7 @@ Main color transformer class that orchestrates the hair color transformation pro
 
 import cv2
 import numpy as np
-from typing import List, Tuple, Dict, Union
+from typing import List, Tuple, Dict
 
 from color_changer.transformers.hsv_transformer import HsvTransformer
 from color_changer.transformers.blender import Blender

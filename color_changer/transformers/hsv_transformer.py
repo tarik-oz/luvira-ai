@@ -3,7 +3,6 @@ HSV transformer for hair color changing operations.
 """
 
 import numpy as np
-from typing import Tuple
 
 from color_changer.transformers.special_color_handler import SpecialColorHandler
 

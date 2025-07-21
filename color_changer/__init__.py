@@ -17,7 +17,6 @@ from .core.color_transformer import ColorTransformer
 from .config.color_config import COLORS
 from .utils.image_utils import ImageUtils
 from .utils.color_utils import ColorUtils
-from .utils.preview_runner import PreviewRunner
 from .utils.visualization import Visualizer
 
 __all__ = [
@@ -25,6 +24,5 @@ __all__ = [
     "COLORS",
     "ImageUtils",
     "ColorUtils",
-    "PreviewRunner",
     "Visualizer"
 ] 

@@ -4,7 +4,7 @@ Image utilities for hair color change operations.
 
 import cv2
 import numpy as np
-from typing import Tuple, Optional, Union
+from typing import Tuple, Optional
 
 
 class ImageUtils:
@@ -13,18 +13,23 @@ class ImageUtils:
     """
     
     @staticmethod
-    def load_image(path: str) -> Optional[np.ndarray]:
+    def load_image(path: str, grayscale: bool = False) -> Optional[np.ndarray]:
         """
         Load image from path.
         
         Args:
             path: Path to image file
+            grayscale: Whether to load as grayscale
             
         Returns:
             Image as numpy array or None if failed
         """
         try:
-            image = cv2.imread(path)
+            if grayscale:
+                image = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+            else:
+                image = cv2.imread(path)
+            
             if image is None:
                 print(f"Failed to load image from {path}")
             return image
@@ -92,53 +97,7 @@ class ImageUtils:
         # Resize image
         resized = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
         return resized
-    
-    @staticmethod
-    def convert_color_space(
-        image: np.ndarray, 
-        source_space: str, 
-        target_space: str
-    ) -> np.ndarray:
-        """
-        Convert image between color spaces.
-        
-        Args:
-            image: Image to convert
-            source_space: Source color space ('RGB', 'BGR', 'HSV', 'Lab', etc.)
-            target_space: Target color space ('RGB', 'BGR', 'HSV', 'Lab', etc.)
-            
-        Returns:
-            Converted image
-        """
-        # Define conversion mappings
-        color_space_map = {
-            'BGR2RGB': cv2.COLOR_BGR2RGB,
-            'RGB2BGR': cv2.COLOR_RGB2BGR,
-            'BGR2HSV': cv2.COLOR_BGR2HSV,
-            'HSV2BGR': cv2.COLOR_HSV2BGR,
-            'RGB2HSV': cv2.COLOR_RGB2HSV,
-            'HSV2RGB': cv2.COLOR_HSV2RGB,
-            'BGR2Lab': cv2.COLOR_BGR2Lab,
-            'Lab2BGR': cv2.COLOR_Lab2BGR,
-            'RGB2Lab': cv2.COLOR_RGB2Lab,
-            'Lab2RGB': cv2.COLOR_Lab2RGB,
-        }
-        
-        # Create conversion code
-        conversion_key = f"{source_space}2{target_space}"
-        if conversion_key in color_space_map:
-            return cv2.cvtColor(image, color_space_map[conversion_key])
-        else:
-            # Try two-step conversion through BGR
-            step1_key = f"{source_space}2BGR"
-            step2_key = f"BGR2{target_space}"
-            
-            if step1_key in color_space_map and step2_key in color_space_map:
-                intermediate = cv2.cvtColor(image, color_space_map[step1_key])
-                return cv2.cvtColor(intermediate, color_space_map[step2_key])
-            else:
-                raise ValueError(f"Unsupported color space conversion: {source_space} to {target_space}")
-    
+
     @staticmethod
     def create_mask_overlay(
         image: np.ndarray, 
@@ -180,4 +139,4 @@ class ImageUtils:
             color_mask[mask_binary], alpha, 0
         )
         
-        return overlay 
+        return overlay

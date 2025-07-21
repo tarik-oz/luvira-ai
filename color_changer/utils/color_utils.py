@@ -4,7 +4,9 @@ Color utilities for hair color change operations.
 
 import cv2
 import numpy as np
-from typing import List, Tuple, Dict
+from typing import List, Dict
+
+from color_changer.config.color_config import TONE_TYPES, INTENSITY_LEVELS
 
 class ColorUtils:
     """
@@ -164,7 +166,6 @@ class ColorUtils:
         Returns:
             Dictionary of tone configurations
         """
-        from color_changer.config.color_config import TONE_TYPES
         return TONE_TYPES.copy()
     
     @staticmethod
@@ -175,7 +176,7 @@ class ColorUtils:
         Returns:
             Dictionary of intensity levels
         """
-        from color_changer.config.color_config import INTENSITY_LEVELS
+        
         return INTENSITY_LEVELS.copy()
     
     @staticmethod
@@ -190,7 +191,6 @@ class ColorUtils:
         Returns:
             Dictionary with tone information
         """
-        from color_changer.config.color_config import TONE_TYPES
         
         if tone_type not in TONE_TYPES:
             raise ValueError(f"Invalid tone type: {tone_type}")

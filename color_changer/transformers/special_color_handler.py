@@ -42,8 +42,8 @@ class SpecialColorHandler:
         new_hue = np.mod(current_hue + hue_diff * mask_normalized, 180)
         
         # Moderate saturation boost with lower minimum
-        sat_boost = np.clip(image_hsv[:,:,1] * 1.3, 0, 255)  # Reduced from 1.6
-        min_sat = 140  # Reduced from 180
+        sat_boost = np.clip(image_hsv[:,:,1] * 1.3, 0, 255)
+        min_sat = 140
         new_sat = np.where(sat_boost < min_sat, min_sat, sat_boost)
         
         # Brightness adjustment: boost shadows and mid-tones while preserving highlights

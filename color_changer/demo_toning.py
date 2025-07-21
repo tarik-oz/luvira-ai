@@ -18,16 +18,19 @@ Usage:
 import os
 import sys
 import argparse
-import cv2
 import numpy as np
 from pathlib import Path
+import matplotlib.pyplot as plt
+import cv2
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from color_changer import ColorTransformer, COLORS
 from color_changer.utils.color_utils import ColorUtils
-from color_changer.config.color_config import PREVIEW_IMAGES_DIR
+from color_changer.utils.image_utils import ImageUtils
+from color_changer.config.color_config import CUSTOM_TONES
+
 
 # For model inference (if needed)
 try:
@@ -89,57 +92,98 @@ def demonstrate_toning(image_path, color, tone_type=None, intensity="moderate", 
     print(f"Base Color: {color}")
     print(f"Tone: {tone_type or 'all tones'}")
     print(f"Intensity: {intensity}")
-    
     # Parse color
     base_rgb = parse_color(color)
     print(f"Base RGB: {base_rgb}")
-    
     # Load image
     if not os.path.exists(image_path):
         print(f"Error: Image not found: {image_path}")
         return
-    
-    image = cv2.imread(image_path)
+    image = ImageUtils.load_image(image_path)
     if image is None:
         print(f"Error: Could not load image: {image_path}")
         return
-    
     print(f"Loaded image: {image.shape}")
-    
     # Load or generate mask
     mask = None
     if mask_path and os.path.exists(mask_path):
-        mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+        mask = ImageUtils.load_image(mask_path, grayscale=True)
         print(f"Using provided mask: {mask_path}")
     else:
-        # Try to find corresponding mask file automatically
         image_dir = os.path.dirname(image_path)
         image_filename = os.path.basename(image_path)
         base_name = os.path.splitext(image_filename)[0]
-        
-        # Try different mask naming patterns
         mask_patterns = [
             os.path.join(image_dir, f"{base_name}_prob_mask.png"),
             os.path.join(image_dir, f"{base_name}_mask.png"),
             os.path.join(image_dir, f"{base_name}.png")
         ]
-        
         mask_found = False
         for mask_pattern in mask_patterns:
             if os.path.exists(mask_pattern):
-                mask = cv2.imread(mask_pattern, cv2.IMREAD_GRAYSCALE)
+                mask = ImageUtils.load_image(mask_pattern, grayscale=True)
                 print(f"Found and using mask: {mask_pattern}")
                 mask_found = True
                 break
-        
         if not mask_found:
             print("Warning: No hair mask found! Using dummy mask (center region).")
             print("For real hair color change, provide a hair segmentation mask with --mask parameter")
             print(f"Expected mask file: {os.path.join(image_dir, f'{base_name}_prob_mask.png')}")
-            # Create a smaller dummy mask for center region
             h, w = image.shape[:2]
             mask = np.zeros((h, w), dtype=np.uint8)
             mask[h//4:3*h//4, w//4:3*w//4] = 255
+    
+    transformer = ColorTransformer()
+    
+    print("\nGenerating grid preview...")
+    original_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) if image.shape[2] == 3 else image
+    try:
+        normal_result = transformer.change_hair_color(image, mask, base_rgb)
+    except Exception as e:
+        print(f"Error applying base color: {e}")
+        normal_result = None
+
+    color_name = None
+    for rgb, name in COLORS:
+        if base_rgb == list(rgb):
+            color_name = name
+            break
+    try:
+        if color_name in CUSTOM_TONES:
+            previews = {}
+            for tone_name, params in CUSTOM_TONES[color_name].items():
+                toned_rgb = ColorUtils.create_custom_tone(base_rgb, params["saturation_factor"], params["brightness_factor"], intensity=1.0)
+                result = transformer.change_hair_color(image, mask, toned_rgb)
+                previews[tone_name] = result
+        else:
+            previews = transformer.generate_tone_previews(image, mask, base_rgb, intensity)
+    except Exception as e:
+        print(f"Error generating tone previews: {e}")
+        previews = {}
+    n_tones = len(previews)
+    fig, axes = plt.subplots(1, 2 + n_tones, figsize=(3 * (2 + n_tones), 3))
+    axes[0].imshow(original_rgb)
+    axes[0].set_title("Original")
+    axes[0].axis("off")
+    if normal_result is not None:
+        axes[1].imshow(normal_result)
+        axes[1].set_title("Selected Color")
+        axes[1].axis("off")
+    else:
+        axes[1].text(0.5, 0.5, "Error", ha='center', va='center')
+        axes[1].set_title("Selected Color")
+        axes[1].axis("off")
+    for idx, (tone_name, result) in enumerate(previews.items()):
+        if result is not None:
+            axes[2 + idx].imshow(result)
+            axes[2 + idx].set_title(tone_name)
+            axes[2 + idx].axis("off")
+        else:
+            axes[2 + idx].text(0.5, 0.5, "Error", ha='center', va='center')
+            axes[2 + idx].set_title(tone_name)
+            axes[2 + idx].axis("off")
+    plt.tight_layout()
+    plt.show()
     
     # Initialize transformer
     transformer = ColorTransformer()
@@ -155,7 +199,7 @@ def demonstrate_toning(image_path, color, tone_type=None, intensity="moderate", 
             
             # Save result
             output_path = f"demo_result_{color}_{tone_type}_{intensity}.jpg"
-            cv2.imwrite(output_path, cv2.cvtColor(result, cv2.COLOR_RGB2BGR))
+            ImageUtils.save_image(result, output_path, convert_to_bgr=True)
             print(f"Result saved: {output_path}")
             
             # Show tone info
@@ -180,8 +224,8 @@ def demonstrate_toning(image_path, color, tone_type=None, intensity="moderate", 
             print(f"Generated {len(previews)} tone previews:")
             for tone_name, result in previews.items():
                 if result is not None:
-                    output_path = f"demo_preview_{color}_{tone_name}_{intensity}.jpg"
-                    cv2.imwrite(output_path, cv2.cvtColor(result, cv2.COLOR_RGB2BGR))
+                    # output_path = f"demo_preview_{color}_{tone_name}_{intensity}.jpg"
+                    # ImageUtils.save_image(result, output_path, convert_to_bgr=True)
                     tone_config = ColorUtils.get_available_tones()[tone_name]
                     print(f"  {tone_config['name']:8}: {output_path}")
                 else:

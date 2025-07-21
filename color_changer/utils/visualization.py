@@ -7,53 +7,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from typing import List, Tuple, Dict, Optional
 
-from color_changer.config.color_config import COLORS
+from color_changer.utils.image_utils import ImageUtils
 
 
 class Visualizer:
     """
     Utilities for visualizing hair color change results.
     """
-    
-    @staticmethod
-    def create_comparison_grid(
-        original_image: np.ndarray, 
-        results: Dict[str, np.ndarray],
-        figsize: Tuple[int, int] = None
-    ) -> None:
-        """
-        Create a comparison grid visualizing the original image and all color variants.
-        
-        Args:
-            original_image: Original BGR image
-            results: Dictionary of color name to result image (RGB format)
-            figsize: Figure size (width, height) or None for auto-sizing
-        """
-        n_results = len(results)
-        
-        if figsize is None:
-            # Calculate reasonable figure size
-            figsize = (3 + 3 * n_results, 3)
-        
-        # Create figure with n+1 columns (original + results)
-        fig, axes = plt.subplots(1, n_results + 1, figsize=figsize)
-        
-        # Convert original from BGR to RGB for display
-        original_rgb = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
-        
-        # Plot original image
-        axes[0].imshow(original_rgb)
-        axes[0].set_title("Original")
-        axes[0].axis("off")
-        
-        # Plot results
-        for idx, (color_name, result_image) in enumerate(results.items()):
-            axes[idx + 1].imshow(result_image)
-            axes[idx + 1].set_title(color_name)
-            axes[idx + 1].axis("off")
-            
-        plt.tight_layout()
-        plt.show()
     
     @staticmethod
     def create_multi_image_comparison(
@@ -134,7 +94,7 @@ class Visualizer:
         for image_file, color_results in preview_results_data:
             # Load original image
             image_path = f"test_images/{image_file}"
-            original_image = cv2.imread(image_path)
+            original_image = ImageUtils.load_image(image_path)
             
             if original_image is None:
                 print(f"Failed to load {image_path}, skipping")
@@ -143,7 +103,7 @@ class Visualizer:
             # Prepare results dict
             results_dict = {}
             for color_name, result_path in color_results:
-                result_image = cv2.imread(result_path)
+                result_image = ImageUtils.load_image(result_path)
                 if result_image is not None:
                     # Convert BGR to RGB for display
                     results_dict[color_name] = cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB)

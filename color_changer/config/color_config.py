@@ -1,3 +1,55 @@
+# Custom tones for each main color
+CUSTOM_TONES = {
+    "Gray": {
+        "light": {"saturation_factor": 0.08, "brightness_factor": 1.5},
+        "natural": {"saturation_factor": 0.08, "brightness_factor": 1.0},
+        "deep": {"saturation_factor": 0.08, "brightness_factor": 0.6},
+        "charcoal": {"saturation_factor": 0.08, "brightness_factor": 0.4},
+        "silver": {"saturation_factor": 0.13, "brightness_factor": 1.8},
+        "ash": {"saturation_factor": 0.06, "brightness_factor": 0.8},
+    },
+    "Black": {
+        "natural": {"saturation_factor": 0.1, "brightness_factor": 0.7},
+        "jet": {"saturation_factor": 0.15, "brightness_factor": 0.4},
+        "soft": {"saturation_factor": 0.08, "brightness_factor": 0.9},
+        "onyx": {"saturation_factor": 0.18, "brightness_factor": 0.25},
+    },
+    "Brown": {
+        "light": {"saturation_factor": 0.8, "brightness_factor": 1.4},
+        "natural": {"saturation_factor": 1.0, "brightness_factor": 1.0},
+        "deep": {"saturation_factor": 1.3, "brightness_factor": 0.6},
+        "chestnut": {"saturation_factor": 1.2, "brightness_factor": 0.8},
+        "golden": {"saturation_factor": 1.4, "brightness_factor": 1.3},
+    },
+    "Red": {
+        "light": {"saturation_factor": 0.9, "brightness_factor": 1.1},
+        "natural": {"saturation_factor": 1.1, "brightness_factor": 1.0},
+        "deep": {"saturation_factor": 1.3, "brightness_factor": 0.6},
+        "cherry": {"saturation_factor": 1.4, "brightness_factor": 0.9},
+        "auburn": {"saturation_factor": 1.2, "brightness_factor": 0.7},
+    },
+    "Yellow": {
+        "light": {"saturation_factor": 0.6, "brightness_factor": 1.2},
+        "natural": {"saturation_factor": 0.8, "brightness_factor": 1.0},
+        "deep": {"saturation_factor": 1.0, "brightness_factor": 0.7},
+        "gold": {"saturation_factor": 1.2, "brightness_factor": 1.1},
+        "pastel": {"saturation_factor": 0.3, "brightness_factor": 1.3},
+    },
+    "Blue": {
+        "light": {"saturation_factor": 0.6, "brightness_factor": 1.2},
+        "natural": {"saturation_factor": 0.9, "brightness_factor": 1.0},
+        "deep": {"saturation_factor": 1.3, "brightness_factor": 0.6},
+        "navy": {"saturation_factor": 1.4, "brightness_factor": 0.4},
+        "pastel": {"saturation_factor": 0.2, "brightness_factor": 1.3},
+    },
+    "Purple": {
+        "light": {"saturation_factor": 0.6, "brightness_factor": 1.2},
+        "natural": {"saturation_factor": 0.9, "brightness_factor": 1.0},
+        "deep": {"saturation_factor": 1.3, "brightness_factor": 0.6},
+        "violet": {"saturation_factor": 1.4, "brightness_factor": 0.9},
+        "pastel": {"saturation_factor": 0.2, "brightness_factor": 1.3},
+    },
+}
 """
 Color configuration for hair color changing operations.
 """

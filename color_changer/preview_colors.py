@@ -9,11 +9,6 @@ It allows selecting specific images and colors to apply, and visualizes the resu
 import os
 import sys
 import argparse
-import matplotlib.pyplot as plt
-import cv2
-import numpy as np
-import torch
-from pathlib import Path
 
 # Import directly from local files
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -25,8 +20,8 @@ from color_changer.config.color_config import (
 )
 
 # Create local imports for runner and visualizer
-from color_changer.utils.preview_runner import PreviewRunner
 from color_changer.utils.visualization import Visualizer
+from color_changer.utils.image_utils import ImageUtils
 
 # Import model predictor for automatic mask generation
 from model.inference.predict import load_model
@@ -251,8 +246,8 @@ def main():
         mask_path = image_to_mask[img_path]
         
         # Load image and mask
-        image = cv2.imread(img_path)
-        mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+        image = ImageUtils.load_image(img_path)
+        mask = ImageUtils.load_image(mask_path, grayscale=True)
         
         if image is None or mask is None:
             print(f"Failed to load {img_name} or its mask, skipping.")
@@ -268,7 +263,7 @@ def main():
                 # Save result
                 base_name = os.path.splitext(img_name)[0]
                 out_path = os.path.join(args.results_dir, f"{base_name}_to_{color_name.lower()}.png")
-                cv2.imwrite(out_path, cv2.cvtColor(result, cv2.COLOR_RGB2BGR))
+                ImageUtils.save_image(result, out_path, convert_to_bgr=True)
                 
                 image_results.append((color_name, out_path))
                 print(f"Successfully applied {color_name} to {img_name}")
