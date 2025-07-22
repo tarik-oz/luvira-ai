@@ -1,55 +1,3 @@
-# Custom tones for each main color
-CUSTOM_TONES = {
-    "Gray": {
-        "light": {"saturation_factor": 0.08, "brightness_factor": 1.5},
-        "natural": {"saturation_factor": 0.08, "brightness_factor": 1.0},
-        "deep": {"saturation_factor": 0.08, "brightness_factor": 0.6},
-        "charcoal": {"saturation_factor": 0.08, "brightness_factor": 0.4},
-        "silver": {"saturation_factor": 0.13, "brightness_factor": 1.8},
-        "ash": {"saturation_factor": 0.06, "brightness_factor": 0.8},
-    },
-    "Black": {
-        "natural": {"saturation_factor": 0.1, "brightness_factor": 0.7},
-        "jet": {"saturation_factor": 0.15, "brightness_factor": 0.4},
-        "soft": {"saturation_factor": 0.08, "brightness_factor": 0.9},
-        "onyx": {"saturation_factor": 0.18, "brightness_factor": 0.25},
-    },
-    "Brown": {
-        "light": {"saturation_factor": 0.8, "brightness_factor": 1.4},
-        "natural": {"saturation_factor": 1.0, "brightness_factor": 1.0},
-        "deep": {"saturation_factor": 1.3, "brightness_factor": 0.6},
-        "chestnut": {"saturation_factor": 1.2, "brightness_factor": 0.8},
-        "golden": {"saturation_factor": 1.4, "brightness_factor": 1.3},
-    },
-    "Red": {
-        "light": {"saturation_factor": 0.9, "brightness_factor": 1.1},
-        "natural": {"saturation_factor": 1.1, "brightness_factor": 1.0},
-        "deep": {"saturation_factor": 1.3, "brightness_factor": 0.6},
-        "cherry": {"saturation_factor": 1.4, "brightness_factor": 0.9},
-        "auburn": {"saturation_factor": 1.2, "brightness_factor": 0.7},
-    },
-    "Yellow": {
-        "light": {"saturation_factor": 0.6, "brightness_factor": 1.2},
-        "natural": {"saturation_factor": 0.8, "brightness_factor": 1.0},
-        "deep": {"saturation_factor": 1.0, "brightness_factor": 0.7},
-        "gold": {"saturation_factor": 1.2, "brightness_factor": 1.1},
-        "pastel": {"saturation_factor": 0.3, "brightness_factor": 1.3},
-    },
-    "Blue": {
-        "light": {"saturation_factor": 0.6, "brightness_factor": 1.2},
-        "natural": {"saturation_factor": 0.9, "brightness_factor": 1.0},
-        "deep": {"saturation_factor": 1.3, "brightness_factor": 0.6},
-        "navy": {"saturation_factor": 1.4, "brightness_factor": 0.4},
-        "pastel": {"saturation_factor": 0.2, "brightness_factor": 1.3},
-    },
-    "Purple": {
-        "light": {"saturation_factor": 0.6, "brightness_factor": 1.2},
-        "natural": {"saturation_factor": 0.9, "brightness_factor": 1.0},
-        "deep": {"saturation_factor": 1.3, "brightness_factor": 0.6},
-        "violet": {"saturation_factor": 1.4, "brightness_factor": 0.9},
-        "pastel": {"saturation_factor": 0.2, "brightness_factor": 1.3},
-    },
-}
 """
 Color configuration for hair color changing operations.
 """
@@ -67,52 +15,76 @@ DEFAULT_MODEL_PATH = PROJECT_ROOT / "model" / "trained_models" / "2025-07-14_02-
 # Predefined colors in RGB format [R, G, B] with names
 COLORS = [
     ([0, 0, 0], "Black"),
-    ([255, 255, 0], "Yellow"),
-    ([220, 20, 60], "Red"),
+    ([250, 240, 190], "Blonde"),
+    ([165, 42, 42], "Copper"),
     ([139, 69, 19], "Brown"),
+    ([220, 20, 60], "Auburn"),
+    ([255, 105, 180], "Pink"),
     ([0, 0, 255], "Blue"),
     ([128, 0, 128], "Purple"),
     ([128, 128, 128], "Gray")
 ]
 
-# Toning configuration - Dramatic differences for visible results
-TONE_TYPES = {
-    "light": {
-        "name": "Light",
-        "saturation_factor": 0.4,  # Much reduced saturation for lighter look
-        "brightness_factor": 1.8,  # Much increased brightness
-        "description": "Lighter, softer version"
+# Color-specific tones - Special variations for each color
+CUSTOM_TONES = {
+    "Black": {
+        "jet": {"saturation_factor": 0.2, "brightness_factor": 0.15, "description": "Pure jet black"},
+        "soft": {"saturation_factor": 0.4, "brightness_factor": 0.6, "description": "Soft, warm black"},
+        "onyx": {"saturation_factor": 0.1, "brightness_factor": 0.1, "description": "Deep, rich onyx black"},
+        "charcoal": {"saturation_factor": 0.3, "brightness_factor": 0.4, "description": "Charcoal gray-black"}
     },
-    "natural": {
-        "name": "Natural", 
-        "saturation_factor": 1.0,  # Original saturation
-        "brightness_factor": 1.0,  # Original brightness
-        "description": "Original color intensity"
+    "Blonde": {
+        "platinum": {"saturation_factor": 0.2, "brightness_factor": 1.4, "description": "Ultra-light platinum blonde"},
+        "golden": {"saturation_factor": 1.3, "brightness_factor": 1.0, "description": "Warm golden blonde"},
+        "ash": {"saturation_factor": 0.4, "brightness_factor": 0.9, "description": "Cool ash blonde"},
+        "honey": {"saturation_factor": 1.0, "brightness_factor": 0.95, "description": "Sweet honey blonde"},
+        "strawberry": {"saturation_factor": 1.2, "brightness_factor": 0.9, "description": "Strawberry blonde with red hints"}
     },
-    "vibrant": {
-        "name": "Vibrant",
-        "saturation_factor": 2.0,  # Much increased saturation
-        "brightness_factor": 1.3,  # Increased brightness
-        "description": "More intense, vivid version"
+    "Brown": {
+        "chestnut": {"saturation_factor": 1.2, "brightness_factor": 0.8, "description": "Rich chestnut brown"},
+        "chocolate": {"saturation_factor": 1.1, "brightness_factor": 0.6, "description": "Dark chocolate brown"},
+        "caramel": {"saturation_factor": 1.3, "brightness_factor": 1.1, "description": "Sweet caramel brown"},
+        "mahogany": {"saturation_factor": 1.4, "brightness_factor": 0.7, "description": "Reddish mahogany brown"},
+        "espresso": {"saturation_factor": 0.9, "brightness_factor": 0.4, "description": "Deep espresso brown"}
     },
-    "deep": {
-        "name": "Deep",
-        "saturation_factor": 1.8,  # Much increased saturation
-        "brightness_factor": 0.5,  # Much reduced brightness for deeper look
-        "description": "Darker, richer version"
+    "Auburn": {
+        "classic": {"saturation_factor": 1.0, "brightness_factor": 0.8, "description": "Classic auburn"},
+        "golden": {"saturation_factor": 1.5, "brightness_factor": 1.2, "description": "Golden auburn"},
+        "dark": {"saturation_factor": 1.2, "brightness_factor": 0.4, "description": "Dark auburn"},
+        "copper": {"saturation_factor": 1.6, "brightness_factor": 1.0, "description": "Copper auburn"}
     },
-    "muted": {
-        "name": "Muted",
-        "saturation_factor": 0.2,  # Very reduced saturation
-        "brightness_factor": 0.7,  # Reduced brightness
-        "description": "Subtle, understated version"
+    "Copper": {
+        "bright": {"saturation_factor": 1.6, "brightness_factor": 1.4, "description": "Bright copper"},
+        "antique": {"saturation_factor": 0.6, "brightness_factor": 0.6, "description": "Antique copper"},
+        "penny": {"saturation_factor": 1.2, "brightness_factor": 0.8, "description": "Penny copper"},
+        "rose": {"saturation_factor": 1.4, "brightness_factor": 1.2, "description": "Rose copper"}
+    },
+    "Gray": {
+        "silver": {"saturation_factor": 0.1, "brightness_factor": 1.6, "description": "Bright silver gray"},
+        "ash": {"saturation_factor": 0.2, "brightness_factor": 0.9, "description": "Cool ash gray"},
+        "charcoal": {"saturation_factor": 0.15, "brightness_factor": 0.4, "description": "Dark charcoal gray"},
+        "pearl": {"saturation_factor": 0.3, "brightness_factor": 1.3, "description": "Lustrous pearl gray"},
+        "steel": {"saturation_factor": 0.25, "brightness_factor": 0.7, "description": "Cool steel gray"}
+    },
+    "Blue": {
+        "navy": {"saturation_factor": 1.9, "brightness_factor": 0.25, "description": "Deep navy blue"},
+        "electric": {"saturation_factor": 2.2, "brightness_factor": 1.6, "description": "Electric bright blue"},
+        "ice": {"saturation_factor": 0.3, "brightness_factor": 1.7, "description": "Ice blue"},
+        "midnight": {"saturation_factor": 1.6, "brightness_factor": 0.15, "description": "Midnight blue"},
+        "sky": {"saturation_factor": 0.6, "brightness_factor": 1.5, "description": "Sky blue"}
+    },
+    "Purple": {
+        "violet": {"saturation_factor": 1.8, "brightness_factor": 0.7, "description": "Rich violet purple"},
+        "lavender": {"saturation_factor": 0.5, "brightness_factor": 1.5, "description": "Soft lavender purple"},
+        "plum": {"saturation_factor": 1.5, "brightness_factor": 0.4, "description": "Deep plum purple"},
+        "amethyst": {"saturation_factor": 1.6, "brightness_factor": 1.0, "description": "Gemstone amethyst purple"},
+        "orchid": {"saturation_factor": 0.8, "brightness_factor": 1.3, "description": "Delicate orchid purple"}
+    },
+    "Pink": {
+        "rose": {"saturation_factor": 0.8, "brightness_factor": 1.2, "description": "Romantic rose pink"},
+        "fuchsia": {"saturation_factor": 1.6, "brightness_factor": 1.0, "description": "Vibrant fuchsia pink"},
+        "blush": {"saturation_factor": 0.4, "brightness_factor": 1.4, "description": "Soft blush pink"},
+        "magenta": {"saturation_factor": 1.5, "brightness_factor": 0.9, "description": "Bold magenta pink"},
+        "coral": {"saturation_factor": 1.1, "brightness_factor": 1.2, "description": "Warm coral pink"}
     }
-}
-
-# Intensity levels for fine-tuning - More dramatic effects
-INTENSITY_LEVELS = {
-    "subtle": 0.5,
-    "moderate": 0.8, 
-    "strong": 1.0,
-    "maximum": 1.2
 }

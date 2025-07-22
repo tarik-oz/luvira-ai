@@ -22,10 +22,10 @@ from color_changer.config.color_config import (
 # Create local imports for runner and visualizer
 from color_changer.utils.visualization import Visualizer
 from color_changer.utils.image_utils import ImageUtils
-
-# Import model predictor for automatic mask generation
-from model.inference.predict import load_model
-from model.inference.predictor import create_predictor
+from color_changer.utils.preview_utils import (
+    generate_hair_masks, find_existing_masks, find_image_files, 
+    validate_image_list, get_valid_images_with_masks
+)
 
 
 def parse_arguments():
@@ -60,99 +60,6 @@ def parse_arguments():
                         help='Device to use for prediction (default: auto)')
     
     return parser.parse_args()
-
-
-def generate_hair_masks(image_paths, model_path, device='auto', results_dir='test_results'):
-    """
-    Generate hair masks for the given images using the segmentation model.
-    
-    Args:
-        image_paths: List of image paths
-        model_path: Path to the trained model
-        device: Device to use for inference
-        results_dir: Directory to save mask results
-        
-    Returns:
-        Dictionary mapping image paths to mask paths
-    """
-    print(f"Loading hair segmentation model from {model_path}...")
-    try:
-        # Load model
-        model = load_model(model_path)
-        
-        # Create predictor
-        predictor = create_predictor(model, device=device)
-        
-        # Generate masks for each image
-        image_to_mask = {}
-        for img_path in image_paths:
-            img_name = os.path.basename(img_path)
-            base_name = os.path.splitext(img_name)[0]
-            
-            print(f"Generating mask for {img_name}...")
-            success = predictor.predict_and_save(img_path, base_name, show_visualization=False)
-            
-            if success:
-                # The predictor saves masks to model/test_results directory
-                model_results_dir = os.path.join('..', 'model', 'test_results')
-                prob_mask_path = os.path.join(model_results_dir, f"{base_name}_prob_mask.png")
-                if os.path.exists(prob_mask_path):
-                    image_to_mask[img_path] = prob_mask_path
-                    print(f"  Using mask from {prob_mask_path}")
-            else:
-                print(f"  Failed to generate mask for {img_name}")
-        
-        return image_to_mask
-        
-    except Exception as e:
-        print(f"Error loading model or generating masks: {e}")
-        return {}
-
-
-def find_existing_masks(image_paths, images_dir):
-    """
-    Find existing masks for the given images.
-    
-    Args:
-        image_paths: List of image paths
-        images_dir: Directory containing images and masks
-        
-    Returns:
-        Dictionary mapping image paths to mask paths
-    """
-    image_to_mask = {}
-    model_results_dir = os.path.join('..', 'model', 'test_results')
-    
-    for img_path in image_paths:
-        img_name = os.path.basename(img_path)
-        base_name = os.path.splitext(img_name)[0]
-        
-        # Try to find mask in model/test_results directory
-        prob_mask_path = os.path.join(model_results_dir, f"{base_name}_prob_mask.png")
-        if os.path.exists(prob_mask_path):
-            image_to_mask[img_path] = prob_mask_path
-            continue
-            
-        # If not found in model/test_results, try other locations
-        mask_patterns = [
-            f"{base_name}_prob_mask.png",
-            f"{base_name}_mask.png",
-            f"{base_name}_segmentation.png"
-        ]
-        
-        found_mask = False
-        for pattern in mask_patterns:
-            mask_path = os.path.join(images_dir, pattern)
-            if os.path.exists(mask_path):
-                image_to_mask[img_path] = mask_path
-                found_mask = True
-                break
-        
-        if not found_mask and img_path not in image_to_mask:
-            print(f"Warning: No mask found for {img_name}")
-    
-    return image_to_mask
-
 
 def main():
     """Main entry point for the preview script."""
@@ -191,38 +98,20 @@ def main():
     # Find image files
     if args.images:
         # Use specified images
-        selected_images = []
-        for img_name in args.images:
-            img_path = os.path.join(args.images_dir, img_name)
-            if os.path.exists(img_path):
-                selected_images.append(img_path)
-            else:
-                print(f"Warning: Image '{img_name}' not found, ignoring.")
+        selected_images = validate_image_list(args.images, args.images_dir)
     else:
         # Find all image files in the directory
-        image_files = [f for f in os.listdir(args.images_dir) 
-                      if f.lower().endswith(('.jpg', '.jpeg', '.png')) and not f.endswith('_mask.png') and not 'mask' in f]
-        selected_images = [os.path.join(args.images_dir, f) for f in image_files]
+        selected_images = find_image_files(args.images_dir)
     
     if not selected_images:
         print(f"No images found in {args.images_dir}")
         sys.exit(1)
     
     # Get masks for the selected images
-    if args.use_existing_masks:
-        # Use existing masks
-        image_to_mask = find_existing_masks(selected_images, args.images_dir)
-    else:
-        # Generate masks using the model
-        image_to_mask = generate_hair_masks(
-            selected_images, 
-            args.model, 
-            device=args.device,
-            results_dir=args.results_dir
-        )
-    
-    # Filter out images without masks
-    valid_images = [img for img in selected_images if img in image_to_mask]
+    valid_images, image_to_mask = get_valid_images_with_masks(
+        selected_images, args.images_dir, args.use_existing_masks, 
+        args.model, args.device
+    )
     if not valid_images:
         print("No valid images with masks found.")
         sys.exit(1)

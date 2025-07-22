@@ -9,7 +9,7 @@ from typing import List, Tuple, Dict
 from color_changer.transformers.hsv_transformer import HsvTransformer
 from color_changer.transformers.blender import Blender
 from color_changer.utils.color_utils import ColorUtils
-from color_changer.config.color_config import TONE_TYPES, INTENSITY_LEVELS
+from color_changer.config.color_config import CUSTOM_TONES, COLORS
 
 
 class ColorTransformer:
@@ -65,13 +65,13 @@ class ColorTransformer:
         result_rgb = np.clip(result * 255, 0, 255).astype(np.uint8)
         return result_rgb  # Return RGB format for web API
     
-    def change_hair_color_with_tone(
+    def apply_color_with_tone(
         self, 
         image: np.ndarray, 
         mask: np.ndarray, 
         base_color: List[int], 
-        tone_type: str = "natural",
-        intensity: str = "moderate"
+        color_name: str,
+        tone_name: str
     ) -> np.ndarray:
         """
         Apply hair color change with specific toning.
@@ -80,28 +80,27 @@ class ColorTransformer:
             image: Original image (BGR format, np.ndarray)
             mask: Grayscale mask (0-255, np.ndarray)
             base_color: Base hair color [R, G, B] (0-255)
-            tone_type: Type of tone to apply ("light", "natural", "vibrant", "deep", "muted")
-            intensity: Intensity level ("subtle", "moderate", "strong", "maximum")
+            color_name: Name of the color (e.g., "Blonde", "Brown", etc.)
+            tone_name: Name of the tone (e.g., "golden", "ash", etc.)
             
         Returns:
             Recolored image (RGB format, np.ndarray)
         """
         # Get tone configuration
-        if tone_type not in TONE_TYPES:
-            raise ValueError(f"Invalid tone type: {tone_type}. Available: {list(TONE_TYPES.keys())}")
+        if color_name not in CUSTOM_TONES:
+            raise ValueError(f"Invalid color name: {color_name}. Available: {list(CUSTOM_TONES.keys())}")
+            
+        if tone_name not in CUSTOM_TONES[color_name]:
+            raise ValueError(f"Invalid tone name: {tone_name}. Available for {color_name}: {list(CUSTOM_TONES[color_name].keys())}")
         
-        if intensity not in INTENSITY_LEVELS:
-            raise ValueError(f"Invalid intensity: {intensity}. Available: {list(INTENSITY_LEVELS.keys())}")
-        
-        tone_config = TONE_TYPES[tone_type]
-        intensity_factor = INTENSITY_LEVELS[intensity]
+        tone_config = CUSTOM_TONES[color_name][tone_name]
         
         # Generate toned color
         toned_color = ColorUtils.create_custom_tone(
             base_color,
             saturation_factor=tone_config["saturation_factor"],
             brightness_factor=tone_config["brightness_factor"],
-            intensity=intensity_factor
+            intensity=1.0
         )
         
         # Apply the toned color
@@ -112,33 +111,138 @@ class ColorTransformer:
         image: np.ndarray, 
         mask: np.ndarray, 
         base_color: List[int],
-        intensity: str = "moderate"
+        color_name: str
     ) -> Dict[str, np.ndarray]:
         """
-        Generate previews for all available tones of a base color.
+        Generate previews for all available tones of a specific color.
         
         Args:
             image: Original image (BGR format, np.ndarray)
             mask: Grayscale mask (0-255, np.ndarray)
             base_color: Base hair color [R, G, B] (0-255)
-            intensity: Intensity level ("subtle", "moderate", "strong", "maximum")
+            color_name: Name of the color (e.g., "Blonde", "Brown", etc.)
             
         Returns:
             Dictionary mapping tone names to result images
         """
         previews = {}
         
-        for tone_type in TONE_TYPES.keys():
+        if color_name not in CUSTOM_TONES:
+            print(f"No tones available for color: {color_name}")
+            return previews
+        
+        for tone_name in CUSTOM_TONES[color_name].keys():
             try:
-                result = self.change_hair_color_with_tone(
-                    image, mask, base_color, tone_type, intensity
+                result = self.apply_color_with_tone(
+                    image, mask, base_color, color_name, tone_name
                 )
-                previews[tone_type] = result
+                previews[tone_name] = result
             except Exception as e:
-                print(f"Error generating preview for tone '{tone_type}': {e}")
-                previews[tone_type] = None
+                print(f"Error generating preview for tone '{tone_name}': {e}")
+                previews[tone_name] = None
                 
         return previews
+    
+    def change_hair_color_with_all_tones(
+        self, 
+        image: np.ndarray, 
+        mask: np.ndarray, 
+        color_name: str
+    ) -> Dict[str, np.ndarray]:
+        """
+        
+        
+        Args:
+            image: Original image (BGR format, np.ndarray)
+            mask: Grayscale mask (0-255, np.ndarray)
+            color_name: Name of the color from COLORS (e.g., "Blonde", "Brown", etc.)
+            
+        Returns:
+            Dictionary with base result and all tones:
+            {
+                'base_result': np.ndarray,
+                'tones': {
+                    'golden': np.ndarray,
+                    'ash': np.ndarray,
+                    ...
+                }
+            }
+        """
+        # Get base color from COLORS config
+        base_color = None
+        for color_rgb, name in COLORS:
+            if name == color_name:
+                base_color = color_rgb
+                break
+        
+        if base_color is None:
+            raise ValueError(f"Invalid color name: {color_name}. Available: {[name for _, name in COLORS]}")
+        
+        # Check if color has tone configurations
+        if color_name not in CUSTOM_TONES:
+            # If no tones defined, just return base result
+            base_result = self.change_hair_color(image, mask, base_color)
+            return {
+                'base_result': base_result,
+                'tones': {}
+            }
+        
+        # Preprocess inputs once (performance optimization)
+        image_rgb, image_float, mask_normalized, mask_3ch, target_rgb, target_hsv = \
+            self._preprocess_inputs(image, mask, base_color)
+        
+        # Check if hair is detected
+        if np.sum(mask_normalized > 0.1) == 0:
+            return {
+                'base_result': image_rgb,  # No hair detected
+                'tones': {}
+            }
+        
+        # Analyze hair characteristics once
+        alpha, saturation_factor, brightness_adjustment = \
+            self._analyze_hair_characteristics(image_float, mask_normalized, target_rgb)
+        
+        # Convert to HSV once
+        image_hsv = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2HSV).astype(np.float32)
+        
+        results = {}
+        
+        # Generate base result
+        result_hsv = self.hsv_transformer.apply_hsv_transformations(
+            image_hsv, mask_normalized, target_hsv, alpha, saturation_factor, brightness_adjustment
+        )
+        result_rgb = cv2.cvtColor(result_hsv.astype(np.uint8), cv2.COLOR_HSV2RGB).astype(np.float32) / 255.0
+        base_result = self.blender.apply_natural_blending(image_float, result_rgb, mask_3ch, alpha)
+        results['base_result'] = np.clip(base_result * 255, 0, 255).astype(np.uint8)
+        
+        # Generate all tones efficiently
+        results['tones'] = {}
+        for tone_name, tone_config in CUSTOM_TONES[color_name].items():
+            try:
+                # Generate toned color
+                toned_color = ColorUtils.create_custom_tone(
+                    base_color,
+                    saturation_factor=tone_config["saturation_factor"],
+                    brightness_factor=tone_config["brightness_factor"],
+                    intensity=1.0
+                )
+                
+                # Convert toned color to HSV
+                toned_hsv = cv2.cvtColor(np.uint8([[toned_color]]), cv2.COLOR_RGB2HSV)[0][0].astype(np.float32)
+                
+                # Apply HSV transformations for this tone
+                tone_result_hsv = self.hsv_transformer.apply_hsv_transformations(
+                    image_hsv, mask_normalized, toned_hsv, alpha, saturation_factor, brightness_adjustment
+                )
+                tone_result_rgb = cv2.cvtColor(tone_result_hsv.astype(np.uint8), cv2.COLOR_HSV2RGB).astype(np.float32) / 255.0
+                tone_result = self.blender.apply_natural_blending(image_float, tone_result_rgb, mask_3ch, alpha)
+                results['tones'][tone_name] = np.clip(tone_result * 255, 0, 255).astype(np.uint8)
+                
+            except Exception as e:
+                print(f"Error generating tone '{tone_name}': {e}")
+                results['tones'][tone_name] = None
+        
+        return results
     
     def _preprocess_inputs(self, image: np.ndarray, mask: np.ndarray, target_color: List[int]) -> Tuple:
         """

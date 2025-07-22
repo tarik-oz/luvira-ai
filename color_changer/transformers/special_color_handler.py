@@ -38,22 +38,25 @@ class SpecialColorHandler:
         hue_diff = np.where(hue_diff > 90, hue_diff - 180, hue_diff)
         hue_diff = np.where(hue_diff < -90, hue_diff + 180, hue_diff)
         
-        # Apply smooth hue transition
-        new_hue = np.mod(current_hue + hue_diff * mask_normalized, 180)
+        # Apply strong hue transition for blue
+        new_hue = np.mod(current_hue + hue_diff * 0.9, 180)
         
-        # Moderate saturation boost with lower minimum
-        sat_boost = np.clip(image_hsv[:,:,1] * 1.3, 0, 255)
-        min_sat = 140
+        # High saturation boost for vibrant blue
+        sat_boost = np.clip(image_hsv[:,:,1] * 1.5, 0, 255)
+        min_sat = 180
         new_sat = np.where(sat_boost < min_sat, min_sat, sat_boost)
         
-        # Brightness adjustment: boost shadows and mid-tones while preserving highlights
+        # Brightness adjustment for blue depth
         val = image_hsv[:,:,2]
         new_val = np.where(
-            val < 128,
-            val * 1.4,  # Boost shadows more
-            val * 1.2   # Boost mid-tones less
+            val < 100,
+            val * 1.3,  # Boost shadows more
+            np.where(val > 180,
+                    val * 0.9,  # Reduce highlights slightly
+                    val * 1.1   # Boost mid-tones
+            )
         )
-        new_val = np.clip(new_val, 0, 255)
+        new_val = np.clip(new_val, 20, 255)
         
         # Combine channels with mask blending
         result_hsv[:,:,0] = new_hue * mask_normalized + result_hsv[:,:,0] * (1 - mask_normalized)
@@ -188,5 +191,131 @@ class SpecialColorHandler:
         result_hsv[:,:,0] = np.where(mask_normalized > 0.1,
                                     image_hsv[:,:,0] * (1 - alpha * 0.4),
                                     image_hsv[:,:,0])
+        
+        return result_hsv
+    
+    def handle_auburn_color(
+        self,
+        result_hsv: np.ndarray,
+        image_hsv: np.ndarray,
+        mask_normalized: np.ndarray
+    ) -> np.ndarray:
+        """
+        Apply specialized transformation for auburn hair.
+        Auburn is a reddish-brown color that needs careful hue handling.
+        
+        Args:
+            result_hsv: Current result HSV image
+            image_hsv: Original HSV image
+            mask_normalized: Normalized mask
+            
+        Returns:
+            np.ndarray: Transformed HSV image for auburn hair
+        """
+        # Auburn target hue is around 15° (reddish-brown)
+        auburn_hue = 15.0
+        
+        # Get current hue and apply transformation
+        current_hue = image_hsv[:,:,0]
+        
+        # Calculate hue difference, handling wraparound
+        hue_diff = auburn_hue - current_hue
+        hue_diff = np.where(hue_diff > 90, hue_diff - 180, hue_diff)
+        hue_diff = np.where(hue_diff < -90, hue_diff + 180, hue_diff)
+        
+        # Apply strong hue shift toward auburn
+        result_hsv[:,:,0] = np.where(
+            mask_normalized > 0.1,
+            np.mod(current_hue + hue_diff * 0.85, 180),
+            current_hue
+        )
+        
+        # Boost saturation for rich auburn color
+        current_sat = image_hsv[:,:,1]
+        auburn_sat = np.clip(current_sat * 1.4, 100, 255)  # Minimum saturation of 100
+        result_hsv[:,:,1] = np.where(
+            mask_normalized > 0.1,
+            auburn_sat,
+            current_sat
+        )
+        
+        # Adjust brightness for auburn warmth
+        current_val = image_hsv[:,:,2]
+        val_adjust = np.where(
+            current_val < 80,
+            current_val * 1.3,  # Boost dark areas
+            np.where(current_val > 180,
+                    current_val * 0.85,  # Tone down highlights
+                    current_val * 1.1   # Slight boost for mid-tones
+            )
+        )
+        result_hsv[:,:,2] = np.where(
+            mask_normalized > 0.1,
+            np.clip(val_adjust, 30, 220),
+            current_val
+        )
+        
+        return result_hsv
+    
+    def handle_copper_color(
+        self,
+        result_hsv: np.ndarray,
+        image_hsv: np.ndarray,
+        mask_normalized: np.ndarray
+    ) -> np.ndarray:
+        """
+        Apply specialized transformation for copper hair.
+        Copper is a bright orange-red color.
+        
+        Args:
+            result_hsv: Current result HSV image
+            image_hsv: Original HSV image
+            mask_normalized: Normalized mask
+            
+        Returns:
+            np.ndarray: Transformed HSV image for copper hair
+        """
+        # Copper target hue is around 25° (orange-red)
+        copper_hue = 25.0
+        
+        # Get current hue and apply transformation
+        current_hue = image_hsv[:,:,0]
+        
+        # Calculate hue difference, handling wraparound
+        hue_diff = copper_hue - current_hue
+        hue_diff = np.where(hue_diff > 90, hue_diff - 180, hue_diff)
+        hue_diff = np.where(hue_diff < -90, hue_diff + 180, hue_diff)
+        
+        # Apply strong hue shift toward copper
+        result_hsv[:,:,0] = np.where(
+            mask_normalized > 0.1,
+            np.mod(current_hue + hue_diff * 0.9, 180),
+            current_hue
+        )
+        
+        # High saturation for vibrant copper
+        current_sat = image_hsv[:,:,1]
+        copper_sat = np.clip(current_sat * 1.6, 150, 255)  # Minimum saturation of 150
+        result_hsv[:,:,1] = np.where(
+            mask_normalized > 0.1,
+            copper_sat,
+            current_sat
+        )
+        
+        # Bright copper adjustment
+        current_val = image_hsv[:,:,2]
+        val_adjust = np.where(
+            current_val < 100,
+            current_val * 1.4,  # Boost shadows significantly
+            np.where(current_val > 200,
+                    current_val * 0.9,  # Slight reduction for highlights
+                    current_val * 1.2   # Boost mid-tones
+            )
+        )
+        result_hsv[:,:,2] = np.where(
+            mask_normalized > 0.1,
+            np.clip(val_adjust, 50, 240),
+            current_val
+        )
         
         return result_hsv 

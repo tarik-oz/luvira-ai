@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 from typing import List, Dict
 
-from color_changer.config.color_config import TONE_TYPES, INTENSITY_LEVELS
+from color_changer.config.color_config import CUSTOM_TONES
 
 class ColorUtils:
     """
@@ -46,28 +46,23 @@ class ColorUtils:
     @staticmethod
     def generate_tonal_variations(
         base_rgb: List[int], 
-        tone_configs: Dict[str, Dict] = None
+        color_name: str = None
     ) -> Dict[str, List[int]]:
         """
-        Generate tonal variations of a base color using HSV adjustments.
+        Generate tonal variations of a base color using color-specific tones.
         
         Args:
             base_rgb: Base RGB color [R, G, B] (0-255)
-            tone_configs: Dictionary of tone configurations with saturation and brightness factors
-                         Format: {"tone_name": {"saturation_factor": float, "brightness_factor": float}}
+            color_name: Name of the color to get specific tones for
         
         Returns:
             Dictionary mapping tone names to RGB colors
         """
-        if tone_configs is None:
-            # Default tone configurations
-            tone_configs = {
-                "light": {"saturation_factor": 0.7, "brightness_factor": 1.3},
-                "natural": {"saturation_factor": 1.0, "brightness_factor": 1.0},
-                "vibrant": {"saturation_factor": 1.4, "brightness_factor": 1.1},
-                "deep": {"saturation_factor": 1.2, "brightness_factor": 0.8},
-                "muted": {"saturation_factor": 0.5, "brightness_factor": 0.9}
-            }
+        if color_name is None or color_name not in CUSTOM_TONES:
+            # Return empty dict if no color specified or invalid color
+            return {}
+            
+        tone_configs = CUSTOM_TONES[color_name]
         
         # Convert base color to HSV
         base_hsv = ColorUtils.rgb_to_hsv(base_rgb)
@@ -166,36 +161,29 @@ class ColorUtils:
         Returns:
             Dictionary of tone configurations
         """
-        return TONE_TYPES.copy()
+        return CUSTOM_TONES.copy()
     
     @staticmethod
-    def get_available_intensities() -> Dict[str, float]:
-        """
-        Get all available intensity levels.
-        
-        Returns:
-            Dictionary of intensity levels
-        """
-        
-        return INTENSITY_LEVELS.copy()
-    
-    @staticmethod
-    def get_tone_info(base_color: List[int], tone_type: str = "natural") -> Dict:
+    def get_tone_info(base_color: List[int], color_name: str, tone_name: str) -> Dict:
         """
         Get information about a specific tone of a color.
         
         Args:
             base_color: Base RGB color [R, G, B] (0-255)
-            tone_type: Type of tone
+            color_name: Name of the base color
+            tone_name: Name of the tone
             
         Returns:
             Dictionary with tone information
         """
         
-        if tone_type not in TONE_TYPES:
-            raise ValueError(f"Invalid tone type: {tone_type}")
+        if color_name not in CUSTOM_TONES:
+            raise ValueError(f"Invalid color name: {color_name}. Available: {list(CUSTOM_TONES.keys())}")
+            
+        if tone_name not in CUSTOM_TONES[color_name]:
+            raise ValueError(f"Invalid tone name: {tone_name}. Available for {color_name}: {list(CUSTOM_TONES[color_name].keys())}")
         
-        tone_config = TONE_TYPES[tone_type]
+        tone_config = CUSTOM_TONES[color_name][tone_name]
         
         # Generate the toned color
         toned_color = ColorUtils.create_custom_tone(
@@ -210,8 +198,8 @@ class ColorUtils:
         toned_info = ColorUtils.get_color_info(toned_color)
         
         return {
-            "tone_type": tone_type,
-            "tone_name": tone_config["name"],
+            "color_name": color_name,
+            "tone_name": tone_name,
             "description": tone_config["description"],
             "base_color": {
                 "rgb": base_color,

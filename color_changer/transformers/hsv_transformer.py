@@ -93,9 +93,11 @@ class HsvTransformer:
             hue = target_hsv[0]
             sat = target_hsv[1]
             
-            # Identify blue and purple targets with precise hue ranges
+            # Identify blue, purple, auburn, and copper targets with precise hue ranges
             is_blue = (110 <= hue <= 125) and (sat > 150)
             is_purple = (145 <= hue <= 160) and (sat > 150)
+            is_auburn = (10 <= hue <= 20) and (sat > 100)  # Reddish-brown range
+            is_copper = (20 <= hue <= 30) and (sat > 120)  # Orange-red range
             
             # ===== SPECIALIZED COLOR TRANSFORMATIONS =====
             if is_blue:
@@ -104,6 +106,14 @@ class HsvTransformer:
                 )
             elif is_purple:
                 result_hsv = self.special_color_handler.handle_purple_color(
+                    result_hsv, image_hsv, mask_normalized
+                )
+            elif is_auburn:
+                result_hsv = self.special_color_handler.handle_auburn_color(
+                    result_hsv, image_hsv, mask_normalized
+                )
+            elif is_copper:
+                result_hsv = self.special_color_handler.handle_copper_color(
                     result_hsv, image_hsv, mask_normalized
                 )
             
