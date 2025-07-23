@@ -4,7 +4,6 @@ Contains common functionality for mask generation and image processing.
 """
 
 import os
-import sys
 
 # Import model predictor for automatic mask generation
 try:
@@ -13,6 +12,106 @@ try:
     MODEL_AVAILABLE = True
 except ImportError:
     MODEL_AVAILABLE = False
+
+from color_changer.utils.color_utils import ColorUtils
+from color_changer.core.color_transformer import ColorTransformer
+from color_changer.utils.image_utils import ImageUtils
+
+def handle_list_commands(args):
+    """
+    Handle --list-colors and --list-tones commands for preview scripts.
+    
+    Args:
+        args: Parsed command line arguments
+        
+    Returns:
+        bool: True if a list command was handled (script should exit), False otherwise
+    """
+    if hasattr(args, 'list_colors') and args.list_colors:
+        ColorUtils.list_colors()
+        return True
+        
+    if hasattr(args, 'list_tones') and args.list_tones:
+        ColorUtils.list_tones_for_color(args.list_tones)
+        return True
+        
+    return False
+
+
+def select_colors(args):
+    """
+    Select and validate colors from command line arguments.
+    
+    Args:
+        args: Parsed command line arguments
+        
+    Returns:
+        List of tuples: [(rgb, name), ...] selected colors
+    """
+    all_colors = ColorUtils.get_available_colors()
+    
+    if hasattr(args, 'colors') and args.colors:
+        selected_colors = []
+        for color_name in args.colors:
+            rgb, name = ColorUtils.find_color_by_name(color_name)
+            if name:
+                selected_colors.append((rgb, name))
+            else:
+                print(f"Warning: Color '{color_name}' not found, ignoring.")
+        
+        if not selected_colors:
+            print("No valid colors specified, using all colors.")
+            return all_colors
+        return selected_colors
+    else:
+        return all_colors
+
+
+def validate_single_color(color_name):
+    """
+    Validate and return a single color.
+    
+    Args:
+        color_name: Name of the color to validate
+        
+    Returns:
+        Tuple: (rgb, name) or (None, None) if invalid
+    """
+    return ColorUtils.find_color_by_name(color_name)
+
+
+def select_tones_for_color(color_name, requested_tones=None):
+    """
+    Select tones for a specific color.
+    
+    Args:
+        color_name: Name of the color
+        requested_tones: List of requested tone names, or None for all
+        
+    Returns:
+        List of tone names
+    """
+    from color_changer.config.color_config import CUSTOM_TONES
+    
+    if color_name not in CUSTOM_TONES:
+        return []
+    
+    available_tones = list(CUSTOM_TONES[color_name].keys())
+    
+    if requested_tones:
+        selected_tones = []
+        for tone_name in requested_tones:
+            if tone_name in available_tones:
+                selected_tones.append(tone_name)
+            else:
+                print(f"Warning: Tone '{tone_name}' not available for {color_name}, ignoring.")
+        
+        if not selected_tones:
+            print(f"No valid tones specified, using all available tones for {color_name}.")
+            return available_tones
+        return selected_tones
+    else:
+        return available_tones
 
 
 def generate_hair_masks(image_paths, model_path, device='auto'):
@@ -182,3 +281,130 @@ def get_valid_images_with_masks(selected_images, images_dir, use_existing_masks,
     valid_images = [img for img in selected_images if img in image_to_mask]
     
     return valid_images, image_to_mask
+
+def process_images_with_colors(valid_images, image_to_mask, selected_colors, results_dir):
+    """
+    Process images by applying multiple colors.
+    
+    Args:
+        valid_images: List of valid image paths
+        image_to_mask: Dictionary mapping image paths to mask paths
+        selected_colors: List of (rgb, name) tuples
+        results_dir: Directory to save results
+        
+    Returns:
+        List of results for visualization
+    """
+    # Create color transformer
+    transformer = ColorTransformer()
+    
+    # Process each image
+    results = []
+    for img_path in valid_images:
+        img_name = os.path.basename(img_path)
+        mask_path = image_to_mask[img_path]
+        
+        # Load image and mask
+        image = ImageUtils.load_image(img_path)
+        mask = ImageUtils.load_image(mask_path, grayscale=True)
+        
+        if image is None or mask is None:
+            print(f"Failed to load {img_name} or its mask, skipping.")
+            continue
+        
+        # Apply each color
+        image_results = []
+        for rgb_color, color_name in selected_colors:
+            try:
+                # Apply color transformation using color name
+                result = transformer.change_hair_color(image, mask, color_name)
+                
+                # Save result
+                base_name = os.path.splitext(img_name)[0]
+                out_path = os.path.join(results_dir, f"{base_name}_{color_name.lower()}.png")
+                ImageUtils.save_image(result, out_path, convert_to_bgr=True)
+                
+                image_results.append((color_name, out_path))
+                print(f"Successfully applied {color_name} to {img_name}")
+                
+            except Exception as e:
+                print(f"Failed to apply {color_name} to {img_name}: {str(e)}")
+        
+        if image_results:
+            results.append((img_name, image_results))
+    
+    return results
+
+
+def process_images_with_tones(valid_images, image_to_mask, base_color_name, selected_tones, results_dir):
+    """
+    Process images by applying base color and its tones.
+    
+    Args:
+        valid_images: List of valid image paths
+        image_to_mask: Dictionary mapping image paths to mask paths
+        base_color_name: Name of base color
+        selected_tones: List of tone names
+        results_dir: Directory to save results
+        
+    Returns:
+        List of results for visualization
+    """
+    from color_changer.core.color_transformer import ColorTransformer
+    from color_changer.utils.image_utils import ImageUtils
+    
+    # Create color transformer
+    transformer = ColorTransformer()
+    
+    # Process each image
+    results = []
+    for img_path in valid_images:
+        img_name = os.path.basename(img_path)
+        mask_path = image_to_mask[img_path]
+        
+        # Load image and mask
+        image = ImageUtils.load_image(img_path)
+        mask = ImageUtils.load_image(mask_path, grayscale=True)
+        
+        if image is None or mask is None:
+            print(f"Failed to load {img_name} or its mask, skipping.")
+            continue
+        
+        # Apply each tone
+        image_results = []
+        base_name = os.path.splitext(img_name)[0]
+        
+        # Always include base color for comparison
+        try:
+            # Apply base color transformation using color name
+            base_result = transformer.change_hair_color(image, mask, base_color_name)
+            
+            out_path = os.path.join(results_dir, f"{base_name}_{base_color_name.lower()}_base.png")
+            ImageUtils.save_image(base_result, out_path, convert_to_bgr=True)
+            image_results.append((f"{base_color_name} (base)", out_path))
+            print(f"Successfully applied base {base_color_name} to {img_name}")
+        except Exception as e:
+            print(f"Failed to apply base {base_color_name} to {img_name}: {str(e)}")
+        
+        # Apply tones
+        for tone_name in selected_tones:
+            try:
+                # Apply tone transformation
+                result = transformer.apply_color_with_tone(
+                    image, mask, base_color_name, tone_name
+                )
+                
+                # Save result
+                out_path = os.path.join(results_dir, f"{base_name}_{base_color_name.lower()}_{tone_name}.png")
+                ImageUtils.save_image(result, out_path, convert_to_bgr=True)
+                
+                image_results.append((f"{base_color_name} ({tone_name})", out_path))
+                print(f"Successfully applied {base_color_name} {tone_name} tone to {img_name}")
+                
+            except Exception as e:
+                print(f"Failed to apply {base_color_name} {tone_name} tone to {img_name}: {str(e)}")
+        
+        if image_results:
+            results.append((img_name, image_results))
+    
+    return results

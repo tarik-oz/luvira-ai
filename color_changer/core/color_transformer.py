@@ -22,7 +22,7 @@ class ColorTransformer:
         self.hsv_transformer = HsvTransformer()
         self.blender = Blender()
     
-    def change_hair_color(self, image: np.ndarray, mask: np.ndarray, target_color: List[int]) -> np.ndarray:
+    def change_hair_color(self, image: np.ndarray, mask: np.ndarray, color_input) -> np.ndarray:
         """
         Natural hair recoloring that preserves original texture and lighting.
         Focuses on subtle, realistic color changes.
@@ -30,14 +30,20 @@ class ColorTransformer:
         Args:
             image: Original image (BGR format, np.ndarray)
             mask: Grayscale mask (0-255, np.ndarray) 
-            target_color: Target hair color [R, G, B] (0-255)
+            color_input: Color name (str) or RGB values (List[int])
         
         Returns:
             Recolored image (RGB format, np.ndarray)
         """
+        # Convert color input to RGB
+        if isinstance(color_input, str):
+            target_rgb = self._get_rgb_from_color_name(color_input)
+        else:
+            target_rgb = color_input  # Already RGB list
+        
         # Preprocess inputs
-        image_rgb, image_float, mask_normalized, mask_3ch, target_rgb, target_hsv = \
-            self._preprocess_inputs(image, mask, target_color)
+        image_rgb, image_float, mask_normalized, mask_3ch, target_rgb_norm, target_hsv = \
+            self._preprocess_inputs(image, mask, target_rgb)
         
         # Check if hair is detected
         if np.sum(mask_normalized > 0.1) == 0:
@@ -45,7 +51,7 @@ class ColorTransformer:
         
         # Analyze hair characteristics
         alpha, saturation_factor, brightness_adjustment = \
-            self._analyze_hair_characteristics(image_float, mask_normalized, target_rgb)
+            self._analyze_hair_characteristics(image_float, mask_normalized, target_rgb_norm)
         
         # Convert to HSV for better color control
         image_hsv = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2HSV).astype(np.float32)
@@ -69,7 +75,6 @@ class ColorTransformer:
         self, 
         image: np.ndarray, 
         mask: np.ndarray, 
-        base_color: List[int], 
         color_name: str,
         tone_name: str
     ) -> np.ndarray:
@@ -79,13 +84,15 @@ class ColorTransformer:
         Args:
             image: Original image (BGR format, np.ndarray)
             mask: Grayscale mask (0-255, np.ndarray)
-            base_color: Base hair color [R, G, B] (0-255)
             color_name: Name of the color (e.g., "Blonde", "Brown", etc.)
             tone_name: Name of the tone (e.g., "golden", "ash", etc.)
             
         Returns:
             Recolored image (RGB format, np.ndarray)
         """
+        # Get base color RGB from config
+        base_color_rgb = self._get_rgb_from_color_name(color_name)
+        
         # Get tone configuration
         if color_name not in CUSTOM_TONES:
             raise ValueError(f"Invalid color name: {color_name}. Available: {list(CUSTOM_TONES.keys())}")
@@ -97,51 +104,14 @@ class ColorTransformer:
         
         # Generate toned color
         toned_color = ColorUtils.create_custom_tone(
-            base_color,
+            base_color_rgb,
             saturation_factor=tone_config["saturation_factor"],
             brightness_factor=tone_config["brightness_factor"],
             intensity=1.0
         )
         
-        # Apply the toned color
+        # Apply the toned color (now passing RGB values instead of color name)
         return self.change_hair_color(image, mask, toned_color)
-    
-    def generate_tone_previews(
-        self, 
-        image: np.ndarray, 
-        mask: np.ndarray, 
-        base_color: List[int],
-        color_name: str
-    ) -> Dict[str, np.ndarray]:
-        """
-        Generate previews for all available tones of a specific color.
-        
-        Args:
-            image: Original image (BGR format, np.ndarray)
-            mask: Grayscale mask (0-255, np.ndarray)
-            base_color: Base hair color [R, G, B] (0-255)
-            color_name: Name of the color (e.g., "Blonde", "Brown", etc.)
-            
-        Returns:
-            Dictionary mapping tone names to result images
-        """
-        previews = {}
-        
-        if color_name not in CUSTOM_TONES:
-            print(f"No tones available for color: {color_name}")
-            return previews
-        
-        for tone_name in CUSTOM_TONES[color_name].keys():
-            try:
-                result = self.apply_color_with_tone(
-                    image, mask, base_color, color_name, tone_name
-                )
-                previews[tone_name] = result
-            except Exception as e:
-                print(f"Error generating preview for tone '{tone_name}': {e}")
-                previews[tone_name] = None
-                
-        return previews
     
     def change_hair_color_with_all_tones(
         self, 
@@ -150,7 +120,10 @@ class ColorTransformer:
         color_name: str
     ) -> Dict[str, np.ndarray]:
         """
+        Apply hair color change with base color and all available tones (MAIN ENDPOINT).
         
+        This is the primary function for the main API endpoint. It efficiently processes
+        the image once and generates both the base color result and all tone variations.
         
         Args:
             image: Original image (BGR format, np.ndarray)
@@ -160,28 +133,21 @@ class ColorTransformer:
         Returns:
             Dictionary with base result and all tones:
             {
-                'base_result': np.ndarray,
+                'base_result': np.ndarray,  # Base color transformation
                 'tones': {
-                    'golden': np.ndarray,
+                    'golden': np.ndarray,   # Each tone transformation
                     'ash': np.ndarray,
                     ...
                 }
             }
         """
-        # Get base color from COLORS config
-        base_color = None
-        for color_rgb, name in COLORS:
-            if name == color_name:
-                base_color = color_rgb
-                break
-        
-        if base_color is None:
-            raise ValueError(f"Invalid color name: {color_name}. Available: {[name for _, name in COLORS]}")
+        # Get base color RGB from config
+        base_color_rgb = self._get_rgb_from_color_name(color_name)
         
         # Check if color has tone configurations
         if color_name not in CUSTOM_TONES:
             # If no tones defined, just return base result
-            base_result = self.change_hair_color(image, mask, base_color)
+            base_result = self.change_hair_color(image, mask, color_name)
             return {
                 'base_result': base_result,
                 'tones': {}
@@ -189,7 +155,7 @@ class ColorTransformer:
         
         # Preprocess inputs once (performance optimization)
         image_rgb, image_float, mask_normalized, mask_3ch, target_rgb, target_hsv = \
-            self._preprocess_inputs(image, mask, base_color)
+            self._preprocess_inputs(image, mask, base_color_rgb)
         
         # Check if hair is detected
         if np.sum(mask_normalized > 0.1) == 0:
@@ -221,7 +187,7 @@ class ColorTransformer:
             try:
                 # Generate toned color
                 toned_color = ColorUtils.create_custom_tone(
-                    base_color,
+                    base_color_rgb,
                     saturation_factor=tone_config["saturation_factor"],
                     brightness_factor=tone_config["brightness_factor"],
                     intensity=1.0
@@ -302,3 +268,24 @@ class ColorTransformer:
         brightness_adjustment = 0.3 + 0.4 * norm_diff
 
         return alpha, saturation_factor, brightness_adjustment 
+
+    def _get_rgb_from_color_name(self, color_name: str) -> List[int]:
+        """
+        Convert color name to RGB values.
+        
+        Args:
+            color_name: Name of the color (e.g., "Blonde", "Brown", etc.)
+            
+        Returns:
+            List[int]: RGB values [R, G, B]
+            
+        Raises:
+            ValueError: If color name is not found
+        """
+        for color_rgb, name in COLORS:
+            if name.lower() == color_name.lower():
+                return color_rgb
+                
+        # If not found, show available colors
+        available_colors = [name for _, name in COLORS]
+        raise ValueError(f"Color '{color_name}' not found. Available colors: {available_colors}") 

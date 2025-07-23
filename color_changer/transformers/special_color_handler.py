@@ -212,8 +212,8 @@ class SpecialColorHandler:
         Returns:
             np.ndarray: Transformed HSV image for auburn hair
         """
-        # Auburn target hue is around 15° (reddish-brown)
-        auburn_hue = 15.0
+        # Auburn target hue is around 10° (reddish-brown)
+        auburn_hue = 10.0
         
         # Get current hue and apply transformation
         current_hue = image_hsv[:,:,0]
@@ -265,7 +265,7 @@ class SpecialColorHandler:
     ) -> np.ndarray:
         """
         Apply specialized transformation for copper hair.
-        Copper is a bright orange-red color.
+        Copper is a warm orange-brown color.
         
         Args:
             result_hsv: Current result HSV image
@@ -275,8 +275,8 @@ class SpecialColorHandler:
         Returns:
             np.ndarray: Transformed HSV image for copper hair
         """
-        # Copper target hue is around 25° (orange-red)
-        copper_hue = 25.0
+        # Copper target hue is around 14° (orange-brown)
+        copper_hue = 14.0
         
         # Get current hue and apply transformation
         current_hue = image_hsv[:,:,0]
@@ -315,6 +315,69 @@ class SpecialColorHandler:
         result_hsv[:,:,2] = np.where(
             mask_normalized > 0.1,
             np.clip(val_adjust, 50, 240),
+            current_val
+        )
+        
+        return result_hsv
+    
+    def handle_pink_color(
+        self,
+        result_hsv: np.ndarray,
+        image_hsv: np.ndarray,
+        mask_normalized: np.ndarray
+    ) -> np.ndarray:
+        """
+        Apply specialized transformation for pink hair.
+        Pink requires vibrant saturation and specific hue handling.
+        
+        Args:
+            result_hsv: Current result HSV image
+            image_hsv: Original HSV image
+            mask_normalized: Normalized mask
+            
+        Returns:
+            np.ndarray: Transformed HSV image for pink hair
+        """
+        # Pink target hue is around 165° (magenta/pink)
+        pink_hue = 165.0
+        
+        # Get current hue and apply transformation
+        current_hue = image_hsv[:,:,0]
+        
+        # Calculate hue difference, handling wraparound
+        hue_diff = pink_hue - current_hue
+        hue_diff = np.where(hue_diff > 90, hue_diff - 180, hue_diff)
+        hue_diff = np.where(hue_diff < -90, hue_diff + 180, hue_diff)
+        
+        # Apply strong hue shift toward pink
+        result_hsv[:,:,0] = np.where(
+            mask_normalized > 0.1,
+            np.mod(current_hue + hue_diff * 0.9, 180),
+            current_hue
+        )
+        
+        # High saturation for vibrant pink
+        current_sat = image_hsv[:,:,1]
+        pink_sat = np.clip(current_sat * 1.8, 120, 255)  # Minimum saturation of 120
+        result_hsv[:,:,1] = np.where(
+            mask_normalized > 0.1,
+            pink_sat,
+            current_sat
+        )
+        
+        # Brightness adjustment for pink vibrancy
+        current_val = image_hsv[:,:,2]
+        val_adjust = np.where(
+            current_val < 80,
+            current_val * 1.4,  # Boost dark areas significantly
+            np.where(current_val > 200,
+                    current_val * 0.95,  # Slight reduction for highlights
+                    current_val * 1.15  # Boost mid-tones
+            )
+        )
+        result_hsv[:,:,2] = np.where(
+            mask_normalized > 0.1,
+            np.clip(val_adjust, 40, 230),
             current_val
         )
         

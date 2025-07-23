@@ -14,17 +14,15 @@ import argparse
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import core modules directly
-from color_changer.core.color_transformer import ColorTransformer
 from color_changer.config.color_config import (
-    COLORS, PREVIEW_IMAGES_DIR, PREVIEW_RESULTS_DIR, DEFAULT_MODEL_PATH
+    PREVIEW_IMAGES_DIR, PREVIEW_RESULTS_DIR, DEFAULT_MODEL_PATH
 )
 
 # Create local imports for runner and visualizer
 from color_changer.utils.visualization import Visualizer
-from color_changer.utils.image_utils import ImageUtils
 from color_changer.utils.preview_utils import (
-    generate_hair_masks, find_existing_masks, find_image_files, 
-    validate_image_list, get_valid_images_with_masks
+    find_image_files, validate_image_list, get_valid_images_with_masks,
+    handle_list_commands, select_colors, process_images_with_colors
 )
 
 
@@ -65,42 +63,16 @@ def main():
     """Main entry point for the preview script."""
     args = parse_arguments()
     
-    # Get all colors
-    all_colors = COLORS
-    
-    # If --list-colors is specified, print available colors and exit
-    if args.list_colors:
-        print("Available colors:")
-        for color, name in all_colors:
-            print(f"  {name}: {color}")
+    # Handle list commands
+    if handle_list_commands(args):
         sys.exit(0)
     
-    # Filter colors if specified
-    if args.colors:
-        selected_colors = []
-        for color_name in args.colors:
-            color_name_lower = color_name.lower()
-            found = False
-            for rgb, name in all_colors:
-                if name.lower() == color_name_lower:
-                    selected_colors.append((rgb, name))
-                    found = True
-                    break
-            if not found:
-                print(f"Warning: Color '{color_name}' not found, ignoring.")
-        
-        if not selected_colors:
-            print("No valid colors specified, using all colors.")
-            selected_colors = all_colors
-    else:
-        selected_colors = all_colors
+    selected_colors = select_colors(args)
     
-    # Find image files
+    # Find and validate image files
     if args.images:
-        # Use specified images
         selected_images = validate_image_list(args.images, args.images_dir)
     else:
-        # Find all image files in the directory
         selected_images = find_image_files(args.images_dir)
     
     if not selected_images:
@@ -125,43 +97,8 @@ def main():
     # Create results directory if it doesn't exist
     os.makedirs(args.results_dir, exist_ok=True)
     
-    # Create color transformer
-    transformer = ColorTransformer()
-    
-    # Process each image
-    results = []
-    for img_path in valid_images:
-        img_name = os.path.basename(img_path)
-        mask_path = image_to_mask[img_path]
-        
-        # Load image and mask
-        image = ImageUtils.load_image(img_path)
-        mask = ImageUtils.load_image(mask_path, grayscale=True)
-        
-        if image is None or mask is None:
-            print(f"Failed to load {img_name} or its mask, skipping.")
-            continue
-        
-        # Apply each color
-        image_results = []
-        for rgb_color, color_name in selected_colors:
-            try:
-                # Apply color transformation
-                result = transformer.change_hair_color(image, mask, rgb_color)
-                
-                # Save result
-                base_name = os.path.splitext(img_name)[0]
-                out_path = os.path.join(args.results_dir, f"{base_name}_to_{color_name.lower()}.png")
-                ImageUtils.save_image(result, out_path, convert_to_bgr=True)
-                
-                image_results.append((color_name, out_path))
-                print(f"Successfully applied {color_name} to {img_name}")
-                
-            except Exception as e:
-                print(f"Failed to apply {color_name} to {img_name}: {str(e)}")
-        
-        if image_results:
-            results.append((img_name, image_results))
+    # Process images
+    results = process_images_with_colors(valid_images, image_to_mask, selected_colors, args.results_dir)
     
     # Visualize results if requested
     if not args.no_visualization and results:
@@ -169,7 +106,6 @@ def main():
         Visualizer.visualize_preview_results(results)
     
     print("\nDone!")
-
 
 if __name__ == "__main__":
     main() 

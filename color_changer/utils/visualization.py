@@ -86,8 +86,10 @@ class Visualizer:
             for color_name, _ in color_results:
                 all_colors.add(color_name)
                 
-        # Sort color names alphabetically
-        color_names = sorted(all_colors)
+        # Sort color names with base colors first, then alphabetically
+        base_colors = [color for color in all_colors if "(base)" in color]
+        tone_colors = [color for color in all_colors if "(base)" not in color]
+        color_names = sorted(base_colors) + sorted(tone_colors)
         
         # Prepare data for multi-image comparison
         comparison_data = []

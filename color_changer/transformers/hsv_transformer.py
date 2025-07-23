@@ -80,24 +80,23 @@ class HsvTransformer:
                                              np.clip(original_value * darkness_factor, 0, 255),
                                              original_value)
         
-        # Check for special colors like gray, blue or purple
-        is_grey_target = target_hsv[1] < 60
-        
-        # Apply special color transformations if needed
-        if is_grey_target:
+        # Apply special color transformations based on TARGET color
+        if target_hsv[1] < 60:
+            # Target is gray - use gray handler regardless of source
             result_hsv = self.special_color_handler.handle_grey_color(
                 result_hsv, image_hsv, mask_normalized, target_hsv, alpha
             )
         else:
-            # ===== PRECISE COOL COLOR HANDLING =====
+            # ===== PRECISE COLOR HANDLING =====
             hue = target_hsv[0]
             sat = target_hsv[1]
             
-            # Identify blue, purple, auburn, and copper targets with precise hue ranges
+            # Identify target colors with precise hue ranges
             is_blue = (110 <= hue <= 125) and (sat > 150)
             is_purple = (145 <= hue <= 160) and (sat > 150)
-            is_auburn = (10 <= hue <= 20) and (sat > 100)  # Reddish-brown range
-            is_copper = (20 <= hue <= 30) and (sat > 120)  # Orange-red range
+            is_auburn = (5 <= hue <= 12) and (sat > 100)  # Auburn range
+            is_copper = (12 <= hue <= 18) and (sat > 120)  # Copper orange range (H=14)
+            is_pink = (160 <= hue <= 170) and (sat > 100)  # Pink/magenta range
             
             # ===== SPECIALIZED COLOR TRANSFORMATIONS =====
             if is_blue:
@@ -116,5 +115,11 @@ class HsvTransformer:
                 result_hsv = self.special_color_handler.handle_copper_color(
                     result_hsv, image_hsv, mask_normalized
                 )
+            elif is_pink:
+                result_hsv = self.special_color_handler.handle_pink_color(
+                    result_hsv, image_hsv, mask_normalized
+                )
+            # If gri saç + renkli target, default processing (no special gray handling)
+            # This allows gray hair to be transformed to vibrant colors
             
         return result_hsv

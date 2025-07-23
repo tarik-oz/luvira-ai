@@ -15,16 +15,16 @@ import argparse
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import core modules directly
-from color_changer.core.color_transformer import ColorTransformer
 from color_changer.config.color_config import (
-    COLORS, CUSTOM_TONES, PREVIEW_IMAGES_DIR, PREVIEW_RESULTS_DIR, DEFAULT_MODEL_PATH
+    PREVIEW_IMAGES_DIR, PREVIEW_RESULTS_DIR, DEFAULT_MODEL_PATH
 )
 
 # Create local imports for runner and visualizer
 from color_changer.utils.visualization import Visualizer
 from color_changer.utils.image_utils import ImageUtils
 from color_changer.utils.preview_utils import (
-    find_image_files, validate_image_list, get_valid_images_with_masks
+    find_image_files, validate_image_list, get_valid_images_with_masks,
+    handle_list_commands, validate_single_color, select_tones_for_color, process_images_with_tones
 )
 
 
@@ -68,40 +68,12 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def find_color_info(color_name):
-    """Find color info from COLORS config."""
-    for rgb, name in COLORS:
-        if name.lower() == color_name.lower():
-            return rgb, name
-    return None, None
-
-
 def main():
     """Main entry point for the preview script."""
     args = parse_arguments()
     
-    # If --list-colors is specified, print available colors and exit
-    if args.list_colors:
-        print("Available colors:")
-        for rgb, name in COLORS:
-            tone_count = len(CUSTOM_TONES.get(name, {}))
-            print(f"  {name}: RGB{rgb} ({tone_count} tones available)")
-        sys.exit(0)
-    
-    # If --list-tones is specified, print available tones for color and exit
-    if args.list_tones:
-        color_rgb, color_name = find_color_info(args.list_tones)
-        if not color_name:
-            print(f"Error: Color '{args.list_tones}' not found.")
-            print("Available colors:", [name for _, name in COLORS])
-            sys.exit(1)
-        
-        if color_name not in CUSTOM_TONES:
-            print(f"No tones available for {color_name}")
-        else:
-            print(f"Available tones for {color_name}:")
-            for tone_name, config in CUSTOM_TONES[color_name].items():
-                print(f"  {tone_name:12}: {config['description']}")
+    # Handle list commands
+    if handle_list_commands(args):
         sys.exit(0)
     
     # Check if color is required
@@ -111,41 +83,22 @@ def main():
         sys.exit(1)
     
     # Validate base color
-    base_color_rgb, base_color_name = find_color_info(args.color)
+    base_color_name = validate_single_color(args.color)[1]
     if not base_color_name:
         print(f"Error: Color '{args.color}' not found.")
-        print("Available colors:", [name for _, name in COLORS])
         print("Use --list-colors to see all available colors.")
         sys.exit(1)
     
-    # Get available tones for the color
-    if base_color_name not in CUSTOM_TONES:
+    # Get selected tones
+    selected_tones = select_tones_for_color(base_color_name, args.tones)
+    if not selected_tones:
         print(f"Error: No tones available for {base_color_name}")
         sys.exit(1)
     
-    available_tones = list(CUSTOM_TONES[base_color_name].keys())
-    
-    # Filter tones if specified
-    if args.tones:
-        selected_tones = []
-        for tone_name in args.tones:
-            if tone_name in available_tones:
-                selected_tones.append(tone_name)
-            else:
-                print(f"Warning: Tone '{tone_name}' not available for {base_color_name}, ignoring.")
-        
-        if not selected_tones:
-            print(f"No valid tones specified, using all available tones for {base_color_name}.")
-            selected_tones = available_tones
-    else:
-        selected_tones = available_tones
-    
-    # Find image files
+    # Find and validate image files
     if args.images:
-        # Use specified images
         selected_images = validate_image_list(args.images, args.images_dir)
     else:
-        # Find all image files in the directory
         selected_images = find_image_files(args.images_dir)
     
     if not selected_images:
@@ -163,7 +116,7 @@ def main():
     
     # Print preview setup
     print(f"\nApplying {len(selected_tones)} tones of {base_color_name} on {len(valid_images)} images:")
-    print(f"  Base Color: {base_color_name} RGB{base_color_rgb}")
+    print(f"  Base Color: {base_color_name}")
     print(f"  Tones: {', '.join(selected_tones)}")
     print(f"  Images: {', '.join(os.path.basename(img) for img in valid_images)}")
     print(f"  Results will be saved to: {args.results_dir}")
@@ -171,57 +124,10 @@ def main():
     # Create results directory if it doesn't exist
     os.makedirs(args.results_dir, exist_ok=True)
     
-    # Create color transformer
-    transformer = ColorTransformer()
-    
-    # Process each image
-    results = []
-    for img_path in valid_images:
-        img_name = os.path.basename(img_path)
-        mask_path = image_to_mask[img_path]
-        
-        # Load image and mask
-        image = ImageUtils.load_image(img_path)
-        mask = ImageUtils.load_image(mask_path, grayscale=True)
-        
-        if image is None or mask is None:
-            print(f"Failed to load {img_name} or its mask, skipping.")
-            continue
-        
-        # Apply each tone
-        image_results = []
-        base_name = os.path.splitext(img_name)[0]
-        
-        # Always include base color for comparison
-        try:
-            base_result = transformer.change_hair_color(image, mask, base_color_rgb)
-            out_path = os.path.join(args.results_dir, f"{base_name}_{base_color_name.lower()}_base.png")
-            ImageUtils.save_image(base_result, out_path, convert_to_bgr=True)
-            image_results.append((f"{base_color_name} (base)", out_path))
-            print(f"Successfully applied base {base_color_name} to {img_name}")
-        except Exception as e:
-            print(f"Failed to apply base {base_color_name} to {img_name}: {str(e)}")
-        
-        # Apply tones
-        for tone_name in selected_tones:
-            try:
-                # Apply tone transformation
-                result = transformer.apply_color_with_tone(
-                    image, mask, base_color_rgb, base_color_name, tone_name
-                )
-                
-                # Save result
-                out_path = os.path.join(args.results_dir, f"{base_name}_{base_color_name.lower()}_{tone_name}.png")
-                ImageUtils.save_image(result, out_path, convert_to_bgr=True)
-                
-                image_results.append((f"{base_color_name} ({tone_name})", out_path))
-                print(f"Successfully applied {base_color_name} {tone_name} tone to {img_name}")
-                
-            except Exception as e:
-                print(f"Failed to apply {base_color_name} {tone_name} tone to {img_name}: {str(e)}")
-        
-        if image_results:
-            results.append((img_name, image_results))
+    # Process images
+    results = process_images_with_tones(
+        valid_images, image_to_mask, base_color_name, selected_tones, args.results_dir
+    )
     
     # Visualize results if requested
     if not args.no_visualization and results:
