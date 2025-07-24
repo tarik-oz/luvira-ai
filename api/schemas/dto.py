@@ -85,7 +85,38 @@ class RootResponse(BaseModel):
 
 
 class ColorChangeRequest(BaseModel):
-    """Color change request DTO"""
+    """Color change request DTO (legacy RGB)"""
     target_color: List[int] = Field(..., description="Target hair color in RGB format [R, G, B]", min_items=3, max_items=3)
     
     model_config = {"protected_namespaces": ()}
+
+
+class ColorChangeByNameRequest(BaseModel):
+    """Color change by name request DTO"""
+    color_name: str = Field(..., description="Hair color name from available colors")
+    tone: Optional[str] = Field(None, description="Optional tone for the color")
+    
+    model_config = {"protected_namespaces": ()}
+
+
+class AvailableColorsResponse(BaseModel):
+    """Available colors response DTO"""
+    success: bool = Field(default=True, description="Operation success status")
+    colors: List[str] = Field(..., description="List of available color names")
+    count: int = Field(..., description="Number of available colors")
+
+
+class AvailableTonesResponse(BaseModel):
+    """Available tones response DTO"""
+    success: bool = Field(default=True, description="Operation success status")
+    color: str = Field(..., description="Color name")
+    tones: List[str] = Field(..., description="List of available tone names for the color")
+    count: int = Field(..., description="Number of available tones")
+
+
+class ColorChangeAllTonesResponse(BaseModel):
+    """Color change all tones response DTO"""
+    success: bool = Field(default=True, description="Operation success status")
+    color: str = Field(..., description="Base color name")
+    base_result: str = Field(..., description="Base color result as base64 encoded image")
+    tones: Dict[str, Optional[str]] = Field(..., description="Dictionary of tone results as base64 encoded images")

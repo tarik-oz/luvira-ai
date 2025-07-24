@@ -11,7 +11,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 # API configuration
 API_CONFIG = {
-    "default_model_path": str(PROJECT_ROOT / "model" / "models" / "trained_models" / "2025-07-06_23-00-07_acc0.8727" / "best_model.pth"),
+    "default_model_path": str(PROJECT_ROOT / "model" / "trained_models" / "2025-07-15_06-54-35_acc0.9757" / "best_model.pth"),
     "host": "0.0.0.0",
     "port": 8000,
     "reload": True,
