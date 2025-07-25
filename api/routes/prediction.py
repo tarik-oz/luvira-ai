@@ -270,3 +270,105 @@ async def change_hair_color_all_tones(
             status_code=500, 
             detail=f"Color change with all tones failed: {str(e)}"
         )
+
+
+@router.post("/upload-and-prepare")
+async def upload_and_prepare(
+    file: UploadFile = File(...),
+    color_change_service: ColorChangeService = Depends(get_color_change_service)
+):
+    """
+    Upload image, validate it and prepare for fast color changes
+    
+    Args:
+        file: Image file (jpg, png, etc.)
+        
+    Returns:
+        Session ID for subsequent fast operations
+    """
+    try:
+        session_id = color_change_service.upload_and_prepare_image(file)
+        
+        return {
+            "success": True,
+            "session_id": session_id,
+            "message": "Image uploaded and prepared successfully",
+            "expires_in_minutes": 30
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Image upload failed: {str(e)}"
+        )
+
+
+@router.post("/change-hair-color-fast/{session_id}")
+async def change_hair_color_fast(
+    session_id: str,
+    color_name: str = Form(..., description="Hair color name (e.g., Blonde, Brown, etc.)"),
+    tone: Optional[str] = Form(None, description="Optional tone for the color (e.g., golden, ash, etc.)"),
+    color_change_service: ColorChangeService = Depends(get_color_change_service)
+):
+    """
+    Fast hair color change using cached session data (NO mask generation!)
+    
+    Args:
+        session_id: Session identifier from upload-and-prepare
+        color_name: Hair color name from available colors
+        tone: Optional tone name for the color
+        
+    Returns:
+        Color-changed image file for download
+    """
+    try:
+        # Use fast color change service
+        result_bytes = color_change_service.change_hair_color_with_session(session_id, color_name, tone)
+        
+        # Create filename
+        tone_suffix = f"_{tone}" if tone else ""
+        filename = f"fast_color_{color_name.lower()}{tone_suffix}_{session_id}.png"
+        
+        # Return result as response
+        return Response(
+            content=result_bytes,
+            media_type="image/png",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Fast color change failed: {str(e)}"
+        )
+
+
+@router.delete("/cleanup-session/{session_id}")
+async def cleanup_session(
+    session_id: str,
+    color_change_service: ColorChangeService = Depends(get_color_change_service)
+):
+    """
+    Clean up session data
+    
+    Args:
+        session_id: Session identifier to cleanup
+        
+    Returns:
+        Success message
+    """
+    try:
+        color_change_service._cleanup_session(session_id)
+        
+        return {
+            "success": True,
+            "message": f"Session {session_id} cleaned up successfully"
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Session cleanup failed: {str(e)}"
+        )

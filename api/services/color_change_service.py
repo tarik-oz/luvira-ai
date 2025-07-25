@@ -6,8 +6,9 @@ import tempfile
 import logging
 import threading
 import time
+import uuid
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict
 import cv2
 import numpy as np
 import sys
@@ -20,6 +21,7 @@ from color_changer import ColorTransformer
 from ..core.exceptions import PredictionException, ImageProcessingException
 from ..utils import FileValidator, ColorValidator
 from ..config import MODEL_CONFIG
+from .session_manager import session_manager
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +48,7 @@ class ColorChangeService:
     @staticmethod
     def get_available_tones(color_name: str) -> list:
         """
-        Get list of available tones for a specific color
+        Get list of available tones for a specific color (case-insensitive)
         
         Args:
             color_name: Name of the color
@@ -62,6 +64,102 @@ class ColorChangeService:
         correct_color_name = ColorValidator.get_correct_color_name(color_name)
         
         return list(CUSTOM_TONES.get(correct_color_name, {}).keys())
+    
+    @staticmethod
+    def create_session() -> str:
+        """
+        Create a new session for image processing
+        
+        Returns:
+            Session ID
+        """
+        return session_manager.create_session()
+    
+    def upload_and_prepare_image(self, file) -> str:
+        """
+        Upload image, validate it, generate mask and cache everything
+        
+        Args:
+            file: Uploaded image file
+            
+        Returns:
+            Session ID for subsequent operations
+        """
+        # Validate file
+        FileValidator.validate_upload_file(file)
+        
+        # Check if model is loaded
+        if not self.prediction_service.model_service.is_model_loaded():
+            raise PredictionException("Model is not loaded - cannot generate hair mask")
+        
+        try:
+            # Read and process image
+            image_data = file.file.read()
+            file.file.seek(0)
+            original_image = self._process_image_data(image_data)
+            
+            # Generate mask
+            mask_bytes = self.prediction_service.predict_mask_file(file)
+            mask_array = self._bytes_to_mask(mask_bytes)
+            
+            # Create session and save data
+            session_id = session_manager.create_session()
+            session_manager.save_session_data(session_id, original_image, mask_array)
+            
+            logger.info(f"Image uploaded and prepared successfully. Session: {session_id}")
+            return session_id
+            
+        except Exception as e:
+            logger.error(f"Failed to upload and prepare image: {str(e)}")
+            raise ImageProcessingException(f"Failed to upload and prepare image: {str(e)}")
+    
+    def change_hair_color_with_session(self, session_id: str, color_name: str, tone: str = None) -> bytes:
+        """
+        Change hair color using cached session data (FAST!)
+        
+        Args:
+            session_id: Session identifier
+            color_name: Color name from COLORS config
+            tone: Optional tone name
+            
+        Returns:
+            Color-changed image bytes
+        """
+        # Validate inputs
+        ColorValidator.validate_color_name(color_name)
+        correct_color_name = ColorValidator.get_correct_color_name(color_name)
+        
+        if tone:
+            ColorValidator.validate_tone_name(color_name, tone)
+            correct_tone = ColorValidator.get_correct_tone_name(color_name, tone)
+        else:
+            correct_tone = None
+        
+        try:
+            # Load cached data (NO MASK GENERATION!)
+            session_data = session_manager.load_session_data(session_id)
+            original_image = session_data['image']
+            mask_array = session_data['mask']
+            
+            # Apply color change with timeout
+            if correct_tone:
+                result_image = self._apply_color_change_with_tone_with_timeout(
+                    original_image, mask_array, correct_color_name, correct_tone
+                )
+            else:
+                result_image = self._apply_color_change_by_name_with_timeout(
+                    original_image, mask_array, correct_color_name
+                )
+            
+            # Convert result to bytes
+            result_bytes = self._image_to_bytes(result_image)
+            
+            logger.info(f"Successfully changed hair color to {correct_color_name}{f' ({correct_tone})' if correct_tone else ''} for session: {session_id}")
+            return result_bytes
+            
+        except Exception as e:
+            logger.error(f"Color change failed for session {session_id}: {str(e)}")
+            raise ImageProcessingException(f"Color change failed: {str(e)}")
     
     def change_hair_color_by_name(self, file, color_name: str, tone: str = None) -> bytes:
         """
