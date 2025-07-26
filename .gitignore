@@ -10,6 +10,8 @@ logs/*
 
 hair_segmentation_kaggle_*
 
+session_data/*
+
 # Python cache files (all directories)
 __pycache__/
 *.pyc

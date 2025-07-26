@@ -57,11 +57,13 @@ async def get_available_colors(
         List of available color names
     """
     try:
-        colors = color_change_service.get_available_colors()
+        colors_with_rgb = color_change_service.get_available_colors()
+        color_names = [c["name"] for c in colors_with_rgb]
         return {
             "success": True,
-            "colors": colors,
-            "count": len(colors)
+            "colors": color_names,
+            "colors_with_rgb": colors_with_rgb,
+            "count": len(color_names)
         }
     except Exception as e:
         raise HTTPException(

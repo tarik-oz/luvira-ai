@@ -39,11 +39,14 @@ class ColorChangeService:
         Get list of available colors from config
         
         Returns:
-            List of available color names
+            List of dicts: { name: str, rgb: [R, G, B] }
         """
         # Import here to avoid circular import
         from color_changer.config.color_config import COLORS
-        return [name for _, name in COLORS]
+        return [
+            {"name": name, "rgb": rgb}
+            for rgb, name in COLORS
+        ]
     
     @staticmethod
     def get_available_tones(color_name: str) -> list:

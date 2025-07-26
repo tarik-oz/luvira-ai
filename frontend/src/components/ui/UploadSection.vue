@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-interface Props {
-  onFileSelect?: (file: File) => void
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  onFileSelect: () => {},
-})
+// Define emits
+const emit = defineEmits<{
+  'file-select': [file: File]
+}>()
 
 const fileInput = ref<HTMLInputElement>()
 
@@ -52,7 +49,7 @@ const validateAndUpload = (file: File) => {
     return
   }
 
-  props.onFileSelect(file)
+  emit('file-select', file)
 }
 </script>
 
