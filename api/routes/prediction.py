@@ -347,6 +347,60 @@ async def change_hair_color_fast(
         )
 
 
+@router.post("/change-hair-color-all-tones-fast/{session_id}")
+async def change_hair_color_all_tones_fast(
+    session_id: str,
+    color_name: str = Form(..., description="Hair color name (e.g., Blonde, Brown, etc.)"),
+    color_change_service: ColorChangeService = Depends(get_color_change_service)
+):
+    """
+    Fast hair color change with ALL tones using cached session data (NO mask generation!)
+    
+    Args:
+        session_id: Session identifier from upload-and-prepare
+        color_name: Hair color name from available colors
+        
+    Returns:
+        JSON response with base64 images for base + all tones
+    """
+    try:
+        # Use fast color change service for all tones
+        import base64
+        
+        # Get base color result
+        base_result_bytes = color_change_service.change_hair_color_with_session(session_id, color_name, None)
+        
+        # Get all available tones for this color
+        available_tones = color_change_service.get_available_tones(color_name)
+        
+        response_data = {
+            "success": True,
+            "color": color_name,
+            "session_id": session_id,
+            "base_result": base64.b64encode(base_result_bytes).decode('utf-8'),
+            "tones": {}
+        }
+        
+        # Get result for each tone
+        for tone in available_tones:
+            try:
+                tone_result_bytes = color_change_service.change_hair_color_with_session(session_id, color_name, tone)
+                response_data['tones'][tone] = base64.b64encode(tone_result_bytes).decode('utf-8')
+            except Exception as e:
+                print(f"Failed to process tone {tone}: {e}")
+                response_data['tones'][tone] = None
+        
+        return response_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Fast color change with all tones failed: {str(e)}"
+        )
+
+
 @router.delete("/cleanup-session/{session_id}")
 async def cleanup_session(
     session_id: str,

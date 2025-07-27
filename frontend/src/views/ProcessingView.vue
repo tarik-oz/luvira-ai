@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import OriginalImageDisplay from '../components/ui/OriginalImageDisplay.vue'
+import ImageDisplay from '../components/ui/ImageDisplay.vue'
 import ColorOptionsPanel from '../components/ui/ColorOptionsPanel.vue'
 import { useAppState } from '../composables/useAppState'
 
@@ -43,8 +43,8 @@ const handleBackToUpload = () => {
 
     <!-- Main Content Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <!-- Original Image Display -->
-      <OriginalImageDisplay :uploaded-image="uploadedImage" :session-id="sessionId" />
+      <!-- Image Display -->
+      <ImageDisplay :uploaded-image="uploadedImage" :session-id="sessionId" />
 
       <!-- Color Options Panel -->
       <ColorOptionsPanel />

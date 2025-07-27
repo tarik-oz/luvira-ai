@@ -98,7 +98,7 @@ class ApiService {
    */
   async getAvailableTones(colorName: string): Promise<string[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/colors/${colorName}/tones`)
+      const response = await fetch(`${this.baseUrl}/available-tones/${colorName}`)
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -108,6 +108,37 @@ class ApiService {
       return data.tones || []
     } catch (error) {
       console.error('Get tones API error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get hair color change with all tones using session
+   */
+  async changeHairColorAllTones(sessionId: string, colorName: string): Promise<{
+    success: boolean
+    color: string
+    session_id: string
+    base_result: string
+    tones: Record<string, string>
+  }> {
+    const formData = new FormData()
+    formData.append('color_name', colorName)
+
+    try {
+      const response = await fetch(`${this.baseUrl}/change-hair-color-all-tones-fast/${sessionId}`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Change hair color all tones API error:', error)
       throw error
     }
   }
