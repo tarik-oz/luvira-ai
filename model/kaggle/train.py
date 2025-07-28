@@ -4,19 +4,19 @@ Kaggle training script for hair segmentation U-Net model.
 This script handles the complete training pipeline on Kaggle.
 
 Usage:
-    python train_kaggle.py
+    python train.py
 
-Make sure your dataset is named 'hairdataset' in Kaggle and contains 'images' and 'masks' folders.
+Make sure your dataset is properly configured in Kaggle.
 """
 
 import sys
-import os
 import logging
 import traceback
 from pathlib import Path
 
-# Add current directory to path for imports
-sys.path.append(str(Path(__file__).parent))
+# Add project root to path for imports
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
 # Configure logging for Kaggle
 logging.basicConfig(
@@ -40,27 +40,49 @@ def main():
         logger.info("Starting Hair Segmentation Training on Kaggle")
         logger.info("=" * 60)
         
-        # Import Kaggle-specific modules
-        from .trainer import create_kaggle_trainer
-        from .config import log_dataset_stats
+        # Import modules using updated structure
+        from model.training.trainer import Trainer
+        from model.data_loader.factory_data_loader import create_auto_data_loader
+        from config import (
+            TRAINING_CONFIG, MODEL_CONFIG, DATA_CONFIG,
+            TRAINED_MODELS_DIR, IMAGES_DIR, MASKS_DIR
+        )
         
         # Log dataset statistics
         logger.info("Checking dataset...")
-        image_count, mask_count = log_dataset_stats()
+        if IMAGES_DIR.exists() and MASKS_DIR.exists():
+            image_count = len(list(IMAGES_DIR.glob("*.*")))
+            mask_count = len(list(MASKS_DIR.glob("*.*")))
+            logger.info(f"Found {image_count} images and {mask_count} masks")
+        else:
+            raise FileNotFoundError("Dataset directories not found")
         
         if image_count == 0 or mask_count == 0:
             raise RuntimeError("No images or masks found. Please check your dataset.")
         
-        # Create Kaggle trainer
-        logger.info("Creating Kaggle trainer...")
-        trainer = create_kaggle_trainer()
+        # Create data loader
+        logger.info("Creating data loader...")
+        data_loader = create_auto_data_loader(
+            images_dir=IMAGES_DIR,
+            masks_dir=MASKS_DIR,
+            config=DATA_CONFIG
+        )
+        
+        # Create trainer using updated structure
+        logger.info("Creating trainer...")
+        trainer = Trainer(
+            model_config=MODEL_CONFIG,
+            training_config=TRAINING_CONFIG,
+            data_config=DATA_CONFIG,
+            trained_models_dir=TRAINED_MODELS_DIR
+        )
         
         # Setup model and data
         logger.info("Setting up U-Net model...")
         trainer.setup_model()
         
         logger.info("Setting up training data...")
-        train_loader, val_loader = trainer.setup_data()
+        train_loader, val_loader = trainer.setup_data(data_loader)
         
         # Start training
         logger.info("Starting model training...")
@@ -90,8 +112,8 @@ def main():
             "validation_samples": len(val_loader.dataset)
         }
         
-        if trainer.data_loader:
-            dataset_info.update(trainer.data_loader.get_data_info())
+        if data_loader:
+            dataset_info.update(data_loader.get_data_info())
         
         model_folder = trainer.save_trained_model(dataset_info)
         logger.info(f"Model saved to: {model_folder}")
@@ -127,8 +149,8 @@ def main():
             try:
                 logger.info("Performing final model save...")
                 dataset_info = {"emergency_save": True}
-                if trainer.data_loader:
-                    dataset_info.update(trainer.data_loader.get_data_info())
+                if 'data_loader' in locals():
+                    dataset_info.update(data_loader.get_data_info())
                 
                 model_folder = trainer.save_trained_model(dataset_info)
                 logger.info(f"Emergency model save completed: {model_folder}")
