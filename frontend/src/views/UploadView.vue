@@ -2,6 +2,7 @@
 import UploadSection from '../components/ui/UploadSection.vue'
 import SampleImages from '../components/ui/SampleImages.vue'
 import AnimatedDemo from '../components/ui/AnimatedDemo.vue'
+import CameraCapture from '../components/ui/CameraCapture.vue'
 import { useAppState } from '../composables/useAppState'
 import { apiService } from '../services/apiService'
 import type { StaticSampleImage } from '../data/sampleImages'
@@ -114,6 +115,11 @@ const uploadImageToAPI = async (file: File) => {
     <!-- Sample images section -->
     <div v-if="!isUploading" class="text-center">
       <SampleImages @select-image="handleSampleImageSelect" />
+    </div>
+
+    <!-- Camera capture section -->
+    <div v-if="!isUploading" class="text-center">
+      <CameraCapture @capture="handleFileSelect" />
     </div>
   </div>
 </template>
