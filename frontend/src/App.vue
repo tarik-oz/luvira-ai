@@ -9,19 +9,17 @@ const { currentView } = useAppState()
 </script>
 
 <template>
-  <div class="h-screen bg-gray-50 flex flex-col overflow-hidden">
+  <div class="h-screen flex flex-col">
     <Header />
 
     <!-- Main Content -->
-    <main class="flex-1 py-6 overflow-y-auto">
-      <div class="max-w-6xl mx-auto px-4">
-        
+    <main class="flex-1 py-6 overflow-y-auto bg-base-100">
+      <div class="max-w-6xl mx-auto px-4 mt-20">
         <!-- Upload View -->
         <UploadView v-if="currentView === 'upload'" />
 
         <!-- Processing View -->
         <ProcessingView v-if="currentView === 'processing'" />
-        
       </div>
     </main>
 
