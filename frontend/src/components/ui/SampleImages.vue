@@ -17,6 +17,13 @@ const closePopup = () => {
   showPopup.value = false
 }
 
+const open = () => {
+  showPopup.value = true
+}
+
+import { defineExpose } from 'vue'
+defineExpose({ open })
+
 const selectSampleImage = async (image: StaticSampleImage) => {
   try {
     console.log('Selected sample image:', image.name)

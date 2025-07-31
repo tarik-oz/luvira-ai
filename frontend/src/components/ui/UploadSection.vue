@@ -1,107 +1,110 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { PhUploadSimple, PhInfo } from '@phosphor-icons/vue'
 
-// Define emits
-const emit = defineEmits<{
-  'file-select': [file: File]
-}>()
+const emit = defineEmits<{ 'file-select': [file: File] }>()
 
+// Refs
 const fileInput = ref<HTMLInputElement>()
+const showTooltip = ref(false)
+const isDragOver = ref(false)
 
-const openFileDialog = () => {
-  fileInput.value?.click()
-}
+// Open file dialog
+const openFileDialog = () => fileInput.value?.click()
 
+// Triggered when a file is selected
 const handleFileSelect = (event: Event) => {
   const target = event.target as HTMLInputElement
-  if (target.files && target.files[0]) {
-    validateAndUpload(target.files[0])
-  }
+  if (target.files?.[0]) emit('file-select', target.files[0])
 }
 
+// Triggered when a file is dropped
 const handleDrop = (event: DragEvent) => {
   event.preventDefault()
-  if (event.dataTransfer?.files && event.dataTransfer.files[0]) {
-    validateAndUpload(event.dataTransfer.files[0])
-  }
+  if (event.dataTransfer?.files?.[0]) emit('file-select', event.dataTransfer.files[0])
 }
 
+// Prevent default drag events and set drag-over state
 const handleDragOver = (event: DragEvent) => {
   event.preventDefault()
+  isDragOver.value = true
 }
-
 const handleDragLeave = (event: DragEvent) => {
   event.preventDefault()
-}
-
-const validateAndUpload = (file: File) => {
-  // File validation
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png']
-  const maxSize = 10 * 1024 * 1024 // 10MB
-
-  if (!allowedTypes.includes(file.type)) {
-    alert('Please upload a JPG, JPEG, or PNG file.')
-    return
-  }
-
-  if (file.size > maxSize) {
-    alert('File size must be less than 10MB.')
-    return
-  }
-
-  emit('file-select', file)
+  isDragOver.value = false
 }
 </script>
 
 <template>
-  <div class="w-full max-w-2xl mx-auto">
-    <!-- Upload Box -->
+  <div
+    :class="[
+      'relative flex flex-col items-center justify-center group p-10 border-2 rounded-xl hover:bg-accent cursor-pointer text-center transition-colors duration-300',
+      isDragOver ? 'border-accent bg-accent/10' : 'border-base-content/20 bg-base-content',
+    ]"
+    @click="openFileDialog"
+    @drop="handleDrop"
+    @dragover="handleDragOver"
+    @dragleave="handleDragLeave"
+    @dragend="handleDragLeave"
+  >
+    <!-- Upload icon -->
     <div
-      class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer"
-      @click="openFileDialog"
-      @drop="handleDrop"
-      @dragover="handleDragOver"
-      @dragleave="handleDragLeave"
+      :class="[
+        'flex items-center justify-center w-20 h-20 mb-5 rounded-full shadow-sm transition-colors duration-300',
+        isDragOver ? 'bg-accent/20' : 'bg-base-100/10',
+        !isDragOver && 'group-hover:bg-base-100/20',
+      ]"
     >
-      <!-- Upload Icon -->
-      <div class="mb-4">
-        <svg
-          class="w-12 h-12 text-gray-400 mx-auto"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-          />
-        </svg>
-      </div>
-
-      <!-- Upload Text -->
-      <div class="space-y-2">
-        <h3 class="text-lg font-medium text-gray-700">Click to upload or drag and drop</h3>
-        <p class="text-sm text-gray-500">JPG, JPEG, PNG up to 10MB</p>
-      </div>
-
-      <!-- Tips -->
-      <div class="mt-4">
-        <p class="text-xs text-gray-400">
-          💡 Tips: Use clear photos with visible hair, avoid objects in front of hair, and ensure
-          good lighting
-        </p>
-      </div>
-
-      <!-- Hidden File Input -->
-      <input
-        ref="fileInput"
-        type="file"
-        accept=".jpg,.jpeg,.png"
-        class="hidden"
-        @change="handleFileSelect"
+      <PhUploadSimple
+        :class="[
+          'w-8 h-8 transition-colors duration-300',
+          isDragOver ? 'text-accent/70' : 'text-base-100/80',
+          !isDragOver && 'group-hover:text-base-100',
+        ]"
       />
+    </div>
+
+    <!-- Upload text -->
+    <div class="mb-1">
+      <h3
+        :class="[
+          'text-xl font-semibold transition-colors duration-300',
+          isDragOver ? 'text-accent' : 'text-base-100/80',
+          !isDragOver && 'group-hover:text-base-100',
+        ]"
+      >
+        Click or drag & drop a photo
+      </h3>
+    </div>
+
+    <!-- Hidden file input -->
+    <input
+      ref="fileInput"
+      type="file"
+      accept=".jpg,.jpeg,.png"
+      class="hidden"
+      @change="handleFileSelect"
+    />
+
+    <!-- Info icon and tooltip -->
+    <div
+      class="absolute bottom-3 right-3 z-20 transition-colors duration-300"
+      @mouseenter="showTooltip = true"
+      @mouseleave="showTooltip = false"
+    >
+      <PhInfo
+        :class="[
+          'w-6 h-6 transition-colors duration-300',
+          isDragOver ? 'text-accent/70' : 'text-base-100/60 group-hover:text-base-100/70',
+          !isDragOver && 'group-hover:text-accent',
+        ]"
+      />
+      <div
+        v-if="showTooltip"
+        class="absolute bottom-7 right-0 bg-base-100/100 text-xs text-base-content/90 px-3 py-1 rounded shadow font-bold whitespace-nowrap transition-colors duration-300"
+      >
+        Supported formats: JPG, JPEG, PNG (max 10MB)
+      </div>
     </div>
   </div>
 </template>

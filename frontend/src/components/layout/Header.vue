@@ -6,26 +6,29 @@ import logo from '@/assets/logo.png'
 const langDropdownOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
 
-function toggleLangDropdown() {
-  langDropdownOpen.value = !langDropdownOpen.value
-}
-
-function closeLangDropdown() {
-  langDropdownOpen.value = false
-}
-
 function handleClickOutside(event: MouseEvent) {
   if (dropdownRef.value && !dropdownRef.value.contains(event.target as Node)) {
     closeLangDropdown()
   }
 }
 
-onMounted(() => {
+function openLangDropdown() {
+  langDropdownOpen.value = true
   document.addEventListener('mousedown', handleClickOutside)
-})
-onBeforeUnmount(() => {
+}
+
+function closeLangDropdown() {
+  langDropdownOpen.value = false
   document.removeEventListener('mousedown', handleClickOutside)
-})
+}
+
+function toggleLangDropdown() {
+  if (langDropdownOpen.value) {
+    closeLangDropdown()
+  } else {
+    openLangDropdown()
+  }
+}
 </script>
 
 <template>
@@ -34,7 +37,7 @@ onBeforeUnmount(() => {
   >
     <div class="flex items-center justify-between px-15 py-2">
       <!-- Logo and Title -->
-      <div class="flex items-center gap-x-21">
+      <div class="flex items-center gap-x-2">
         <img :src="logo" alt="HairCanvas Logo" class="w-12 h-12 object-contain" />
         <h1 class="text-2xl font-bold text-base-100">HairCanvas</h1>
       </div>
