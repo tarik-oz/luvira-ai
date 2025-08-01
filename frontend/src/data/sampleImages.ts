@@ -5,6 +5,8 @@ import sample3 from '../assets/samples/sample3.jpg'
 import sample4 from '../assets/samples/sample4.jpg'
 import sample5 from '../assets/samples/sample5.jpg'
 import sample6 from '../assets/samples/sample6.jpg'
+import sample7 from '../assets/samples/sample7.jpg'
+import sample8 from '../assets/samples/sample8.jpg'
 
 export interface StaticSampleImage {
   id: string
@@ -57,5 +59,19 @@ export const sampleImages: StaticSampleImage[] = [
     description: 'Female portrait',
     url: sample6,
     filename: 'sample6.jpg',
+  },
+  {
+    id: '7',
+    name: 'Sample 7',
+    description: 'Female portrait',
+    url: sample7,
+    filename: 'sample7.jpg',
+  },
+  {
+    id: '8',
+    name: 'Sample 8',
+    description: 'Female portrait',
+    url: sample8,
+    filename: 'sample8.jpg',
   },
 ]

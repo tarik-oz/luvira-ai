@@ -10,7 +10,7 @@
       class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-y-4"
     >
       <!-- Left: Copyright -->
-      <div class="text-base-content text-sm md:text-base font-medium">
+      <div class="text-base-content/60 text-sm md:text-base font-medium">
         © 2025 Tarık Öz All rights reserved.
       </div>
       <!-- Right: Social links -->
@@ -20,14 +20,14 @@
           target="_blank"
           rel="noopener noreferrer"
           title="Source Code"
-          class="text-base-content/60 hover:text-base-content transition-colors"
+          class="text-base-content/80 hover:text-base-content transition-colors"
           >Source Code</a
         >
         <a
           href="https://github.com/tarik-oz"
           target="_blank"
           rel="noopener noreferrer"
-          class="text-base-content/60 hover:text-base-content transition-colors"
+          class="text-base-content/80 hover:text-base-content transition-colors"
           title="GitHub"
         >
           <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -40,7 +40,7 @@
           href="https://linkedin.com/in/tarik-oz"
           target="_blank"
           rel="noopener noreferrer"
-          class="text-base-content/60 hover:text-base-content transition-colors"
+          class="text-base-content/80 hover:text-base-content transition-colors"
           title="LinkedIn"
         >
           <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">

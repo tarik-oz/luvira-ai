@@ -3,7 +3,7 @@ import Header from './components/layout/Header.vue'
 import Footer from './components/layout/Footer.vue'
 import ProcessingView from './views/ProcessingView.vue'
 import { useAppState } from './composables/useAppState'
-import UploadView_new from './views/UploadView_new.vue'
+import UploadView from './views/UploadView.vue'
 
 const { currentView } = useAppState()
 </script>
@@ -16,7 +16,7 @@ const { currentView } = useAppState()
     <main class="flex-1 py-6 overflow-y-auto bg-base-100">
       <div class="max-w-7xl mx-auto px-4 mt-16 pt-10 mb-4">
         <!-- Upload View -->
-        <UploadView_new v-if="currentView === 'upload'" />
+        <UploadView v-if="currentView === 'upload'" />
 
         <!-- Processing View -->
         <ProcessingView v-if="currentView === 'processing'" />

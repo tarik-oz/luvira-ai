@@ -1,96 +1,131 @@
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { ref, onUnmounted } from 'vue'
+import { defineExpose } from 'vue'
+import { PhCamera, PhCheck, PhX } from '@phosphor-icons/vue'
+import AppButton from './AppButton.vue'
 
-const emit = defineEmits(['capture'])
-
+const showModal = ref(false)
 const videoRef = ref<HTMLVideoElement | null>(null)
 const stream = ref<MediaStream | null>(null)
-const isCameraOpen = ref(false)
-const isCapturing = ref(false)
-const error = ref<string | null>(null)
 
-const openCamera = async () => {
-  error.value = null
-  try {
-    stream.value = await navigator.mediaDevices.getUserMedia({ video: true })
-    isCameraOpen.value = true
-    await nextTick()
-    if (videoRef.value && stream.value) {
-      videoRef.value.srcObject = stream.value
-      videoRef.value.play()
-    }
-  } catch (e: any) {
-    error.value = 'Unable to access camera.'
-  }
-}
-
-const closeCamera = () => {
+const open = async () => {
   if (stream.value) {
-    stream.value.getTracks().forEach((track) => track.stop())
+    stream.value.getTracks().forEach((track: MediaStreamTrack) => {
+      track.stop()
+    })
     stream.value = null
   }
-  isCameraOpen.value = false
-}
 
-const capturePhoto = () => {
-  if (!videoRef.value) return
-  isCapturing.value = true
-  const canvas = document.createElement('canvas')
-  canvas.width = videoRef.value.videoWidth
-  canvas.height = videoRef.value.videoHeight
-  const ctx = canvas.getContext('2d')
-  if (ctx) {
-    ctx.drawImage(videoRef.value, 0, 0, canvas.width, canvas.height)
-    canvas.toBlob(
-      (blob) => {
-        if (blob) {
-          const file = new File([blob], 'captured_photo.jpg', { type: 'image/jpeg' })
-          emit('capture', file)
-        }
-        isCapturing.value = false
-        closeCamera()
-      },
-      'image/jpeg',
-      0.95,
-    )
+  showModal.value = true
+
+  try {
+    const newStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+    stream.value = newStream
+
+    if (videoRef.value) {
+      videoRef.value.srcObject = newStream
+      await videoRef.value.play()
+    }
+  } catch (err) {
+    console.error('Camera error:', err)
+    stream.value = null
   }
 }
+const close = () => {
+  showModal.value = false
+
+  if (videoRef.value) {
+    videoRef.value.pause()
+    videoRef.value.srcObject = null
+    videoRef.value.load()
+  }
+
+  if (stream.value) {
+    stream.value.getTracks().forEach((track: MediaStreamTrack) => {
+      track.stop()
+    })
+    stream.value = null
+  }
+}
+
+onUnmounted(() => {
+  if (videoRef.value) {
+    videoRef.value.pause()
+    videoRef.value.srcObject = null
+    videoRef.value.load()
+  }
+
+  if (stream.value) {
+    stream.value.getTracks().forEach((track: MediaStreamTrack) => {
+      track.stop()
+    })
+    stream.value = null
+  }
+})
+defineExpose({ open })
 </script>
 
 <template>
-  <div>
-    <button
-      v-if="!isCameraOpen"
-      @click="openCamera"
-      class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mb-2"
+  <!-- Full Screen Modal -->
+  <div
+    v-if="showModal"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs"
+    @click.self="close"
+  >
+    <div
+      class="bg-base-content/80 rounded-xl shadow-2xl p-8 w-full max-w-2xl relative flex flex-col items-center"
     >
-      Take a Photo
-    </button>
-
-    <div v-if="isCameraOpen" class="flex flex-col items-center space-y-2">
-      <video
-        ref="videoRef"
-        autoplay
-        playsinline
-        class="rounded-lg border w-full max-w-xs aspect-video bg-black"
-      ></video>
-      <div class="flex space-x-2">
-        <button
-          @click="capturePhoto"
-          :disabled="isCapturing"
-          class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+      <button
+        @click="close"
+        class="absolute top-4 right-4 btn btn-sm btn-circle border-none btn-ghost text-base-100 hover:bg-accent/80 shadow-none"
+      >
+        <PhX class="w-4 h-4" weight="bold" />
+      </button>
+      <div class="text-2xl font-bold mb-6 text-center text-base-100">Take a Photo</div>
+      <!-- Camera Box with overlay -->
+      <div
+        class="w-full h-72 bg-base-200 rounded-lg flex items-center justify-center mb-1 overflow-hidden relative"
+      >
+        <video ref="videoRef" class="w-full h-full object-cover rounded-lg" autoplay playsinline />
+        <!-- Portrait overlay: only visible on md and up -->
+        <div
+          class="hidden md:flex flex-col items-center justify-center absolute top-0 left-1/2 -translate-x-1/2 h-full"
+          style="width: 40%; pointer-events: none"
         >
-          Capture
-        </button>
-        <button
-          @click="closeCamera"
-          :disabled="isCapturing"
-          class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
-        >
-          Cancel
-        </button>
+          <div class="h-full w-full border-4 border-accent"></div>
+        </div>
+        <!-- Darkening: left -->
+        <div
+          class="hidden md:block absolute top-0 left-0 h-full"
+          style="width: 30%; background: rgba(0, 0, 0, 0.5); pointer-events: none"
+        ></div>
+        <!-- Darkening: right -->
+        <div
+          class="hidden md:block absolute top-0 right-0 h-full"
+          style="width: 30%; background: rgba(0, 0, 0, 0.5); pointer-events: none"
+        ></div>
       </div>
-      <div v-if="error" class="text-red-500 text-sm mt-2">{{ error }}</div>
+      <!-- Guidance text: only when portrait overlay is visible (md and up) -->
+      <div class="hidden md:flex w-full mb-1 items-center justify-center">
+        <span class="italic text-base-100/70 text-sm text-center drop-shadow-md">
+          Please align your face within the center area.
+        </span>
+      </div>
+      <!-- Buttons Row -->
+      <div class="flex w-full gap-4 mt-2 md:mt-4">
+        <AppButton class="flex-1" type="button">
+          <template #icon>
+            <PhCamera class="w-5 h-5" />
+          </template>
+          Take Photo
+        </AppButton>
+        <AppButton class="flex-1" type="button">
+          <template #icon>
+            <PhCheck class="w-5 h-5" />
+          </template>
+          Submit
+        </AppButton>
+      </div>
     </div>
   </div>
 </template>
