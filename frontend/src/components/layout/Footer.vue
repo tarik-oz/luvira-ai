@@ -1,33 +1,29 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+</script>
 
 <template>
   <!-- Divider -->
-  <div class="mx-auto w-full max-w-7xl">
-    <div class="border-t border-base-content opacity-20"></div>
+  <div class="w-full max-w-7xl mx-auto">
+    <div class="border-t opacity-20 border-base-content"></div>
   </div>
   <footer class="py-6">
     <div
       class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-y-4"
     >
       <!-- Left: Copyright -->
-      <div class="text-base-content/60 text-sm md:text-base font-medium">
-        © 2025 Tarık Öz All rights reserved.
+      <div class="text-sm md:text-base font-medium text-base-content/60">
+        {{ t('footer.copyright') }}
       </div>
       <!-- Right: Social links -->
       <div class="flex items-center space-x-4">
         <a
-          href="https://github.com/tarik-oz/deep-learning-hair-segmentation"
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Source Code"
-          class="text-base-content/80 hover:text-base-content transition-colors"
-          >Source Code</a
-        >
-        <a
           href="https://github.com/tarik-oz"
           target="_blank"
           rel="noopener noreferrer"
-          class="text-base-content/80 hover:text-base-content transition-colors"
+          class="transition-colors text-base-content/80 hover:text-base-content"
           title="GitHub"
         >
           <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -40,7 +36,7 @@
           href="https://linkedin.com/in/tarik-oz"
           target="_blank"
           rel="noopener noreferrer"
-          class="text-base-content/80 hover:text-base-content transition-colors"
+          class="transition-colors text-base-content/80 hover:text-base-content"
           title="LinkedIn"
         >
           <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">

@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { PhUploadSimple, PhInfo } from '@phosphor-icons/vue'
+import { useI18n } from 'vue-i18n'
 
 const emit = defineEmits<{ 'file-select': [file: File] }>()
+
+const { t } = useI18n()
 
 // Refs
 const fileInput = ref<HTMLInputElement>()
@@ -38,7 +41,7 @@ const handleDragLeave = (event: DragEvent) => {
 <template>
   <div
     :class="[
-      'relative flex flex-col items-center justify-center group p-10 border-2 rounded-xl hover:bg-accent cursor-pointer text-center transition-colors duration-300',
+      'relative flex flex-col items-center justify-center group p-10 rounded-xl border-2 text-center cursor-pointer hover:bg-accent transition-colors duration-300',
       isDragOver ? 'border-accent bg-accent/10' : 'border-base-content/20 bg-base-content',
     ]"
     @click="openFileDialog"
@@ -73,7 +76,7 @@ const handleDragLeave = (event: DragEvent) => {
           !isDragOver && 'group-hover:text-base-100',
         ]"
       >
-        Click or drag & drop a photo
+        {{ t('uploadSection.uploadImage') }}
       </h3>
     </div>
 
@@ -88,7 +91,7 @@ const handleDragLeave = (event: DragEvent) => {
 
     <!-- Info icon and tooltip -->
     <div
-      class="absolute bottom-3 right-3 z-20 transition-colors duration-300"
+      class="absolute right-3 bottom-3 z-20 transition-colors duration-300"
       @mouseenter="showTooltip = true"
       @mouseleave="showTooltip = false"
     >
@@ -101,9 +104,9 @@ const handleDragLeave = (event: DragEvent) => {
       />
       <div
         v-if="showTooltip"
-        class="absolute bottom-7 right-0 bg-base-100/100 text-xs text-base-content/90 px-3 py-1 rounded shadow font-bold whitespace-nowrap transition-colors duration-300"
+        class="absolute right-0 bottom-7 px-3 py-1 rounded bg-base-100/100 text-xs font-bold text-base-content/90 shadow whitespace-nowrap transition-colors duration-300"
       >
-        Supported formats: JPG, JPEG, PNG (max 10MB)
+        {{ t('uploadSection.tooltip') }}
       </div>
     </div>
   </div>

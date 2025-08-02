@@ -6,6 +6,9 @@ import CameraCapture from '../components/ui/CameraCapture.vue'
 import HairColorShowcase from '../components/ui/HairColorShowcase.vue'
 import { PhImage, PhCamera } from '@phosphor-icons/vue'
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const sampleImagesModal = ref()
 const cameraCaptureModal = ref()
@@ -17,36 +20,35 @@ const handleFileSelect = (file: File) => {
 </script>
 
 <template>
-  <div class="grid grid-cols-1 md:grid-cols-2">
+  <div class="grid md:grid-cols-2 grid-cols-1">
     <!-- Left column -->
-    <div class="flex flex-col justify-center items-start px-4 md:px-0">
+    <div class="flex flex-col items-start justify-center px-4 md:px-0">
       <!-- Title -->
-      <h1 class="text-5xl md:text-6xl font-extrabold text-base-content leading-tight mb-6">
-        Online Hair Color & Tone Changer
+      <h1 class="text-5xl md:text-6xl font-extrabold leading-tight text-base-content mb-6">
+        {{ t('upload.title') }}
       </h1>
 
       <!-- Description -->
-      <p class="text-lg md:text-xl text-base-content/70 mb-8 max-w-xl">
-        Easily try a wide selection of hair colors and natural tones. Instantly preview different
-        looks and find the style that suits you best. Fast, realistic, and free. Give it a try now!
+      <p class="text-lg md:text-xl max-w-xl mb-8 text-base-content/70">
+        {{ t('upload.description') }}
       </p>
 
       <!-- UploadSection -->
-      <UploadSection @file-select="handleFileSelect" class="w-full max-w-xl" />
+      <UploadSection @file-select="handleFileSelect" class="max-w-xl w-full" />
 
       <!-- Divider -->
-      <div class="divider w-full max-w-xl my-6 text-base-content/70 font-semibold select-none">
-        or
+      <div class="divider max-w-xl w-full my-6 font-semibold select-none text-base-content/70">
+        {{ t('upload.divider') }}
       </div>
 
       <!-- Buttons -->
-      <div class="flex gap-4 w-full max-w-xl">
+      <div class="flex gap-4 max-w-xl w-full">
         <!-- Sample Images Button -->
         <AppButton class="flex-1" @click="sampleImagesModal.open()">
           <template #icon>
             <PhImage class="w-5 h-5" />
           </template>
-          Select a Sample Image
+          {{ t('upload.sampleButton') }}
         </AppButton>
 
         <!-- Camera Button -->
@@ -54,7 +56,7 @@ const handleFileSelect = (file: File) => {
           <template #icon>
             <PhCamera class="w-5 h-5" />
           </template>
-          Use Camera
+          {{ t('upload.cameraButton') }}
         </AppButton>
       </div>
 

@@ -1,0 +1,31 @@
+{
+  "upload": {
+    "title": "Saçını Yenile: Renk & Ton",
+    "description": "Farklı saç renklerini ve doğal tonları kolayca deneyin. Farklı görünümleri anında önizleyin ve size en çok yakışan stili bulun. Hızlı, gerçekçi ve ücretsiz. Hemen deneyin!",
+    "divider": "veya",
+    "sampleButton": "Örnek Görsel Seç",
+    "cameraButton": "Kamerayı Kullan"
+  },
+  "colors": {
+    "Black": "Siyah",
+    "Brown": "Kahverengi",
+    "Pink": "Pembe",
+    "Blue": "Mavi",
+    "Gray": "Gri",
+    "Purple": "Mor"
+  },
+  "camera": {
+    "title": "Kamera",
+    "takePhoto": "Fotoğraf Çek",
+    "guidance": "Lütfen yüzünüzü ortadaki alana hizalayın.",
+    "close": "Kapat",
+    "submit": "Onayla"
+  },
+  "uploadSection": {
+    "uploadImage": "Sürükle & bırak veya tıkla",
+    "tooltip": "Desteklenen formatlar: JPG, PNG, Maksimum boyut: 10MB"
+  },
+  "footer": {
+    "copyright": "© 2025 Tarık Öz. Tüm hakları saklıdır."
+  }
+}

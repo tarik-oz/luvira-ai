@@ -8,3 +8,7 @@
   name: 'dark';
   --color-base-100: #000000;
 }
+
+body {
+  font-family: 'Inter', sans-serif;
+}

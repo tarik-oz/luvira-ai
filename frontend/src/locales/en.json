@@ -1,0 +1,31 @@
+{
+  "upload": {
+    "title": "Refresh Your Hair: Color & Tone",
+    "description": "Easily try a wide selection of hair colors and natural tones. Instantly preview different looks and find the style that suits you best. Fast, realistic, and free. Give it a try now!",
+    "divider": "or",
+    "sampleButton": "Select a Sample Image",
+    "cameraButton": "Use Camera"
+  },
+  "colors": {
+    "Black": "Black",
+    "Brown": "Brown",
+    "Pink": "Pink",
+    "Blue": "Blue",
+    "Gray": "Gray",
+    "Purple": "Purple"
+  },
+  "camera": {
+    "title": "Camera",
+    "takePhoto": "Take Photo",
+    "guidance": "Please align your face within the center area.",
+    "close": "Close",
+    "submit": "Submit"
+  },
+  "uploadSection": {
+    "uploadImage": "Choose or drag image",
+    "tooltip": "JPG, PNG, Max 10MB"
+  },
+  "footer": {
+    "copyright": "© 2025 Tarık Öz. All rights reserved."
+  }
+}

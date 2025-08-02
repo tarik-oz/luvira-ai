@@ -10,68 +10,18 @@ import sample8 from '../assets/samples/sample8.jpg'
 
 export interface StaticSampleImage {
   id: string
-  name: string
-  description: string
   url: string
-  filename: string
+  alt: string
 }
 
 // Static sample images data
 export const sampleImages: StaticSampleImage[] = [
-  {
-    id: '1',
-    name: 'Sample 1',
-    description: 'Female portrait',
-    url: sample1,
-    filename: 'sample1.jpg',
-  },
-  {
-    id: '2',
-    name: 'Sample 2',
-    description: 'Female portrait',
-    url: sample2,
-    filename: 'sample2.jpg',
-  },
-  {
-    id: '3',
-    name: 'Sample 3',
-    description: 'Female portrait',
-    url: sample3,
-    filename: 'sample3.jpg',
-  },
-  {
-    id: '4',
-    name: 'Sample 4',
-    description: 'Female portrait',
-    url: sample4,
-    filename: 'sample4.jpg',
-  },
-  {
-    id: '5',
-    name: 'Sample 5',
-    description: 'Female portrait',
-    url: sample5,
-    filename: 'sample5.jpg',
-  },
-  {
-    id: '6',
-    name: 'Sample 6',
-    description: 'Female portrait',
-    url: sample6,
-    filename: 'sample6.jpg',
-  },
-  {
-    id: '7',
-    name: 'Sample 7',
-    description: 'Female portrait',
-    url: sample7,
-    filename: 'sample7.jpg',
-  },
-  {
-    id: '8',
-    name: 'Sample 8',
-    description: 'Female portrait',
-    url: sample8,
-    filename: 'sample8.jpg',
-  },
+  { id: '1', url: sample1, alt: 'Sample 1' },
+  { id: '2', url: sample2, alt: 'Sample 2' },
+  { id: '3', url: sample3, alt: 'Sample 3' },
+  { id: '4', url: sample4, alt: 'Sample 4' },
+  { id: '5', url: sample5, alt: 'Sample 5' },
+  { id: '6', url: sample6, alt: 'Sample 6' },
+  { id: '7', url: sample7, alt: 'Sample 7' },
+  { id: '8', url: sample8, alt: 'Sample 8' },
 ]

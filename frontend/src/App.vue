@@ -9,11 +9,11 @@ const { currentView } = useAppState()
 </script>
 
 <template>
-  <div class="h-screen flex flex-col">
+  <div class="flex flex-col h-screen">
     <Header />
 
     <!-- Main Content -->
-    <main class="flex-1 py-6 overflow-y-auto bg-base-100">
+    <main class="flex-1 overflow-y-auto py-6 bg-base-100">
       <div class="max-w-7xl mx-auto px-4 mt-16 pt-10 mb-4">
         <!-- Upload View -->
         <UploadView v-if="currentView === 'upload'" />
