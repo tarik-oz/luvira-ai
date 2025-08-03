@@ -3,6 +3,7 @@
  */
 
 import { ref, readonly } from 'vue'
+import apiService from '../services/apiService'
 
 export type ViewType = 'upload' | 'processing'
 
@@ -17,7 +18,6 @@ export interface ColorCache {
 }
 
 // Global state
-const currentView = ref<ViewType>('upload')
 const sessionId = ref<string | null>(null)
 const uploadedImage = ref<string | null>(null)
 const isUploading = ref(false)
@@ -27,10 +27,26 @@ const selectedTone = ref<string | null>(null)
 const colorCache = ref<ColorCache>({})
 
 export function useAppState() {
-  const setCurrentView = (view: ViewType) => {
-    currentView.value = view
-  }
+  const uploadFileAndSetSession = async (file: File, originalImageUrl?: string) => {
+    setIsUploading(true)
+    try {
+      // If original URL exists (for sample images), save it
+      if (originalImageUrl) {
+        setUploadedImage(originalImageUrl)
+      } else {
+        // Create blob URL for normal file upload
+        createImageUrl(file)
+      }
 
+      const response = await apiService.uploadAndPrepare(file)
+      setSessionId(response.session_id)
+      return response.session_id
+    } catch (error) {
+      throw error
+    } finally {
+      setIsUploading(false)
+    }
+  }
   const setSessionId = (id: string | null) => {
     sessionId.value = id
   }
@@ -91,7 +107,6 @@ export function useAppState() {
     }
 
     // Reset all state
-    currentView.value = 'upload'
     sessionId.value = null
     uploadedImage.value = null
     isUploading.value = false
@@ -109,7 +124,6 @@ export function useAppState() {
 
   return {
     // Readonly state
-    currentView: readonly(currentView),
     sessionId: readonly(sessionId),
     uploadedImage: readonly(uploadedImage),
     isUploading: readonly(isUploading),
@@ -118,8 +132,6 @@ export function useAppState() {
     selectedTone: readonly(selectedTone),
 
     // Actions
-    setCurrentView,
-    setSessionId,
     setUploadedImage,
     setIsUploading,
     setCurrentColorResult,
@@ -128,5 +140,6 @@ export function useAppState() {
     clearCache,
     resetState,
     createImageUrl,
+    uploadFileAndSetSession,
   }
 }

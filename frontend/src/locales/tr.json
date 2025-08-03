@@ -16,16 +16,28 @@
   },
   "camera": {
     "title": "Kamera",
+    "preview": "Fotoğraf Önizleme",
     "takePhoto": "Fotoğraf Çek",
+    "takingPhoto": "Fotoğraf Çekiliyor...",
+    "retake": "Tekrar Çek",
     "guidance": "Lütfen yüzünüzü ortadaki alana hizalayın.",
     "close": "Kapat",
-    "submit": "Onayla"
+    "submit": "Onayla",
+    "uploading": "Yükleniyor...",
+    "noPermission": "Kamera erişimi reddedildi. Lütfen tarayıcı ayarlarından kamera izinlerine izin verin.",
+    "notFound": "Kamera bulunamadı. Lütfen bir kameranın bağlı ve etkin olduğundan emin olun.",
+    "genericError": "Kameraya erişilemedi. Lütfen tekrar deneyin veya cihazınızı kontrol edin."
   },
   "uploadSection": {
     "uploadImage": "Sürükle & bırak veya tıkla",
-    "tooltip": "Desteklenen formatlar: JPG, PNG, Maksimum boyut: 10MB"
+    "tooltip": "JPG, PNG, Maks. 10MB",
+    "validationError": "Geçersiz dosya. Lütfen JPG/PNG formatında, maks. 10MB."
   },
   "footer": {
     "copyright": "© 2025 Tarık Öz. Tüm hakları saklıdır."
+  },
+  "sampleImages": {
+    "loadingSelected": "Seçilen resim yükleniyor...",
+    "errorMessage": "Resim yüklenemedi. Lütfen tekrar deneyin."
   }
 }

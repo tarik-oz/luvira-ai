@@ -1,53 +1,49 @@
 <script setup lang="ts">
-import ImageDisplay from '../components/ui/ImageDisplay.vue'
-import ColorOptionsPanel from '../components/ui/ColorOptionsPanel.vue'
 import { useAppState } from '../composables/useAppState'
+import { useRouter } from 'vue-router'
+import { onMounted } from 'vue'
 
-const { uploadedImage, sessionId, resetState, setCurrentView } = useAppState()
+const { uploadedImage, sessionId } = useAppState()
+const router = useRouter()
 
-const handleBackToUpload = () => {
-  resetState()
-  setCurrentView('upload')
-  console.log('Returned to upload view')
-}
+// Check if user has valid session on page load
+onMounted(() => {
+  if (!sessionId.value || !uploadedImage.value) {
+    // No session or image, redirect to upload page
+    router.push('/')
+  }
+})
 </script>
 
 <template>
-  <div class="w-full max-w-4xl mx-auto">
-    <!-- Back Button -->
-    <div class="mb-6">
-      <button
-        @click="handleBackToUpload"
-        class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-      >
-        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M15 19l-7-7 7-7"
+  <div class="min-h-screen bg-base-300 p-8">
+    <div class="max-w-4xl mx-auto">
+      <h1 class="text-3xl font-bold text-center mb-8">Hair Color Processing</h1>
+
+      <!-- Debug Info -->
+      <div class="bg-base-100 p-4 rounded-lg mb-6">
+        <h2 class="text-xl font-semibold mb-4">Debug Info:</h2>
+        <p><strong>Session ID:</strong> {{ sessionId || 'No session' }}</p>
+        <p><strong>Image URL:</strong> {{ uploadedImage || 'No image' }}</p>
+      </div>
+
+      <!-- Original Image Display -->
+      <div v-if="uploadedImage" class="bg-base-100 p-6 rounded-lg">
+        <h2 class="text-xl font-semibold mb-4">Original Image (Client Cache):</h2>
+        <div class="flex justify-center">
+          <img
+            :src="uploadedImage"
+            alt="Original uploaded image"
+            class="max-w-md max-h-96 object-contain rounded-lg shadow-lg"
           />
-        </svg>
-        Upload New Image
-      </button>
-    </div>
+        </div>
+      </div>
 
-    <!-- Page Title -->
-    <div class="text-center mb-8">
-      <h1 class="text-3xl font-bold text-gray-800 mb-2">Transform Your Hair Color</h1>
-      <p class="text-base text-gray-600">
-        Your image has been processed successfully. Now you can experiment with different hair
-        colors.
-      </p>
-    </div>
-
-    <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <!-- Image Display -->
-      <ImageDisplay :uploaded-image="uploadedImage" :session-id="sessionId" />
-
-      <!-- Color Options Panel -->
-      <ColorOptionsPanel />
+      <!-- No Image State -->
+      <div v-else class="bg-base-100 p-6 rounded-lg text-center">
+        <h2 class="text-xl font-semibold mb-4">No Image Found</h2>
+        <p class="text-base-content/60">Please upload an image first</p>
+      </div>
     </div>
   </div>
 </template>

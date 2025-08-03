@@ -16,16 +16,28 @@
   },
   "camera": {
     "title": "Camera",
+    "preview": "Photo Preview",
     "takePhoto": "Take Photo",
+    "takingPhoto": "Taking Photo...",
+    "retake": "Retake Photo",
     "guidance": "Please align your face within the center area.",
     "close": "Close",
-    "submit": "Submit"
+    "submit": "Submit",
+    "uploading": "Uploading...",
+    "noPermission": "Camera access denied. Please allow camera permissions in your browser settings.",
+    "notFound": "No camera found. Please make sure a camera is connected and enabled.",
+    "genericError": "Could not access the camera. Please try again or check your device."
   },
   "uploadSection": {
     "uploadImage": "Choose or drag image",
-    "tooltip": "JPG, PNG, Max 10MB"
+    "tooltip": "JPG, PNG, Max 10MB",
+    "validationError": "Invalid file. Please use JPG/PNG, max 10MB."
   },
   "footer": {
     "copyright": "© 2025 Tarık Öz. All rights reserved."
+  },
+  "sampleImages": {
+    "loadingSelected": "Selected image is uploading...",
+    "errorMessage": "Image upload failed. Please try again."
   }
 }

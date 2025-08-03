@@ -42,7 +42,7 @@ const handleFileSelect = (file: File) => {
       </div>
 
       <!-- Buttons -->
-      <div class="flex gap-4 max-w-xl w-full">
+      <div class="flex gap-4 max-w-xl w-full mb-5">
         <!-- Sample Images Button -->
         <AppButton class="flex-1" @click="sampleImagesModal.open()">
           <template #icon>

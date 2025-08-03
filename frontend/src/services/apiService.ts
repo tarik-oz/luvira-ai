@@ -28,21 +28,30 @@ class ApiService {
     const formData = new FormData()
     formData.append('file', file)
 
+    // Create AbortController for timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
     try {
       const response = await fetch(`${this.baseUrl}/upload-and-prepare`, {
         method: 'POST',
         body: formData,
+        signal: controller.signal, // Bu fetch'i timeout'ta iptal eder
       })
+
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`)
+        throw new Error(`API Error: ${response.status}`)
       }
 
       return await response.json()
     } catch (error) {
+      clearTimeout(timeoutId)
       console.error('Upload API error:', error)
-      throw error
+
+      throw new Error('UPLOAD_FAILED')
     }
   }
 
@@ -115,7 +124,10 @@ class ApiService {
   /**
    * Get hair color change with all tones using session
    */
-  async changeHairColorAllTones(sessionId: string, colorName: string): Promise<{
+  async changeHairColorAllTones(
+    sessionId: string,
+    colorName: string,
+  ): Promise<{
     success: boolean
     color: string
     session_id: string
@@ -126,10 +138,13 @@ class ApiService {
     formData.append('color_name', colorName)
 
     try {
-      const response = await fetch(`${this.baseUrl}/change-hair-color-all-tones-fast/${sessionId}`, {
-        method: 'POST',
-        body: formData,
-      })
+      const response = await fetch(
+        `${this.baseUrl}/change-hair-color-all-tones-fast/${sessionId}`,
+        {
+          method: 'POST',
+          body: formData,
+        },
+      )
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
