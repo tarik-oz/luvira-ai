@@ -36,14 +36,14 @@ class ApiService {
       const response = await fetch(`${this.baseUrl}/upload-and-prepare`, {
         method: 'POST',
         body: formData,
-        signal: controller.signal, // Bu fetch'i timeout'ta iptal eder
+        signal: controller.signal, // Cancel request if it takes too long
       })
 
       clearTimeout(timeoutId)
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(`API Error: ${response.status}`)
+        throw new Error(errorData.detail || `API Error: ${response.status}`)
       }
 
       return await response.json()
@@ -75,48 +75,12 @@ class ApiService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`)
+        throw new Error(errorData.detail || `API error! status: ${response.status}`)
       }
 
       return await response.blob()
     } catch (error) {
       console.error('Color change API error:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Get available colors
-   */
-  async getAvailableColors(): Promise<Array<{ name: string; rgb: [number, number, number] }>> {
-    try {
-      const response = await fetch(`${this.baseUrl}/available-colors`)
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const data = await response.json()
-      return data.colors_with_rgb || []
-    } catch (error) {
-      console.error('Get colors API error:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Get available tones for a color
-   */
-  async getAvailableTones(colorName: string): Promise<string[]> {
-    try {
-      const response = await fetch(`${this.baseUrl}/available-tones/${colorName}`)
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-      return data.tones || []
-    } catch (error) {
-      console.error('Get tones API error:', error)
       throw error
     }
   }
@@ -148,7 +112,7 @@ class ApiService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`)
+        throw new Error(errorData.detail || `API error! status: ${response.status}`)
       }
 
       return await response.json()

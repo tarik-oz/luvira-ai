@@ -36,6 +36,11 @@
   "footer": {
     "copyright": "© 2025 Tarık Öz. All rights reserved."
   },
+  "processing": {
+    "backButton": "Upload New Image",
+    "downloadButton": "Download",
+    "compareMode": "Compare"
+  },
   "sampleImages": {
     "loadingSelected": "Selected image is uploading...",
     "errorMessage": "Image upload failed. Please try again."
