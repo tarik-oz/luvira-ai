@@ -59,18 +59,17 @@ class ApiService {
    * Change hair color with session
    */
   async changeHairColor(sessionId: string, colorName: string, tone?: string): Promise<Blob> {
-    const params = new URLSearchParams({
-      session_id: sessionId,
-      color_name: colorName,
-    })
+    const formData = new FormData()
+    formData.append('color_name', colorName)
 
     if (tone) {
-      params.append('tone', tone)
+      formData.append('tone', tone)
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/change-color-session?${params}`, {
+      const response = await fetch(`${this.baseUrl}/change-hair-color-fast/${sessionId}`, {
         method: 'POST',
+        body: formData,
       })
 
       if (!response.ok) {

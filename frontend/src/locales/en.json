@@ -8,6 +8,8 @@
   },
   "colors": {
     "Black": "Black",
+    "Blonde": "Blonde",
+    "Auburn": "Auburn",
     "Brown": "Brown",
     "Pink": "Pink",
     "Blue": "Blue",
@@ -39,10 +41,20 @@
   "processing": {
     "backButton": "Upload New Image",
     "downloadButton": "Download",
-    "compareMode": "Compare"
+    "compareMode": "Compare",
+    "before": "Before",
+    "after": "After"
   },
   "sampleImages": {
     "loadingSelected": "Selected image is uploading...",
     "errorMessage": "Image upload failed. Please try again."
+  },
+  "colorPalette": {
+    "title": "Color Palette",
+    "instruction": "Select a color to start your transformation"
+  },
+  "tonePalette": {
+    "title": "Choose Tone",
+    "instruction": "Select a tone variation for your chosen color"
   }
 }

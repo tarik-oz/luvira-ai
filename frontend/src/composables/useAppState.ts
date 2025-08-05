@@ -3,12 +3,14 @@
  */
 
 import { ref, readonly } from 'vue'
-import apiService from '../services/apiService'
+// apiService import removed - now handled by hairService
 
 export type ViewType = 'upload' | 'processing'
 
 export interface ColorChangeResult {
   color: string
+  originalColor: string // Ana renk adı (Purple, Black, vs)
+  selectedTone: string | null // Seçilen ton (plum, onyx, vs)
   baseResult: string // base64 image
   tones: Record<string, string> // tone name -> base64 image
 }
@@ -21,34 +23,30 @@ export interface ColorCache {
 const sessionId = ref<string | null>(null)
 const uploadedImage = ref<string | null>(null)
 const isUploading = ref(false)
+const isProcessing = ref(false) // Loading state for color change
 const currentColorResult = ref<ColorChangeResult | null>(null)
 const processedImage = ref<string | null>(null)
 const selectedTone = ref<string | null>(null)
 const colorCache = ref<ColorCache>({})
+const colorToneStates = ref<Record<string, string | null>>({}) // Per-color tone selection state
 
 export function useAppState() {
-  const uploadFileAndSetSession = async (file: File, originalImageUrl?: string) => {
-    setIsUploading(true)
-    try {
-      // If original URL exists (for sample images), save it
-      if (originalImageUrl) {
-        setUploadedImage(originalImageUrl)
-      } else {
-        // Create blob URL for normal file upload
-        createImageUrl(file)
-      }
-
-      const response = await apiService.uploadAndPrepare(file)
-      setSessionId(response.session_id)
-      return response.session_id
-    } catch (error) {
-      throw error
-    } finally {
-      setIsUploading(false)
-    }
+  // NOTE: uploadFileAndSetSession moved to hairService
+  // Helper function for blob conversion - DEPRECATED, moved to hairService
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
   }
   const setSessionId = (id: string | null) => {
     sessionId.value = id
+    // Clear tone states when new session starts (new image)
+    if (id) {
+      clearColorToneStates()
+    }
   }
 
   const setUploadedImage = (imageUrl: string | null) => {
@@ -63,11 +61,28 @@ export function useAppState() {
     isUploading.value = loading
   }
 
+  const setIsProcessing = (processing: boolean) => {
+    isProcessing.value = processing
+  }
+
   const setCurrentColorResult = (result: ColorChangeResult | null) => {
     if (result) {
       currentColorResult.value = result
-      // Cache this color result
-      colorCache.value[result.color] = result
+
+      // Cache this color result with LRU (Last Recently Used) - max 5 colors
+      const maxCacheSize = 5
+      const cache = colorCache.value
+
+      // Add new result
+      cache[result.color] = result
+
+      // If cache exceeds limit, remove oldest entries
+      const keys = Object.keys(cache)
+      if (keys.length > maxCacheSize) {
+        const keysToRemove = keys.slice(0, keys.length - maxCacheSize)
+        keysToRemove.forEach((key) => delete cache[key])
+      }
+
       // Set processed image to base result
       processedImage.value = `data:image/png;base64,${result.baseResult}`
       selectedTone.value = null
@@ -100,6 +115,19 @@ export function useAppState() {
     colorCache.value = {}
   }
 
+  // Color-specific tone state management
+  const getColorToneState = (colorName: string): string | null => {
+    return colorToneStates.value[colorName] ?? null // Default to base (null) if not set
+  }
+
+  const setColorToneState = (colorName: string, toneName: string | null) => {
+    colorToneStates.value[colorName] = toneName
+  }
+
+  const clearColorToneStates = () => {
+    colorToneStates.value = {}
+  }
+
   const resetState = () => {
     // Cleanup image URL
     if (uploadedImage.value) {
@@ -110,10 +138,12 @@ export function useAppState() {
     sessionId.value = null
     uploadedImage.value = null
     isUploading.value = false
+    isProcessing.value = false
     currentColorResult.value = null
     processedImage.value = null
     selectedTone.value = null
     clearCache()
+    clearColorToneStates()
   }
 
   const createImageUrl = (file: File): string => {
@@ -127,19 +157,27 @@ export function useAppState() {
     sessionId: readonly(sessionId),
     uploadedImage: readonly(uploadedImage),
     isUploading: readonly(isUploading),
+    isProcessing: readonly(isProcessing),
     currentColorResult: readonly(currentColorResult),
     processedImage: readonly(processedImage),
     selectedTone: readonly(selectedTone),
+    colorCache: readonly(colorCache),
 
     // Actions
+    setSessionId,
     setUploadedImage,
     setIsUploading,
+    setIsProcessing,
     setCurrentColorResult,
     setProcessedImageToTone,
     getCachedColorResult,
     clearCache,
     resetState,
     createImageUrl,
-    uploadFileAndSetSession,
+
+    // Color tone state management
+    getColorToneState,
+    setColorToneState,
+    clearColorToneStates,
   }
 }

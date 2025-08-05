@@ -5,7 +5,10 @@ import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ImageDisplay from '../components/ui/ImageDisplay.vue'
 import AppButton from '../components/ui/AppButton.vue'
-import { PhCaretLeft, PhDownloadSimple } from '@phosphor-icons/vue'
+import ColorPalette from '../components/ui/ColorPalette.vue'
+import DownloadButton from '../components/ui/DownloadButton.vue'
+import { PhCaretLeft } from '@phosphor-icons/vue'
+import TonePalette from '@/components/ui/TonePalette.vue'
 
 const { uploadedImage, sessionId, resetState } = useAppState()
 const router = useRouter()
@@ -26,46 +29,36 @@ const goBack = () => {
   resetState()
   router.push('/')
 }
-
-const downloadImage = () => {
-  // TODO: Download functionality
-  console.log('Download clicked')
-}
 </script>
 
 <template>
   <div class="container mx-auto px-4">
-    <!-- Main Content Grid -->
-    <div class="grid md:grid-cols-2 grid-cols-1">
-      <!-- Left column -->
-      <div class="flex flex-col items-center justify-center px-4 md:px-0 space-y-6">
-        <!-- Back Button -->
-        <div class="w-full flex justify-start">
-          <AppButton
-            @click="goBack"
-            class="bg-base-content hover:bg-base-content/80 active:bg-primary/60 max-w-70 px-4 py-2"
-          >
-            <template #icon>
-              <PhCaretLeft class="w-4 h-4" />
-            </template>
-            {{ t('processing.backButton') }}
-          </AppButton>
-        </div>
+    <!-- Back Button -->
+    <div class="mb-8">
+      <AppButton
+        @click="goBack"
+        class="bg-base-content hover:bg-base-content/80 active:bg-primary/60 px-4 py-2 max-w-60"
+      >
+        <template #icon>
+          <PhCaretLeft class="w-4 h-4" />
+        </template>
+        {{ t('processing.backButton') }}
+      </AppButton>
+    </div>
 
+    <!-- Main Content Grid -->
+    <div class="grid md:grid-cols-2 grid-cols-1 gap-8">
+      <!-- Left column -->
+      <div class="flex flex-col items-center justify-center px-4 md:px-0">
         <!-- Image Display Container -->
         <div class="w-full max-w-lg mx-auto space-y-4">
           <!-- Image Display -->
-          <ImageDisplay />
+          <ImageDisplay :compare-mode="isCompareMode" />
 
           <!-- Image Controls -->
           <div class="flex items-center gap-4 justify-between">
             <!-- Download Button -->
-            <AppButton @click="downloadImage" class="flex-1 px-4 py-2 max-w-60">
-              <template #icon>
-                <PhDownloadSimple class="w-4 h-4" />
-              </template>
-              {{ t('processing.downloadButton') }}
-            </AppButton>
+            <DownloadButton />
 
             <!-- Compare Mode Toggle -->
             <div class="flex items-center gap-2">
@@ -79,7 +72,10 @@ const downloadImage = () => {
       </div>
 
       <!-- Right column -->
-      <div></div>
+      <div class="flex flex-col px-4 md:px-0 gap-5">
+        <ColorPalette />
+        <TonePalette />
+      </div>
     </div>
   </div>
 </template>

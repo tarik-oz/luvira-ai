@@ -7,9 +7,10 @@ import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../composables/useAppState'
 import { useRouter } from 'vue-router'
 import { PhWarning } from '@phosphor-icons/vue'
+import hairService from '../../services/hairService'
 
 const { t } = useI18n()
-const { isUploading, uploadFileAndSetSession } = useAppState()
+const { isUploading } = useAppState()
 const router = useRouter()
 
 const showModal = ref(false)
@@ -42,7 +43,7 @@ const handleImageSelect = async (index: number, imageUrl: string) => {
     const blob = await response.blob()
     const file = new File([blob], `sample-image-${index + 1}.jpg`, { type: 'image/jpeg' })
 
-    await uploadFileAndSetSession(file, imageUrl)
+    await hairService.uploadImage(file, imageUrl)
 
     // Close modal and navigate to processing page
     showModal.value = false

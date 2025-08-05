@@ -8,8 +8,11 @@ import { useAppState } from '../../composables/useAppState'
 import { useRouter } from 'vue-router'
 
 const { t } = useI18n()
-const { uploadFileAndSetSession } = useAppState()
+const { isUploading } = useAppState()
 const router = useRouter()
+
+// Import hairService for upload
+import hairService from '../../services/hairService'
 
 const showModal = ref(false)
 const videoRef = ref<HTMLVideoElement | null>(null)
@@ -18,7 +21,6 @@ let pendingStreamPromise: Promise<MediaStream> | null = null
 const isLoading = ref(false)
 const isStreamReady = ref(false)
 const capturedImage = ref<string | null>(null)
-const isUploading = ref(false)
 const errorMessage = ref<string | null>(null)
 
 const open = async () => {
@@ -34,7 +36,6 @@ const open = async () => {
   isLoading.value = true
   isStreamReady.value = false
   capturedImage.value = null
-  isUploading.value = false
   errorMessage.value = null
 
   try {
@@ -72,7 +73,6 @@ const close = () => {
   isLoading.value = false
   isStreamReady.value = false
   capturedImage.value = null
-  isUploading.value = false
 
   if (videoRef.value) {
     videoRef.value.pause()
@@ -214,7 +214,6 @@ const retakePhoto = async () => {
 const submitPhoto = async () => {
   if (!capturedImage.value || isUploading.value) return
 
-  isUploading.value = true
   errorMessage.value = null
 
   try {
@@ -223,7 +222,7 @@ const submitPhoto = async () => {
     const blob = await response.blob()
     const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' })
 
-    await uploadFileAndSetSession(file, capturedImage.value)
+    await hairService.uploadImage(file, capturedImage.value)
 
     // Close modal and navigate
     close()
@@ -231,8 +230,6 @@ const submitPhoto = async () => {
   } catch (error) {
     console.error('Camera upload failed:', error)
     errorMessage.value = t('sampleImages.errorMessage')
-  } finally {
-    isUploading.value = false
   }
 }
 

@@ -4,11 +4,12 @@ import { PhUploadSimple, PhInfo, PhWarning } from '@phosphor-icons/vue'
 import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../composables/useAppState'
 import { useRouter } from 'vue-router'
+import hairService from '../../services/hairService'
 
 const emit = defineEmits<{ 'file-select': [file: File] }>()
 
 const { t } = useI18n()
-const { uploadFileAndSetSession, isUploading } = useAppState()
+const { isUploading } = useAppState()
 const router = useRouter()
 
 // Refs
@@ -117,7 +118,7 @@ const processFile = async (file: File) => {
       sizeInMB: (processedFile.size / (1024 * 1024)).toFixed(2) + ' MB',
     })
 
-    await uploadFileAndSetSession(processedFile)
+    await hairService.uploadImage(processedFile)
     router.push('/color-tone-changer')
   } catch (error) {
     console.error('Upload failed:', error)

@@ -8,6 +8,8 @@
   },
   "colors": {
     "Black": "Siyah",
+    "Blonde": "Sarışın",
+    "Auburn": "Kumral",
     "Brown": "Kahverengi",
     "Pink": "Pembe",
     "Blue": "Mavi",
@@ -39,10 +41,20 @@
   "processing": {
     "backButton": "Yeni Resim Yükle",
     "downloadButton": "İndir",
-    "compareMode": "Karşılaştır"
+    "compareMode": "Karşılaştır",
+    "before": "Önce",
+    "after": "Sonra"
   },
   "sampleImages": {
     "loadingSelected": "Seçilen resim yükleniyor...",
     "errorMessage": "Resim yüklenemedi. Lütfen tekrar deneyin."
+  },
+  "colorPalette": {
+    "title": "Renk Paleti",
+    "instruction": "Dönüşüme başlamak için bir renk seçin"
+  },
+  "tonePalette": {
+    "title": "Ton Seçimi",
+    "instruction": "Seçtiğiniz rengin ton çeşidini belirleyin"
   }
 }
