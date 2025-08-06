@@ -15,7 +15,7 @@ KAGGLE_WORKING_DIR = Path("/kaggle/working")
 PROJECT_ROOT = KAGGLE_WORKING_DIR
 
 # Dataset path - your dataset name on Kaggle
-DATASET_NAME = "hair-dataset-30k"  # Change this to match your Kaggle dataset name
+DATASET_NAME = "hair-dataset-99"  # Change this to match your Kaggle dataset name
 
 # Data paths for Kaggle
 DATA_DIR = KAGGLE_INPUT_DIR / DATASET_NAME
@@ -46,49 +46,51 @@ print(f"Images directory: {IMAGES_DIR}")
 print(f"Masks directory: {MASKS_DIR}")
 print(f"Working directory: {KAGGLE_WORKING_DIR}")
 
-# Model configuration
+# Model configuration - Optimized for 30K dataset
 MODEL_CONFIG = {
     "input_shape": (3, 256, 256),  # (channels, height, width)
     "num_filters": [64, 128, 256, 512],
-    "bridge_filters": 256,
+    "bridge_filters": 512,  # Increased for better feature representation
     "output_channels": 1,
-    "activation": "sigmoid" # sigmoid or softmax
+    "activation": "sigmoid", # sigmoid or softmax
+    "model_type": "attention_unet"  # unet or attention_unet
 }
 
-# Training configuration
+# Training configuration - Optimized for 30K dataset and Kaggle GPU
 TRAINING_CONFIG = {
-    "batch_size": 28,
-    "epochs": 50,
-    "learning_rate": 2e-4,
-    "validation_split": 0.1,
+    "batch_size": 32,  # Increased for 30K dataset
+    "epochs": 40,      # More epochs for large dataset
+    "learning_rate": 1e-4,  # Slightly lower LR for stability
+    "validation_split": 0.15,  # 15% validation for large dataset
     "random_seed": 42,
     "model_type": "attention_unet",  # unet or attention_unet
     "loss_function": "total",  # bce, focal, combo or total
-    "bce_weight": 0.3,  # For combo/total loss
-    "dice_weight": 0.3, # For combo/total loss
-    "boundary_weight": 0.4, # For total loss
-    "optimizer": "adam", # adam, adamw or sgd
+    "bce_weight": 0.2,  # Adjusted weights for 30K dataset
+    "dice_weight": 0.4, # Higher dice weight for better segmentation
+    "boundary_weight": 0.4, # Keep boundary emphasis
+    "optimizer": "adamw", # AdamW better for large datasets
     "device": "auto"  # auto, cpu, or cuda
 }
 
-# Data preprocessing configuration
+# Data preprocessing configuration - Optimized for 30K dataset
 DATA_CONFIG = {
     "image_size": (256, 256),
     "normalization_factor": 255.0,
     "mask_threshold": 0.5,
-    "lazy_loading": False,
-    "num_workers": 2
+    "lazy_loading": False,  # Enable lazy loading for large dataset
+    "use_augmentation": True,  # Enable data augmentation
+    "num_workers": 2  # Kaggle supports 2 workers
 }
 
 # Callbacks configuration - optimized for 30K dataset
 CALLBACKS_CONFIG = {
-    "checkpoint_monitor": "val_dice",
-    "early_stopping_monitor": "val_dice",
-    "early_stopping_patience": 25,
-    "reduce_lr_monitor": "val_loss",
-    "reduce_lr_patience": 12,
-    "reduce_lr_factor": 0.2,
-    "reduce_lr_min_lr": 1e-7
+    "checkpoint_monitor": "val_dice", # Monitor val_dice for best model
+    "early_stopping_monitor": "val_dice", # Early stopping on val_dice
+    "early_stopping_patience": 20,  # More patience for large dataset
+    "reduce_lr_monitor": "val_loss", # LR reduction on val_loss plateau
+    "reduce_lr_patience": 8,   # Faster LR reduction
+    "reduce_lr_factor": 0.3,   # More aggressive LR reduction
+    "reduce_lr_min_lr": 5e-7   # Lower minimum LR
 }
 
 # File patterns

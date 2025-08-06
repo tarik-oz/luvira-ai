@@ -77,6 +77,10 @@ class HairSegmentationTrainer:
             'val_mse': []
         }
         
+        # Checkpoint state
+        self.start_epoch = 0
+        self.checkpoint_data = None
+        
         # Setup device
         self._setup_device()
         
@@ -285,6 +289,116 @@ class HairSegmentationTrainer:
         
         return best_val_loss, best_val_dice
     
+    def save_checkpoint(self, epoch: int, val_loss: float, val_dice: float, best_val_loss: float, best_val_dice: float):
+        """Save training checkpoint to latest_model.pth with checkpoint data."""
+        checkpoint = {
+            'epoch': epoch + 1,
+            'model_state_dict': self.model.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'scheduler_state_dict': self.scheduler.state_dict(),
+            'history': self.history,
+            'best_val_loss': best_val_loss,
+            'best_val_dice': best_val_dice,
+            'config': self.config,
+            'model_config': MODEL_CONFIG,
+        }
+        
+        # Save to latest_model.pth (overwrites each time)
+        torch.save(checkpoint, self.latest_model_path)
+        
+        # Save human-readable checkpoint info
+        checkpoint_info = {
+            'epoch': epoch + 1,
+            'total_epochs_planned': self.config['epochs'],
+            'training_progress': f"{epoch + 1}/{self.config['epochs']} ({((epoch + 1) / self.config['epochs'] * 100):.1f}%)",
+            'best_val_loss': float(best_val_loss) if best_val_loss != float('inf') else None,
+            'best_val_dice': float(best_val_dice),
+            'current_val_loss': float(val_loss),
+            'current_val_dice': float(val_dice),
+            'model_type': MODEL_CONFIG['model_type'],
+            'optimizer': self.config['optimizer'],
+            'learning_rate': self.config['learning_rate'],
+            'batch_size': self.config['batch_size'],
+            'can_resume': True,
+            'last_saved': 'recent'
+        }
+        
+        # Save checkpoint info as JSON (to model's temp directory during training)
+        checkpoint_info_path = self.latest_model_path.parent / "checkpoint_info.json"
+        with open(checkpoint_info_path, 'w') as f:
+            json.dump(checkpoint_info, f, indent=2)
+        
+        logger.info(f"Checkpoint saved to: {self.latest_model_path}")
+        logger.info(f"Checkpoint info saved to: {checkpoint_info_path}")
+    
+    def load_checkpoint(self, checkpoint_path: str = None) -> bool:
+        """Load training checkpoint from model folder."""
+        if checkpoint_path is None:
+            logger.info("No checkpoint path provided")
+            return False
+        
+        # If checkpoint_path is relative, make it relative to TRAINED_MODELS_DIR
+        checkpoint_path = Path(checkpoint_path)
+        if not checkpoint_path.is_absolute():
+            checkpoint_path = TRAINED_MODELS_DIR / checkpoint_path
+        
+        # If checkpoint_path is a folder, look for latest_model.pth inside
+        if checkpoint_path.is_dir():
+            checkpoint_file = checkpoint_path / "latest_model.pth"
+        else:
+            checkpoint_file = checkpoint_path
+        
+        if not checkpoint_file.exists():
+            logger.info(f"Checkpoint not found: {checkpoint_file}")
+            return False
+        
+        try:
+            logger.info(f"Loading checkpoint: {checkpoint_file}")
+            checkpoint = torch.load(checkpoint_file, map_location=self.device)
+            
+            # Check if it's a checkpoint (has epoch info) or just model weights
+            if 'epoch' not in checkpoint:
+                logger.info("File contains only model weights, not checkpoint data")
+                return False
+            
+            # Validate checkpoint
+            required_keys = ['epoch', 'model_state_dict', 'optimizer_state_dict', 'history']
+            if not all(key in checkpoint for key in required_keys):
+                logger.error("Invalid checkpoint format")
+                return False
+            
+            # Store checkpoint data for later use
+            self.checkpoint_data = checkpoint
+            self.start_epoch = checkpoint['epoch']
+            self.history = checkpoint['history']
+            
+            logger.info(f"Checkpoint loaded successfully. Resuming from epoch {self.start_epoch}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error loading checkpoint: {e}")
+            return False
+    
+    def _restore_checkpoint_state(self):
+        """Restore model, optimizer, and scheduler states from checkpoint."""
+        if self.checkpoint_data is None:
+            return
+        
+        # Restore model state
+        self.model.load_state_dict(self.checkpoint_data['model_state_dict'])
+        
+        # Restore optimizer state
+        if 'optimizer_state_dict' in self.checkpoint_data:
+            self.optimizer.load_state_dict(self.checkpoint_data['optimizer_state_dict'])
+        
+        # Restore scheduler state
+        if 'scheduler_state_dict' in self.checkpoint_data:
+            self.scheduler.load_state_dict(self.checkpoint_data['scheduler_state_dict'])
+        
+        
+        
+        logger.info("Model, optimizer, and scheduler states restored from checkpoint")
+    
     def _update_learning_rate(self, val_loss: float, val_dice: float):
         """Update learning rate using ReduceLROnPlateau scheduler."""
         current_lr = self.optimizer.param_groups[0]['lr']
@@ -314,12 +428,30 @@ class HairSegmentationTrainer:
         
         epochs = self.config['epochs']
         
+        # Handle resume training
+        if self.config.get("resume_training", False):
+            checkpoint_path = self.config.get("checkpoint_path")
+            if self.load_checkpoint(checkpoint_path):
+                self._restore_checkpoint_state()
+                logger.info(f"Resuming training from epoch {self.start_epoch}")
+                
+                # Check if we need to continue training
+                if self.start_epoch >= epochs:
+                    logger.info(f"Current epoch ({self.start_epoch}) >= target epochs ({epochs})")
+                    logger.info("Extending training by 5 more epochs...")
+                    epochs = self.start_epoch + 5  # Add 5 more epochs
+                    
+            else:
+                logger.warning("Failed to load checkpoint, starting from beginning")
+                self.start_epoch = 0
+        
         logger.info("Starting training...")
         logger.info(f"Dataset Info:")
         logger.info(f" - Training samples: {len(train_loader.dataset)}")
         logger.info(f" - Validation samples: {len(val_loader.dataset)}")
         logger.info(f" - Batches per epoch: {len(train_loader)}")
         logger.info(f" - Total epochs: {epochs}")
+        logger.info(f" - Start epoch: {self.start_epoch + 1}")
         logger.info(f" - Batch size: {self.config['batch_size']}")
         logger.info(f" - Learning rate: {self.config['learning_rate']}")
         logger.info(f" - Optimizer: {self.config['optimizer']}")
@@ -333,10 +465,15 @@ class HairSegmentationTrainer:
             monitor=CALLBACKS_CONFIG["early_stopping_monitor"]
         )
         
-        best_val_loss = float('inf')
-        best_val_dice = 0.0
+        # Initialize best values (restore from checkpoint if available)
+        if self.checkpoint_data:
+            best_val_loss = self.checkpoint_data.get('best_val_loss', float('inf'))
+            best_val_dice = self.checkpoint_data.get('best_val_dice', 0.0)
+        else:
+            best_val_loss = float('inf')
+            best_val_dice = 0.0
         
-        for epoch in range(epochs):
+        for epoch in range(self.start_epoch, epochs):
             logger.info(f"\n{'='*60}")
             logger.info(f" Epoch {epoch+1}/{epochs}")
             logger.info(f"{'='*60}")
@@ -367,6 +504,9 @@ class HairSegmentationTrainer:
             
             # Learning rate scheduling (reduce on plateau)
             self._update_learning_rate(val_loss, val_dice)
+            
+            # Save checkpoint
+            self.save_checkpoint(epoch, val_loss, val_dice, best_val_loss, best_val_dice)
             
             # Early stopping
             monitor_metric = val_loss if CALLBACKS_CONFIG["early_stopping_monitor"] == "val_loss" else val_dice
@@ -474,6 +614,12 @@ class HairSegmentationTrainer:
         summary = self.get_training_summary()
         if not summary:
             raise ValueError("No training history available. Train the model first.")
+        
+        # Check if at least one epoch was completed
+        if len(self.history['train_loss']) == 0:
+            logger.warning("No epochs completed, skipping model save")
+            return None
+        
         # Save model_type in config
         model_config = dict(MODEL_CONFIG)
         training_config = dict(self.config)
@@ -483,6 +629,13 @@ class HairSegmentationTrainer:
         save_training_log(folder_path, self.device, self.history, summary)
         save_models_to_folder(folder_path, self.model_path, self.latest_model_path)
         
+        # Copy checkpoint_info.json if it exists
+        checkpoint_info_path = self.latest_model_path.parent / "checkpoint_info.json"
+        if checkpoint_info_path.exists():
+            import shutil
+            shutil.copy2(checkpoint_info_path, folder_path / "checkpoint_info.json")
+            logger.info(f"Copied checkpoint info to: {folder_path / 'checkpoint_info.json'}")
+        
         # Clean up temporary files from models directory
         try:
             if self.model_path.exists():
@@ -491,6 +644,10 @@ class HairSegmentationTrainer:
             if self.latest_model_path.exists():
                 self.latest_model_path.unlink()
                 logger.info(f"Deleted temporary file: {self.latest_model_path}")
+            # Also clean up checkpoint info
+            if checkpoint_info_path.exists():
+                checkpoint_info_path.unlink()
+                logger.info(f"Deleted temporary file: {checkpoint_info_path}")
         except Exception as e:
             logger.warning(f"Failed to delete temporary files: {e}")
         

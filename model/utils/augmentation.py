@@ -119,68 +119,6 @@ class Augmentation:
         return image
     
     @staticmethod
-    def elastic_transform(image: np.ndarray, mask: np.ndarray, 
-                         alpha: float = 500, 
-                         sigma: float = 20, 
-                         alpha_affine: float = 20) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Apply elastic transformation for realistic hair deformation.
-        
-        Args:
-            image: Input image
-            mask: Input mask
-            alpha: Elastic deformation scale
-            sigma: Elastic deformation smoothness
-            alpha_affine: Affine transformation scale
-            
-        Returns:
-            Tuple of (transformed_image, transformed_mask)
-        """
-        if random.random() < 0.3:  # Apply with lower probability as it's more aggressive
-            # Get image dimensions
-            height, width = image.shape[:2]
-            
-            # Random affine displacement
-            center_square = np.float32((height, width)) // 2
-            square_size = min((height, width)) // 3
-            
-            # Randomly move points around center
-            pts1 = np.float32([
-                center_square + square_size, 
-                [center_square[0] + square_size, center_square[1] - square_size], 
-                center_square - square_size
-            ])
-            pts2 = pts1 + np.random.uniform(-alpha_affine, alpha_affine, size=pts1.shape).astype(np.float32)
-            
-            # Get affine transformation matrix
-            M = cv2.getAffineTransform(pts1, pts2)
-            
-            # Apply affine transformation
-            image = cv2.warpAffine(image, M, (width, height), borderMode=cv2.BORDER_REFLECT_101)
-            mask = cv2.warpAffine(mask, M, (width, height), borderMode=cv2.BORDER_REFLECT_101)
-            
-            # Generate random displacement fields
-            dx = np.random.rand(height, width).astype(np.float32) * 2 - 1
-            dy = np.random.rand(height, width).astype(np.float32) * 2 - 1
-            
-            # Smooth displacement fields
-            dx = cv2.GaussianBlur(dx, (0, 0), sigma) * alpha
-            dy = cv2.GaussianBlur(dy, (0, 0), sigma) * alpha
-            
-            # Create meshgrid
-            x, y = np.meshgrid(np.arange(width), np.arange(height))
-            
-            # Create map
-            map_x = np.float32(x + dx)
-            map_y = np.float32(y + dy)
-            
-            # Apply displacement fields
-            image = cv2.remap(image, map_x, map_y, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT_101)
-            mask = cv2.remap(mask, map_x, map_y, interpolation=cv2.INTER_NEAREST, borderMode=cv2.BORDER_REFLECT_101)
-            
-        return image, mask
-    
-    @staticmethod
     def apply_augmentations(image: np.ndarray, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """
         Apply all augmentations in sequence.
@@ -195,7 +133,6 @@ class Augmentation:
         # Apply augmentations that affect both image and mask
         image, mask = Augmentation.horizontal_flip(image, mask)
         image, mask = Augmentation.random_rotation(image, mask)
-        image, mask = Augmentation.elastic_transform(image, mask)
         
         # Apply augmentations that only affect the image
         image = Augmentation.color_jitter(image)

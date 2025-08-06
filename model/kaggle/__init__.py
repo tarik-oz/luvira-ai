@@ -6,8 +6,16 @@ Contains all Kaggle-specific configurations and training components.
 __version__ = "1.0.0"
 __author__ = "Tarik"
 
-# Export main components
+# Export main components (only existing modules)
 from .config import *
-from .trainer import create_kaggle_trainer
-from .data_loader import KaggleDataLoader, create_kaggle_data_loader
-from .factory import create_auto_data_loader 
+
+__all__ = [
+    "TRAINING_CONFIG",
+    "MODEL_CONFIG", 
+    "DATA_CONFIG",
+    "CALLBACKS_CONFIG",
+    "DATASET_NAME",
+    "IMAGES_DIR",
+    "MASKS_DIR",
+    "TRAINED_MODELS_DIR"
+] 

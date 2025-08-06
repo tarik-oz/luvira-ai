@@ -15,7 +15,13 @@ import traceback
 from pathlib import Path
 
 # Add project root to path for imports
-project_root = Path(__file__).parent.parent
+try:
+    # Normal execution
+    project_root = Path(__file__).parent.parent
+except NameError:
+    # exec() execution - define __file__ manually
+    project_root = Path("/kaggle/working/model").parent
+    
 sys.path.insert(0, str(project_root))
 
 # Configure logging for Kaggle
@@ -41,7 +47,7 @@ def main():
         logger.info("=" * 60)
         
         # Import modules using updated structure
-        from model.training.trainer import Trainer
+        from model.training.trainer import HairSegmentationTrainer
         from model.data_loader.factory_data_loader import create_auto_data_loader
         from config import (
             TRAINING_CONFIG, MODEL_CONFIG, DATA_CONFIG,
@@ -65,33 +71,25 @@ def main():
         data_loader = create_auto_data_loader(
             images_dir=IMAGES_DIR,
             masks_dir=MASKS_DIR,
-            config=DATA_CONFIG
+            **DATA_CONFIG  # Unpack config parameters
         )
         
         # Create trainer using updated structure
         logger.info("Creating trainer...")
-        trainer = Trainer(
-            model_config=MODEL_CONFIG,
-            training_config=TRAINING_CONFIG,
-            data_config=DATA_CONFIG,
-            trained_models_dir=TRAINED_MODELS_DIR
-        )
+        trainer = HairSegmentationTrainer(**TRAINING_CONFIG)
         
         # Setup model and data
         logger.info("Setting up U-Net model...")
         trainer.setup_model()
         
         logger.info("Setting up training data...")
-        train_loader, val_loader = trainer.setup_data(data_loader)
+        train_loader, val_loader, dataset_info = data_loader.get_data_loaders()
         
         # Start training
         logger.info("Starting model training...")
         logger.info("Training will use lazy loading for memory efficiency")
         
-        history = trainer.train(
-            train_loader=train_loader,
-            val_loader=val_loader
-        )
+        trainer.train(train_loader, val_loader)
         
         # Get training summary
         summary = trainer.get_training_summary()
@@ -130,7 +128,7 @@ def main():
         
         # Plot training history if matplotlib is available
         try:
-            plot_training_history(history)
+            plot_training_history(trainer.history)
         except ImportError:
             logger.warning("Matplotlib not available. Skipping plot generation.")
         except Exception as e:

@@ -267,8 +267,7 @@ class TraditionalDataLoader(BaseDataLoader):
                     "HorizontalFlip",
                     "RandomRotation",
                     "ColorJitter",
-                    "RandomBrightnessContrast",
-                    "ElasticTransform (mild)"
+                    "RandomBrightnessContrast"
                 ] if self.use_augmentation else []
             })
         else:

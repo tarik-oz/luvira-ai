@@ -81,7 +81,7 @@ class FactoryDataLoader:
             "augmentation_features": [
                 "Real-time data augmentation",
                 "Enhanced training with data variety",
-                "Includes: HorizontalFlip, RandomRotation, ColorJitter, RandomBrightnessContrast, ElasticTransform"
+                "Includes: HorizontalFlip, RandomRotation, ColorJitter, RandomBrightnessContrast"
             ]
         }
 

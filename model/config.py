@@ -46,7 +46,7 @@ MODEL_CONFIG = {
 # Training configuration
 TRAINING_CONFIG = {
     "batch_size": 8,
-    "epochs": 2,
+    "epochs": 18,
     "learning_rate": 2e-4,
     "validation_split": 0.2,
     "random_seed": 42,
@@ -55,7 +55,11 @@ TRAINING_CONFIG = {
     "dice_weight": 0.3, # For combo/total loss
     "boundary_weight": 0.4, # For total loss
     "optimizer": "adam", # adam, adamw or sgd
-    "device": "auto"  # auto, cpu, or cuda
+    "device": "auto",  # auto, cpu, or cuda
+    
+    # Checkpoint configuration
+    "resume_training": True,  # True/False - Resume from checkpoint
+    "checkpoint_path": "2025-08-06_23-31-58_acc0.7725",  # Model folder name (will be resolved to TRAINED_MODELS_DIR/folder_name)
 }
 
 # Data preprocessing configuration
