@@ -2,7 +2,6 @@
 Dependencies for Hair Segmentation API
 """
 
-from fastapi import Depends
 from ..services import ModelService, PredictionService, ColorChangeService
 
 # Service instances (singleton pattern)

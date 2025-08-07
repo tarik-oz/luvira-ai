@@ -3,9 +3,8 @@ File validation utilities for Hair Segmentation API
 """
 
 import logging
-import cv2
 import numpy as np
-from typing import Optional, Tuple, List
+from typing import Optional, List
 from fastapi import UploadFile
 from pathlib import Path
 

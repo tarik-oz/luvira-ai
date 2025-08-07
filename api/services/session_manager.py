@@ -2,7 +2,7 @@
 Session management service for caching images and masks
 """
 
-import tempfile
+import json
 import logging
 import time
 import uuid
@@ -10,16 +10,19 @@ import threading
 import shutil
 import atexit
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict
 import numpy as np
+
+from ..config import SESSION_CONFIG
+from ..core.exceptions import SessionExpiredException
 
 logger = logging.getLogger(__name__)
 
-# Cache configuration - Store in project directory
-PROJECT_ROOT = Path(__file__).parent.parent.parent  # Go up to project root
-CACHE_DIR = PROJECT_ROOT / "session_data"
+# Cache configuration from settings
+CACHE_DIR = SESSION_CONFIG["cache_dir"]
 CACHE_DIR.mkdir(exist_ok=True)
-CACHE_TIMEOUT = 30 * 60  # 30 minutes
+CACHE_TIMEOUT = SESSION_CONFIG["session_timeout_minutes"] * 60  # Convert to seconds
+CLEANUP_INTERVAL = SESSION_CONFIG["cleanup_interval_minutes"] * 60  # Convert to seconds
 
 
 class SessionManager:
@@ -27,9 +30,28 @@ class SessionManager:
     
     def __init__(self):
         self._cleanup_timer = None
+        if SESSION_CONFIG.get("auto_cleanup_on_startup", True):
+            self.cleanup_expired_sessions()
         self._start_cleanup_timer()
         # Cleanup on exit
-        atexit.register(self.cleanup_all_sessions)
+        if SESSION_CONFIG.get("auto_cleanup_on_shutdown", True):
+            atexit.register(self.cleanup_all_sessions)
+    
+    def _get_session_metadata(self, session_dir: Path) -> dict:
+        """Get session metadata from file"""
+        metadata_file = session_dir / "metadata.json"
+        if metadata_file.exists():
+            try:
+                with open(metadata_file) as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {}
+    
+    def _is_session_expired(self, metadata: dict) -> bool:
+        """Check if session is expired based on metadata"""
+        timestamp = metadata.get('timestamp', 0)
+        return time.time() - timestamp > CACHE_TIMEOUT
     
     def create_session(self) -> str:
         """
@@ -67,7 +89,6 @@ class SessionManager:
                 'mask_shape': mask.shape
             }
             
-            import json
             with open(session_dir / "metadata.json", 'w') as f:
                 json.dump(metadata, f)
                 
@@ -86,64 +107,62 @@ class SessionManager:
             
         Returns:
             Dictionary with image and mask arrays
+            
+        Raises:
+            SessionExpiredException: If session doesn't exist or is expired
         """
         try:
+            # Check session validity (will raise SessionExpiredException if invalid)
+            self.check_session_validity(session_id)
+            
+            # Session is valid, load arrays
             session_dir = CACHE_DIR / session_id
-            if not session_dir.exists():
-                raise Exception(f"Session {session_id} not found")
-            
-            # Check if session expired
-            metadata_file = session_dir / "metadata.json"
-            if metadata_file.exists():
-                import json
-                metadata = json.load(open(metadata_file))
-                timestamp = metadata.get('timestamp', 0)
-                
-                if time.time() - timestamp > CACHE_TIMEOUT:
-                    # Clean up expired session
-                    self.cleanup_session(session_id)
-                    raise Exception(f"Session {session_id} expired (created {int((time.time() - timestamp) / 60)} minutes ago)")
-            
-            # Load arrays
             image = np.load(session_dir / "image.npy")
             mask = np.load(session_dir / "mask.npy")
             
             logger.debug(f"Session data loaded: {session_id}")
             return {'image': image, 'mask': mask}
             
+        except SessionExpiredException:
+            # Re-raise session exceptions as-is
+            raise
         except Exception as e:
             logger.error(f"Failed to load session {session_id}: {str(e)}")
             raise Exception(f"Failed to load session data: {str(e)}")
     
-    def session_exists(self, session_id: str) -> bool:
+    def check_session_validity(self, session_id: str) -> None:
         """
-        Check if session exists and is valid
+        Check if session exists and is valid, raise exception if not
         
         Args:
             session_id: Session identifier
             
-        Returns:
-            True if session exists and not expired
+        Raises:
+            SessionExpiredException: If session doesn't exist or is expired
         """
         try:
             session_dir = CACHE_DIR / session_id
             if not session_dir.exists():
-                return False
+                raise SessionExpiredException(session_id, "Session not found")
             
-            metadata_file = session_dir / "metadata.json"
-            if metadata_file.exists():
-                import json
-                metadata = json.load(open(metadata_file))
-                timestamp = metadata.get('timestamp', 0)
-                
-                if time.time() - timestamp > CACHE_TIMEOUT:
-                    # Session expired
-                    return False
+            metadata = self._get_session_metadata(session_dir)
+            if metadata and self._is_session_expired(metadata):
+                # Clean up expired session
+                self.cleanup_session(session_id)
+                elapsed_minutes = int((time.time() - metadata.get('timestamp', 0)) / 60)
+                raise SessionExpiredException(
+                    session_id, 
+                    f"Session expired (created {elapsed_minutes} minutes ago)"
+                )
             
-            return True
+            # Session is valid, no exception raised
             
-        except Exception:
-            return False
+        except SessionExpiredException:
+            # Re-raise session exceptions as-is
+            raise
+        except Exception as e:
+            logger.error(f"Error checking session {session_id}: {str(e)}")
+            raise SessionExpiredException(session_id, f"Session validation failed: {str(e)}")
     
     def cleanup_session(self, session_id: str) -> None:
         """
@@ -176,17 +195,8 @@ class SessionManager:
                     continue
                     
                 try:
-                    metadata_file = session_dir / "metadata.json"
-                    if metadata_file.exists():
-                        import json
-                        metadata = json.load(open(metadata_file))
-                        timestamp = metadata.get('timestamp', 0)
-                        
-                        if current_time - timestamp > CACHE_TIMEOUT:
-                            self.cleanup_session(session_dir.name)
-                            cleaned_count += 1
-                    else:
-                        # No metadata, probably old format or corrupted
+                    metadata = self._get_session_metadata(session_dir)
+                    if not metadata or self._is_session_expired(metadata):
                         self.cleanup_session(session_dir.name)
                         cleaned_count += 1
                         
@@ -254,19 +264,9 @@ class SessionManager:
                 stats['total_size_mb'] += size / (1024 * 1024)
                 
                 # Check if expired
-                metadata_file = session_dir / "metadata.json"
-                if metadata_file.exists():
-                    try:
-                        import json
-                        metadata = json.load(open(metadata_file))
-                        timestamp = metadata.get('timestamp', 0)
-                        
-                        if current_time - timestamp > CACHE_TIMEOUT:
-                            stats['expired_sessions'] += 1
-                        else:
-                            stats['active_sessions'] += 1
-                    except:
-                        stats['expired_sessions'] += 1
+                metadata = self._get_session_metadata(session_dir)
+                if metadata and not self._is_session_expired(metadata):
+                    stats['active_sessions'] += 1
                 else:
                     stats['expired_sessions'] += 1
             
@@ -283,10 +283,11 @@ class SessionManager:
         It checks every 10 minutes
         """
         def cleanup_worker():
-            logger.info("Session cleanup timer started - checking every 10 minutes")
+            interval_minutes = SESSION_CONFIG["cleanup_interval_minutes"]
+            logger.info(f"Session cleanup timer started - checking every {interval_minutes} minutes")
             while True:
                 try:
-                    time.sleep(10 * 60)  # Wait for 10 minutes
+                    time.sleep(CLEANUP_INTERVAL)
                     logger.debug("Running periodic session cleanup check...")
                     cleaned = self.cleanup_expired_sessions()
                     if cleaned > 0:
@@ -296,7 +297,7 @@ class SessionManager:
         
         self._cleanup_timer = threading.Thread(target=cleanup_worker, daemon=True)
         self._cleanup_timer.start()
-        logger.info("Session cleanup timer STARTED (checks every 10 minutes for expired sessions)")
+        logger.info(f"Session cleanup timer STARTED (checks every {SESSION_CONFIG['cleanup_interval_minutes']} minutes)")
     
     def __del__(self):
         """Cleanup on destruction"""

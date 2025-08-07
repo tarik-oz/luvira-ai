@@ -2,13 +2,11 @@
 FastAPI application for hair segmentation
 """
 
-from typing import Optional
-
 from fastapi import FastAPI
-from .core import LoggingMiddleware, CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 
-from .routes import health_router, model_router, prediction_router
-from .core import get_model_service
+from .routes import health_router, model_router, prediction_router, frontend_router, session_router
+from .core import get_model_service, LoggingMiddleware
 from .config import API_CONFIG, setup_logging
 from . import __version__
 
@@ -25,15 +23,18 @@ app = FastAPI(
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    origins=API_CONFIG["cors_origins"],
-    methods=API_CONFIG["cors_methods"],
-    headers=API_CONFIG["cors_headers"]
+    allow_origins=API_CONFIG["cors_origins"],
+    allow_methods=API_CONFIG["cors_methods"],
+    allow_headers=API_CONFIG["cors_headers"],
+    allow_credentials=True
 )
 
 # Include routers
 app.include_router(health_router, tags=["Health"])
 app.include_router(model_router, tags=["Model"])
 app.include_router(prediction_router, tags=["Prediction"])
+app.include_router(frontend_router, tags=["Frontend"])
+app.include_router(session_router, tags=["Session"])
 
 @app.on_event("startup")
 async def startup_event():

@@ -9,10 +9,10 @@ from .exceptions import (
     FileValidationException,
     PredictionException,
     ImageProcessingException,
-    create_error_response
+    SessionExpiredException
 )
 from .dependencies import get_model_service, get_prediction_service, get_color_change_service
-from .middleware import LoggingMiddleware, CORSMiddleware
+from .middleware import LoggingMiddleware
 
 __all__ = [
     "APIException",
@@ -21,10 +21,9 @@ __all__ = [
     "FileValidationException",
     "PredictionException",
     "ImageProcessingException",
-    "create_error_response",
+    "SessionExpiredException",
     "get_model_service",
     "get_prediction_service",
     "get_color_change_service",
-    "LoggingMiddleware",
-    "CORSMiddleware"
+    "LoggingMiddleware"
 ]

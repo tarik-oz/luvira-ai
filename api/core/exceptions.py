@@ -77,24 +77,13 @@ class ImageProcessingException(APIException):
         )
 
 
-# Error response helper
-def create_error_response(
-    status_code: int,
-    detail: str,
-    error_code: Optional[str] = None,
-    extra_data: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
-    """Create standardized error response"""
-    response = {
-        "success": False,
-        "error": detail,
-        "status_code": status_code
-    }
+class SessionExpiredException(APIException):
+    """Raised when session has expired or doesn't exist"""
     
-    if error_code:
-        response["error_code"] = error_code
-    
-    if extra_data:
-        response["extra_data"] = extra_data
-    
-    return response 
+    def __init__(self, session_id: str, detail: str = "Session has expired or doesn't exist"):
+        super().__init__(
+            status_code=404,
+            detail=f"{detail}: {session_id}",
+            error_code="SESSION_EXPIRED",
+            extra_data={"session_id": session_id}
+        ) 
