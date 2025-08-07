@@ -58,8 +58,8 @@ TRAINING_CONFIG = {
     "device": "auto",  # auto, cpu, or cuda
     
     # Checkpoint configuration
-    "resume_training": True,  # True/False - Resume from checkpoint
-    "checkpoint_path": "2025-08-06_23-31-58_acc0.7725",  # Model folder name (will be resolved to TRAINED_MODELS_DIR/folder_name)
+    "resume_training": False,  # True/False - Resume from checkpoint
+    "checkpoint_path": None,  # Model folder name (will be resolved to TRAINED_MODELS_DIR/folder_name)
 }
 
 # Data preprocessing configuration
