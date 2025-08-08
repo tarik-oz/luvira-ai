@@ -4,7 +4,7 @@ Color utilities for hair color change operations.
 
 import cv2
 import numpy as np
-from typing import List, Dict
+from typing import List
 
 from color_changer.config.color_config import CUSTOM_TONES, COLORS
 
@@ -79,51 +79,6 @@ class ColorUtils:
         return ColorUtils.hsv_to_rgb(new_hsv)
     
     @staticmethod
-    def get_color_info(rgb: List[int]) -> Dict[str, any]:
-        """
-        Get comprehensive information about a color.
-        
-        Args:
-            rgb: RGB color [R, G, B] (0-255)
-            
-        Returns:
-            Dictionary with color information
-        """
-        hsv = ColorUtils.rgb_to_hsv(rgb)
-        
-        # Calculate color properties
-        brightness = sum(rgb) / (3 * 255)  # Normalized brightness
-        saturation = hsv[1] / 255  # Normalized saturation
-        
-        # Determine color temperature (rough estimation)
-        r, g, b = rgb
-        if r > g and r > b:
-            temp = "warm"
-        elif b > r and b > g:
-            temp = "cool"
-        else:
-            temp = "neutral"
-        
-        return {
-            "rgb": rgb,
-            "hsv": hsv,
-            "brightness": round(brightness, 2),
-            "saturation": round(saturation, 2),
-            "temperature": temp,
-            "hex": f"#{r:02x}{g:02x}{b:02x}"
-        }
-
-    @staticmethod
-    def get_available_tones() -> Dict[str, Dict]:
-        """
-        Get all available tone types and their configurations.
-        
-        Returns:
-            Dictionary of tone configurations
-        """
-        return CUSTOM_TONES.copy()
-    
-    @staticmethod
     def list_colors():
         """Print available colors with tone counts."""
         print("Available colors:")
@@ -142,10 +97,10 @@ class ColorUtils:
         Returns:
             bool: True if color found and tones listed, False otherwise
         """
-        # Find color
-        color_rgb, found_name = ColorUtils.find_color_by_name(color_name)
+        color_name_clean = color_name.strip()
+        _, found_name = ColorUtils.find_color_by_name(color_name_clean)
         if not found_name:
-            print(f"Error: Color '{color_name}' not found.")
+            print(f"Error: Color '{color_name}' not found.\nTip: Check for typos or extra spaces.")
             print("Available colors:", [name for _, name in COLORS])
             return False
         
@@ -168,8 +123,9 @@ class ColorUtils:
         Returns:
             Tuple: (rgb, name) or (None, None) if not found
         """
+        color_name_clean = color_name.strip().lower()
         for rgb, name in COLORS:
-            if name.lower() == color_name.lower():
+            if name.lower() == color_name_clean:
                 return rgb, name
         return None, None
     

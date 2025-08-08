@@ -4,7 +4,7 @@ Image utilities for hair color change operations.
 
 import cv2
 import numpy as np
-from typing import Tuple, Optional
+from typing import Optional
 
 
 class ImageUtils:
@@ -64,79 +64,3 @@ class ImageUtils:
         except Exception as e:
             print(f"Error saving image to {path}: {str(e)}")
             return False
-    
-    @staticmethod
-    def resize_image(image: np.ndarray, max_dimension: int = 800) -> np.ndarray:
-        """
-        Resize image to have maximum dimension of max_dimension while preserving aspect ratio.
-        
-        Args:
-            image: Image to resize
-            max_dimension: Maximum dimension (width or height)
-            
-        Returns:
-            Resized image
-        """
-        # Get image dimensions
-        height, width = image.shape[:2]
-        
-        # Calculate aspect ratio
-        aspect_ratio = width / height
-        
-        # Resize based on max dimension
-        if width > height and width > max_dimension:
-            new_width = max_dimension
-            new_height = int(new_width / aspect_ratio)
-        elif height >= width and height > max_dimension:
-            new_height = max_dimension
-            new_width = int(new_height * aspect_ratio)
-        else:
-            # No need to resize
-            return image
-        
-        # Resize image
-        resized = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
-        return resized
-
-    @staticmethod
-    def create_mask_overlay(
-        image: np.ndarray, 
-        mask: np.ndarray, 
-        color: Tuple[int, int, int] = (0, 255, 0), 
-        alpha: float = 0.5
-    ) -> np.ndarray:
-        """
-        Create overlay of mask on image for visualization.
-        
-        Args:
-            image: Original image (BGR or RGB)
-            mask: Binary or grayscale mask
-            color: Color for overlay (BGR or RGB matching image)
-            alpha: Opacity of overlay (0-1)
-            
-        Returns:
-            Image with mask overlay
-        """
-        # Ensure mask is properly scaled to 0-255
-        if mask.dtype != np.uint8:
-            mask_viz = (mask * 255).astype(np.uint8)
-        else:
-            mask_viz = mask.copy()
-            
-        # Create color mask
-        if len(image.shape) == 3 and image.shape[2] == 3:
-            h, w = mask_viz.shape[:2]
-            color_mask = np.zeros((h, w, 3), dtype=np.uint8)
-            color_mask[:] = color
-        else:
-            raise ValueError("Image must be a 3-channel color image")
-            
-        # Create overlay
-        mask_binary = mask_viz > 127
-        overlay = image.copy()
-        overlay[mask_binary] = cv2.addWeighted(
-            image[mask_binary], 1 - alpha, 
-            color_mask[mask_binary], alpha, 0
-        )
-        
-        return overlay

@@ -5,5 +5,6 @@ Utilities for hair color change operations
 from color_changer.utils.image_utils import ImageUtils
 from color_changer.utils.color_utils import ColorUtils
 from color_changer.utils.visualization import Visualizer
+from color_changer.utils.gray_utils import GrayUtils
 
-__all__ = ["ImageUtils", "ColorUtils", "Visualizer"] 
+__all__ = ["ImageUtils", "ColorUtils", "Visualizer", "GrayUtils"] 

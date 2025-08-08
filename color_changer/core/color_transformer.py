@@ -112,7 +112,7 @@ class ColorTransformer:
         
         # Apply the toned color (now passing RGB values instead of color name)
         return self.change_hair_color(image, mask, toned_color)
-    
+
     def change_hair_color_with_all_tones(
         self, 
         image: np.ndarray, 
@@ -271,21 +271,30 @@ class ColorTransformer:
 
     def _get_rgb_from_color_name(self, color_name: str) -> List[int]:
         """
-        Convert color name to RGB values.
-        
+        Convert a color name to its corresponding RGB values from the COLORS config.
+
         Args:
-            color_name: Name of the color (e.g., "Blonde", "Brown", etc.)
-            
+            color_name (str): Name of the color (e.g., "Blonde", "Brown", etc.)
+
         Returns:
             List[int]: RGB values [R, G, B]
-            
+
         Raises:
-            ValueError: If color name is not found
+            ValueError: If color name is not found in COLORS.
+
+        Notes:
+            - Strips leading/trailing whitespace from color_name.
+            - Case-insensitive comparison.
         """
+        search_name = color_name.strip().lower()
+        # COLORS: List of (rgb, name)
         for color_rgb, name in COLORS:
-            if name.lower() == color_name.lower():
+            if name.lower() == search_name:
                 return color_rgb
-                
         # If not found, show available colors
         available_colors = [name for _, name in COLORS]
-        raise ValueError(f"Color '{color_name}' not found. Available colors: {available_colors}") 
+        raise ValueError(
+            f"Color '{color_name}' not found.\n"
+            f"Tip: Check for typos or extra spaces.\n"
+            f"Available colors: {available_colors}"
+        )

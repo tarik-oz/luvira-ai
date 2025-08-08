@@ -1,6 +1,10 @@
 """
-Color configuration for hair color changing operations.
+Hair color configuration module.
+
+Defines available hair colors, their RGB values, tone variations, and default paths for image and model files.
+Used throughout the hair color transformation pipeline for consistent color and tone management.
 """
+
 
 from pathlib import Path
 

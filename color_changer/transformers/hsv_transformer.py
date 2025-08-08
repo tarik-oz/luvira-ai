@@ -81,45 +81,39 @@ class HsvTransformer:
                                              original_value)
         
         # Apply special color transformations based on TARGET color
-        if target_hsv[1] < 60:
-            # Target is gray - use gray handler regardless of source
-            result_hsv = self.special_color_handler.handle_grey_color(
+        hue = target_hsv[0]
+        sat = target_hsv[1]
+        is_gray = sat < 60
+        is_blue = (110 <= hue <= 125) and (sat > 150)
+        is_purple = (145 <= hue <= 160) and (sat > 150)
+        is_auburn = (5 <= hue <= 12) and (sat > 100)  # Auburn range
+        is_copper = (12 <= hue <= 18) and (sat > 120)  # Copper orange range (H=14)
+        is_pink = (160 <= hue <= 170) and (sat > 100)  # Pink/magenta range
+
+        if is_gray:
+            result_hsv = self.special_color_handler.handle_gray_color(
                 result_hsv, image_hsv, mask_normalized, target_hsv, alpha
             )
-        else:
-            # ===== PRECISE COLOR HANDLING =====
-            hue = target_hsv[0]
-            sat = target_hsv[1]
-            
-            # Identify target colors with precise hue ranges
-            is_blue = (110 <= hue <= 125) and (sat > 150)
-            is_purple = (145 <= hue <= 160) and (sat > 150)
-            is_auburn = (5 <= hue <= 12) and (sat > 100)  # Auburn range
-            is_copper = (12 <= hue <= 18) and (sat > 120)  # Copper orange range (H=14)
-            is_pink = (160 <= hue <= 170) and (sat > 100)  # Pink/magenta range
-            
-            # ===== SPECIALIZED COLOR TRANSFORMATIONS =====
-            if is_blue:
-                result_hsv = self.special_color_handler.handle_blue_color(
-                    result_hsv, image_hsv, mask_normalized
-                )
-            elif is_purple:
-                result_hsv = self.special_color_handler.handle_purple_color(
-                    result_hsv, image_hsv, mask_normalized
-                )
-            elif is_auburn:
-                result_hsv = self.special_color_handler.handle_auburn_color(
-                    result_hsv, image_hsv, mask_normalized
-                )
-            elif is_copper:
-                result_hsv = self.special_color_handler.handle_copper_color(
-                    result_hsv, image_hsv, mask_normalized
-                )
-            elif is_pink:
-                result_hsv = self.special_color_handler.handle_pink_color(
-                    result_hsv, image_hsv, mask_normalized
-                )
-            # If gri saç + renkli target, default processing (no special gray handling)
-            # This allows gray hair to be transformed to vibrant colors
+        elif is_blue:
+            result_hsv = self.special_color_handler.handle_blue_color(
+                result_hsv, image_hsv, mask_normalized, target_hsv, alpha
+            )
+        elif is_purple:
+            result_hsv = self.special_color_handler.handle_purple_color(
+                result_hsv, image_hsv, mask_normalized, target_hsv, alpha
+            )
+        elif is_auburn:
+            result_hsv = self.special_color_handler.handle_auburn_color(
+                result_hsv, image_hsv, mask_normalized, target_hsv, alpha
+            )
+        elif is_copper:
+            result_hsv = self.special_color_handler.handle_copper_color(
+                result_hsv, image_hsv, mask_normalized, target_hsv, alpha
+            )
+        elif is_pink:
+            result_hsv = self.special_color_handler.handle_pink_color(
+                result_hsv, image_hsv, mask_normalized, target_hsv, alpha
+            )
+        # If gray hair + colored target, default processing (no special gray handling)
             
         return result_hsv

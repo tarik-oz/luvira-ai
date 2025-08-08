@@ -57,7 +57,7 @@ def select_colors(args):
             if name:
                 selected_colors.append((rgb, name))
             else:
-                print(f"Warning: Color '{color_name}' not found, ignoring.")
+                print(f"Warning: Color '{color_name}' not found, using all colors.")
         
         if not selected_colors:
             print("No valid colors specified, using all colors.")

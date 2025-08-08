@@ -10,7 +10,7 @@ This module provides tools to change the color of hair in portrait images using 
 
 - Advanced HSV color space transformations
 - Natural texture and lighting preservation
-- Special handling for challenging colors (blue, purple, grey, etc.)
+- Special handling for challenging colors (blue, purple, gray, etc.)
 - Automatic hair mask generation using segmentation models
 - Automatic parameter adjustment based on hair and target color characteristics
 - Comprehensive CLI tools for easy testing and preview
@@ -118,7 +118,7 @@ from color_changer import ColorTransformer
 
 transformer = ColorTransformer()
 
-# Available colors: red, orange, yellow, green, blue, purple, pink, grey, brown, black, white
+# Available colors: red, orange, yellow, green, blue, purple, pink, gray, brown, black, white
 
 # Examples
 result1 = transformer.change_hair_color_auto(image, "red")

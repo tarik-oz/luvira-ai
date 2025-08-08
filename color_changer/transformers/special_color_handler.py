@@ -133,65 +133,38 @@ class SpecialColorHandler:
         
         return result_hsv
     
-    def handle_grey_color(
-        self, 
-        result_hsv: np.ndarray, 
-        image_hsv: np.ndarray, 
-        mask_normalized: np.ndarray, 
-        target_hsv: np.ndarray, 
-        alpha: float
-    ) -> np.ndarray:
+    def handle_gray_color(self, result_hsv: np.ndarray, image_hsv: np.ndarray, mask_normalized: np.ndarray, target_hsv: np.ndarray, alpha: float) -> np.ndarray:
         """
-        Apply specialized transformations for grey/silver hair colors.
-        
-        Args:
-            result_hsv: Current result in HSV
-            image_hsv: Original image in HSV
-            mask_normalized: Normalized mask
-            target_hsv: Target color in HSV
-            alpha: Blending factor
-            
-        Returns:
-            np.ndarray: Transformed HSV image for grey color
+        Apply specialized transformations for gray/silver hair colors.
+        Uses helper functions for masked blending and value adjustment.
+        Returns original HSV if no hair pixels detected.
         """
+        from color_changer.utils.gray_utils import GrayUtils
+
         original_saturation = image_hsv[:,:,1]
         original_value = image_hsv[:,:,2]
-        
+
         hair_pixels = (original_value * mask_normalized)[mask_normalized > 0.1]
-        avg_hair_brightness = np.mean(hair_pixels) if len(hair_pixels) > 0 else 0
-        
-        # Reduce saturation for grey colors
+        if len(hair_pixels) == 0:
+            # No hair detected, return image_hsv as fallback
+            return image_hsv.copy()
+
+        avg_hair_brightness = np.mean(hair_pixels)
+
+        # Reduce saturation for gray colors
         sat_reduction = 0.9 if avg_hair_brightness < 50 else 0.95
-        result_hsv[:,:,1] = np.where(mask_normalized > 0.1,
-                                    np.clip(original_saturation * (1 - alpha * sat_reduction), 0, 255),
-                                    original_saturation)
-        
+        new_saturation = np.clip(original_saturation * (1 - alpha * sat_reduction), 0, 255)
+        result_hsv[:,:,1] = GrayUtils.apply_masked_channel(result_hsv[:,:,1], new_saturation, mask_normalized)
+
         # Adjust value/brightness based on target
         target_value_factor = target_hsv[2] / 255.0
-        if avg_hair_brightness < 50:
-            value_boost = 1.0 + (target_value_factor - 0.1) * alpha * 1.2
-            result_hsv[:,:,2] = np.where(mask_normalized > 0.1,
-                                        np.clip(original_value * value_boost, 0, 255),
-                                        original_value)
-        else:
-            if target_value_factor < 0.3:
-                result_hsv[:,:,2] = np.where(mask_normalized > 0.1,
-                                            np.clip(original_value * (0.3 + target_value_factor * 0.8), 0, 255),
-                                            original_value)
-            elif target_value_factor > 0.7:
-                result_hsv[:,:,2] = np.where(mask_normalized > 0.1,
-                                            np.clip(original_value * (0.7 + target_value_factor * 0.4), 0, 255),
-                                            original_value)
-            else:
-                result_hsv[:,:,2] = np.where(mask_normalized > 0.1,
-                                            np.clip(original_value * (0.5 + target_value_factor * 0.6), 0, 255),
-                                            original_value)
-        
-        # Reduce hue influence for grey
-        result_hsv[:,:,0] = np.where(mask_normalized > 0.1,
-                                    image_hsv[:,:,0] * (1 - alpha * 0.4),
-                                    image_hsv[:,:,0])
-        
+        new_value = GrayUtils.get_gray_value_boost(avg_hair_brightness, target_value_factor, alpha, original_value, mask_normalized)
+        result_hsv[:,:,2] = GrayUtils.apply_masked_channel(result_hsv[:,:,2], new_value, mask_normalized)
+
+        # Reduce hue influence for gray
+        new_hue = image_hsv[:,:,0] * (1 - alpha * 0.4)
+        result_hsv[:,:,0] = GrayUtils.apply_masked_channel(result_hsv[:,:,0], new_hue, mask_normalized)
+
         return result_hsv
     
     def handle_auburn_color(
