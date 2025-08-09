@@ -3,6 +3,7 @@ Blender for natural image blending in hair color change operations.
 """
 
 import numpy as np
+import cv2
 
 class Blender:
     """
@@ -42,5 +43,25 @@ class Blender:
         
         # Final gentle blending
         result = image_float * (1 - adaptive_blend) + result_rgb * adaptive_blend
+
+        # Detail preservation: add back high-frequency luminance from original
+        # to improve strand definition within hair mask
+        try:
+            # Compute luminance high-frequency from original image
+            orig_lum = 0.299 * image_float[:, :, 0] + 0.587 * image_float[:, :, 1] + 0.114 * image_float[:, :, 2]
+            # Small Gaussian blur to obtain base layer
+            base_lum = cv2.GaussianBlur(orig_lum, (0, 0), sigmaX=1.0)
+            detail_lum = orig_lum - base_lum
+
+            # Limit detail amplitude to avoid artifacts (slightly lower)
+            detail_lum = np.clip(detail_lum, -0.08, 0.08)
+
+            # Apply detail back to result only within hair mask region
+            detail_strength = 0.25
+            result += (detail_lum * detail_strength)[:, :, None] * mask_3ch
+            result = np.clip(result, 0.0, 1.0)
+        except Exception:
+            # Fail-safe: if any issue occurs, return blended result
+            result = np.clip(result, 0.0, 1.0)
         
         return result 

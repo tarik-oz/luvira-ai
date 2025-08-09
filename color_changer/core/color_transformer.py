@@ -35,9 +35,17 @@ class ColorTransformer:
         Returns:
             Recolored image (RGB format, np.ndarray)
         """
-        # Convert color input to RGB
+        # Convert color input to RGB and capture color label if available
+        color_label = None
         if isinstance(color_input, str):
             target_rgb = self._get_rgb_from_color_name(color_input)
+            # Resolve canonical color label for profile selection
+            try:
+                from color_changer.utils.color_utils import ColorUtils
+                _, found_name = ColorUtils.find_color_by_name(color_input)
+                color_label = found_name
+            except Exception:
+                color_label = None
         else:
             target_rgb = color_input  # Already RGB list
         
@@ -58,7 +66,7 @@ class ColorTransformer:
         
         # Apply HSV transformations
         result_hsv = self.hsv_transformer.apply_hsv_transformations(
-            image_hsv, mask_normalized, target_hsv, alpha, saturation_factor, brightness_adjustment
+            image_hsv, mask_normalized, target_hsv, alpha, saturation_factor, brightness_adjustment, color_label, None
         )
         
         # Convert back to RGB
@@ -102,12 +110,13 @@ class ColorTransformer:
         
         tone_config = CUSTOM_TONES[color_name][tone_name]
         
-        # Generate toned color
+        # Generate toned color (support hue_offset and rgb_override if present)
         toned_color = ColorUtils.create_custom_tone(
             base_color_rgb,
             saturation_factor=tone_config["saturation_factor"],
             brightness_factor=tone_config["brightness_factor"],
-            intensity=1.0
+            intensity=tone_config.get("intensity", 1.0),
+            hue_offset_degrees=float(tone_config.get("hue_offset", 0.0))
         )
         
         # Apply the toned color (now passing RGB values instead of color name)
@@ -175,7 +184,7 @@ class ColorTransformer:
         
         # Generate base result
         result_hsv = self.hsv_transformer.apply_hsv_transformations(
-            image_hsv, mask_normalized, target_hsv, alpha, saturation_factor, brightness_adjustment
+            image_hsv, mask_normalized, target_hsv, alpha, saturation_factor, brightness_adjustment, color_name, None
         )
         result_rgb = cv2.cvtColor(result_hsv.astype(np.uint8), cv2.COLOR_HSV2RGB).astype(np.float32) / 255.0
         base_result = self.blender.apply_natural_blending(image_float, result_rgb, mask_3ch, alpha)
@@ -190,7 +199,8 @@ class ColorTransformer:
                     base_color_rgb,
                     saturation_factor=tone_config["saturation_factor"],
                     brightness_factor=tone_config["brightness_factor"],
-                    intensity=1.0
+                    intensity=tone_config.get("intensity", 1.0),
+                    hue_offset_degrees=float(tone_config.get("hue_offset", 0.0))
                 )
                 
                 # Convert toned color to HSV
@@ -198,7 +208,7 @@ class ColorTransformer:
                 
                 # Apply HSV transformations for this tone
                 tone_result_hsv = self.hsv_transformer.apply_hsv_transformations(
-                    image_hsv, mask_normalized, toned_hsv, alpha, saturation_factor, brightness_adjustment
+                    image_hsv, mask_normalized, toned_hsv, alpha, saturation_factor, brightness_adjustment, color_name, tone_name
                 )
                 tone_result_rgb = cv2.cvtColor(tone_result_hsv.astype(np.uint8), cv2.COLOR_HSV2RGB).astype(np.float32) / 255.0
                 tone_result = self.blender.apply_natural_blending(image_float, tone_result_rgb, mask_3ch, alpha)

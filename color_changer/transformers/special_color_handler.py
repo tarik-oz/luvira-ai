@@ -1,357 +1,228 @@
 """
-Special color handler for colors needing specific treatment.
+Special color handler that applies config-driven HSV transformations.
+All special colors are handled through a unified method using per-color profiles.
 """
 
 import numpy as np
 import cv2
+from typing import Dict, Any, Optional
+
+from color_changer.config.color_config import COLOR_PROFILES
+from color_changer.utils.hsv_utils import (
+    shortest_hue_diff,
+    approach_target,
+    apply_value_gains,
+    anti_pink_correction,
+    clip_hsv_channels,
+)
+
 
 class SpecialColorHandler:
     """
-    Handles special color transformations for specific colors 
-    that need customized treatment.
+    Unified, config-driven color handler. Applies hue/saturation/value adjustments
+    using a color profile selected by color label. Supports optional corrections
+    (e.g., gray mode, anti-pink) controlled via the profile.
+    The implementation is organized into small private helpers for readability.
     """
-    
-    def handle_blue_color(
-        self, result_hsv: np.ndarray, image_hsv: np.ndarray, mask_normalized: np.ndarray
-    ) -> np.ndarray:
-        """
-        Apply specialized transformation for blue hair.
-        
-        Args:
-            result_hsv: Current HSV result to modify
-            image_hsv: Original image in HSV
-            mask_normalized: Hair mask (0-1 range)
-            
-        Returns:
-            np.ndarray: Transformed HSV image for blue hair
-        """
-        # Convert RGB blue [0,0,255] to HSV to get the target hue
-        blue_rgb = np.uint8([[[0, 0, 255]]])
-        blue_hsv = cv2.cvtColor(blue_rgb, cv2.COLOR_RGB2HSV)
-        target_hue = float(blue_hsv[0][0][0])  # Should be around 120 in OpenCV HSV
-        
-        # Get current hue and calculate shortest path to target
-        current_hue = image_hsv[:,:,0]
-        hue_diff = target_hue - current_hue
-        
-        # Ensure we take the shortest path around the hue circle (OpenCV HSV: 0-180)
-        hue_diff = np.where(hue_diff > 90, hue_diff - 180, hue_diff)
-        hue_diff = np.where(hue_diff < -90, hue_diff + 180, hue_diff)
-        
-        # Apply strong hue transition for blue
-        new_hue = np.mod(current_hue + hue_diff * 0.9, 180)
-        
-        # High saturation boost for vibrant blue
-        sat_boost = np.clip(image_hsv[:,:,1] * 1.5, 0, 255)
-        min_sat = 180
-        new_sat = np.where(sat_boost < min_sat, min_sat, sat_boost)
-        
-        # Brightness adjustment for blue depth
-        val = image_hsv[:,:,2]
-        new_val = np.where(
-            val < 100,
-            val * 1.3,  # Boost shadows more
-            np.where(val > 180,
-                    val * 0.9,  # Reduce highlights slightly
-                    val * 1.1   # Boost mid-tones
-            )
-        )
-        new_val = np.clip(new_val, 20, 255)
-        
-        # Combine channels with mask blending
-        result_hsv[:,:,0] = new_hue * mask_normalized + result_hsv[:,:,0] * (1 - mask_normalized)
-        result_hsv[:,:,1] = new_sat * mask_normalized + result_hsv[:,:,1] * (1 - mask_normalized)
-        result_hsv[:,:,2] = new_val * mask_normalized + result_hsv[:,:,2] * (1 - mask_normalized)
-        
-        return result_hsv
-    
-    def handle_purple_color(
+
+    def _get_profile(self, color_label: Optional[str]) -> Dict[str, Any]:
+        if color_label and color_label in COLOR_PROFILES:
+            return COLOR_PROFILES[color_label]
+        return COLOR_PROFILES["DEFAULT"]
+
+    def handle_color(
         self,
         result_hsv: np.ndarray,
         image_hsv: np.ndarray,
-        mask_normalized: np.ndarray
+        mask_normalized: np.ndarray,
+        target_hsv: np.ndarray,
+        alpha: float,
+        color_label: Optional[str] = None
     ) -> np.ndarray:
-        """
-        Apply specialized transformation for purple hair.
-        
-        Args:
-            result_hsv: Current result HSV image
-            image_hsv: Original HSV image
-            mask_normalized: Normalized mask
-            
-        Returns:
-            np.ndarray: Transformed HSV image for purple hair
-        """
-        # Target true purple (150°)
-        purple_hue = 150.0
-        
-        # Apply hue transformation with anti-pink bias
-        hue_diff = purple_hue - image_hsv[:,:,0]
-        # Adjust large differences to avoid wrapping issues
-        hue_diff = np.where(hue_diff > 90, hue_diff - 180, hue_diff)
-        hue_diff = np.where(hue_diff < -90, hue_diff + 180, hue_diff)
-        
-        result_hsv[:,:,0] = np.where(
-            mask_normalized > 0.1,
-            image_hsv[:,:,0] + hue_diff * 0.92,  # Strong shift to true purple
-            image_hsv[:,:,0]
-        )
-        
-        # Saturation boost with purple-specific curve
-        purple_sat_curve = np.clip(image_hsv[:,:,1] * 1.8, 0, 255)
-        purple_sat_curve = np.where(purple_sat_curve < 190, 190, purple_sat_curve)  # Minimum saturation
-        result_hsv[:,:,1] = np.where(
-            mask_normalized > 0.1,
-            purple_sat_curve,
-            image_hsv[:,:,1]
-        )
-        
-        # Brightness mapping for rich purple
-        current_val = result_hsv[:,:,2]
-        # Balanced adjustment curve
-        val_adjust = np.where(
-            current_val < 100,
-            (100 - current_val) * 0.5,  # Boost shadows
-            np.where(current_val > 180,
-                    (current_val - 180) * -0.4,  # Reduce highlights
-                    0  # Leave mid-tones
-            )
-        )
-        result_hsv[:,:,2] = np.where(
-            mask_normalized > 0.1,
-            np.clip(current_val + val_adjust, 50, 200),
-            current_val
-        )
-        
-        # Anti-pink correction
-        pink_mask = (result_hsv[:,:,0] < 140) & (mask_normalized > 0.1)
-        result_hsv[:,:,0] = np.where(
-            pink_mask,
-            np.clip(result_hsv[:,:,0] + 10, 140, 160),  # Shift away from pink
-            result_hsv[:,:,0]
-        )
-        
+        """Apply config-driven HSV transformations for given color profile."""
+        profile = self._get_profile(color_label)
+
+        # Gray-mode early return
+        if profile.get("corrections", {}).get("gray_mode", False):
+            return self._apply_gray_mode(result_hsv, image_hsv, mask_normalized, target_hsv, alpha, profile)
+
+        # Base HSV adjustments
+        result_hsv = self._apply_base_hsv_adjustments(result_hsv, image_hsv, mask_normalized, target_hsv, alpha, profile)
+
+        # Corrections in sequence
+        result_hsv = self._apply_corrections(result_hsv, image_hsv, mask_normalized, target_hsv, alpha, profile)
+
+        # Final safety clip
+        result_hsv = clip_hsv_channels(result_hsv)
         return result_hsv
-    
-    def handle_gray_color(self, result_hsv: np.ndarray, image_hsv: np.ndarray, mask_normalized: np.ndarray, target_hsv: np.ndarray, alpha: float) -> np.ndarray:
-        """
-        Apply specialized transformations for gray/silver hair colors.
-        Uses helper functions for masked blending and value adjustment.
-        Returns original HSV if no hair pixels detected.
-        """
+
+    # --- Helpers ---
+
+    def _apply_gray_mode(self, result_hsv, image_hsv, mask, target_hsv, alpha, profile):
         from color_changer.utils.gray_utils import GrayUtils
-
-        original_saturation = image_hsv[:,:,1]
-        original_value = image_hsv[:,:,2]
-
-        hair_pixels = (original_value * mask_normalized)[mask_normalized > 0.1]
+        original_saturation = image_hsv[:, :, 1]
+        original_value = image_hsv[:, :, 2]
+        hair_pixels = (original_value * mask)[mask > 0.1]
         if len(hair_pixels) == 0:
-            # No hair detected, return image_hsv as fallback
             return image_hsv.copy()
-
         avg_hair_brightness = np.mean(hair_pixels)
-
-        # Reduce saturation for gray colors
+        # Saturation reduction
         sat_reduction = 0.9 if avg_hair_brightness < 50 else 0.95
         new_saturation = np.clip(original_saturation * (1 - alpha * sat_reduction), 0, 255)
-        result_hsv[:,:,1] = GrayUtils.apply_masked_channel(result_hsv[:,:,1], new_saturation, mask_normalized)
-
-        # Adjust value/brightness based on target
+        result_hsv[:, :, 1] = GrayUtils.apply_masked_channel(result_hsv[:, :, 1], new_saturation, mask)
+        # Value adjustment based on target
         target_value_factor = target_hsv[2] / 255.0
-        new_value = GrayUtils.get_gray_value_boost(avg_hair_brightness, target_value_factor, alpha, original_value, mask_normalized)
-        result_hsv[:,:,2] = GrayUtils.apply_masked_channel(result_hsv[:,:,2], new_value, mask_normalized)
+        new_value = GrayUtils.get_gray_value_boost(
+            avg_hair_brightness, target_value_factor, alpha, original_value, mask
+        )
+        result_hsv[:, :, 2] = GrayUtils.apply_masked_channel(result_hsv[:, :, 2], new_value, mask)
+        # Reduce hue influence
+        suppress = profile.get("hue", {}).get("suppress_factor", 0.4)
+        new_hue = image_hsv[:, :, 0] * (1 - alpha * suppress)
+        result_hsv[:, :, 0] = GrayUtils.apply_masked_channel(result_hsv[:, :, 0], new_hue, mask)
+        return result_hsv
 
-        # Reduce hue influence for gray
-        new_hue = image_hsv[:,:,0] * (1 - alpha * 0.4)
-        result_hsv[:,:,0] = GrayUtils.apply_masked_channel(result_hsv[:,:,0], new_hue, mask_normalized)
+    def _apply_base_hsv_adjustments(self, result_hsv, image_hsv, mask, target_hsv, alpha, profile):
+        current_h = image_hsv[:, :, 0]
+        current_s = image_hsv[:, :, 1]
+        current_v = image_hsv[:, :, 2]
+
+        # Hue shift toward target
+        hue_weight = float(profile.get("hue", {}).get("weight", 0.9)) * alpha
+        hue_diff = shortest_hue_diff(target_hsv[0], current_h)
+        new_h = (current_h + hue_diff * hue_weight) % 180
+        result_hsv[:, :, 0] = np.where(mask > 0.1, new_h, result_hsv[:, :, 0])
+
+        # Saturation scaling and approach target
+        sat_cfg = profile.get("sat", {})
+        sat_scale = float(sat_cfg.get("scale", 1.2))
+        sat_min = float(sat_cfg.get("min", 0))
+        sat_max = float(sat_cfg.get("max", 255))
+        sat_approach_w = float(sat_cfg.get("approach_target_weight", 0.4)) * alpha
+        high_sat_boost = bool(sat_cfg.get("high_sat_boost", False))
+
+        scaled_s = np.clip(current_s * (1.0 + (sat_scale - 1.0) * alpha), 0, 255)
+        scaled_s = np.where(scaled_s < sat_min, sat_min, scaled_s)
+        scaled_s = np.where(scaled_s > sat_max, sat_max, scaled_s)
+        target_s = float(target_hsv[1])
+        nudged_s = approach_target(scaled_s, target_s, sat_approach_w)
+        if high_sat_boost and target_s > 200:
+            nudged_s = approach_target(nudged_s, max(target_s, 220.0), 0.2 * alpha)
+        result_hsv[:, :, 1] = np.where(mask > 0.1, np.clip(nudged_s, 0, 255), result_hsv[:, :, 1])
+
+        # Value (brightness) mapping using region gains
+        val_cfg = profile.get("val", {})
+        bounds = np.array(val_cfg.get("bounds", [0, 255]), dtype=np.float32)
+        new_v = apply_value_gains(current_v, mask,
+                                   float(val_cfg.get("shadow_gain", 1.1)),
+                                   float(val_cfg.get("mid_gain", 1.05)),
+                                   float(val_cfg.get("highlight_gain", 0.95)),
+                                   bounds, alpha)
+        result_hsv[:, :, 2] = new_v
+        return result_hsv
+
+    def _apply_corrections(self, result_hsv, image_hsv, mask, target_hsv, alpha, profile):
+        corrections = profile.get("corrections", {})
+        bounds = np.array(profile.get("val", {}).get("bounds", [0, 255]), dtype=np.float32)
+
+        if corrections.get("anti_pink", False):
+            result_hsv[:, :, 0] = anti_pink_correction(result_hsv[:, :, 0], mask)
+
+        # Hue band clamp
+        hue_band = corrections.get("hue_band")
+        if isinstance(hue_band, (list, tuple)) and len(hue_band) == 2:
+            hmin, hmax = float(hue_band[0]), float(hue_band[1])
+            clamped_h = np.clip(result_hsv[:, :, 0], hmin, hmax)
+            result_hsv[:, :, 0] = np.where(mask > 0.1, clamped_h, result_hsv[:, :, 0])
+
+        # Hue center
+        hue_center = corrections.get("hue_center")
+        hue_center_weight = float(corrections.get("hue_center_weight", 0.3))
+        if isinstance(hue_center, (int, float)):
+            centered_h = approach_target(result_hsv[:, :, 0], float(hue_center), hue_center_weight * alpha)
+            result_hsv[:, :, 0] = np.where(mask > 0.1, centered_h, result_hsv[:, :, 0])
+
+        # Value dependent hue center
+        if corrections.get("value_dependent_hue_center", False):
+            try:
+                v = image_hsv[:, :, 2]
+                if not isinstance(hue_center, (int, float)):
+                    hue_center = float(target_hsv[0])
+                w = np.clip((100.0 - v) / 100.0, 0.0, 1.0) * alpha * 0.5
+                w = w * (mask > 0.1)
+                stabilized_h = result_hsv[:, :, 0] * (1 - w) + float(hue_center) * w
+                result_hsv[:, :, 0] = stabilized_h
+            except Exception:
+                pass
+
+        # Desaturate near pink range
+        if corrections.get("desat_near_pink", False):
+            try:
+                h = result_hsv[:, :, 0]
+                s = result_hsv[:, :, 1]
+                near_pink = (h > 158) & (mask > 0.1)
+                s = np.where(near_pink, s * (1.0 - 0.12 * alpha), s)
+                result_hsv[:, :, 1] = s
+            except Exception:
+                pass
+
+        # Gaussian smoothing
+        if corrections.get("post_smooth", False):
+            try:
+                h_blur = cv2.GaussianBlur(result_hsv[:, :, 0], (0, 0), 0.8)
+                s_blur = cv2.GaussianBlur(result_hsv[:, :, 1], (0, 0), 0.6)
+                v_blur = cv2.GaussianBlur(result_hsv[:, :, 2], (0, 0), 0.6)
+                blend_w = np.clip(mask * 0.4, 0.0, 1.0)
+                result_hsv[:, :, 0] = result_hsv[:, :, 0] * (1 - blend_w) + h_blur * blend_w
+                result_hsv[:, :, 1] = result_hsv[:, :, 1] * (1 - blend_w) + s_blur * blend_w
+                result_hsv[:, :, 2] = result_hsv[:, :, 2] * (1 - blend_w) + v_blur * blend_w
+            except Exception:
+                pass
+
+        # Bilateral smoothing for hue
+        if corrections.get("bilateral_hue_smooth", False):
+            try:
+                h = result_hsv[:, :, 0].astype(np.float32)
+                h_b = cv2.bilateralFilter(h, d=5, sigmaColor=20, sigmaSpace=5)
+                result_hsv[:, :, 0] = np.where(mask > 0.1, h_b, result_hsv[:, :, 0])
+            except Exception:
+                pass
+
+        # Highlight protection
+        if corrections.get("highlight_protect", False):
+            try:
+                orig_s = image_hsv[:, :, 1]
+                orig_v = image_hsv[:, :, 2]
+                spec_mask = (orig_v > 220) & (mask > 0.1)
+                if np.any(spec_mask):
+                    hp_sat_reduce = float(corrections.get("hp_sat_reduce", 0.15))
+                    hp_hue_blend = float(corrections.get("hp_hue_blend", 0.40))
+                    hp_v_cap = float(corrections.get("hp_v_cap", bounds[1]))
+                    result_hsv[:, :, 0] = np.where(
+                        spec_mask,
+                        result_hsv[:, :, 0] * (1 - hp_hue_blend) + image_hsv[:, :, 0] * hp_hue_blend,
+                        result_hsv[:, :, 0]
+                    )
+                    result_hsv[:, :, 1] = np.where(spec_mask, result_hsv[:, :, 1] * (1 - hp_sat_reduce), result_hsv[:, :, 1])
+                    result_hsv[:, :, 2] = np.where(spec_mask, np.minimum(result_hsv[:, :, 2], hp_v_cap), result_hsv[:, :, 2])
+            except Exception:
+                pass
+
+        # Desaturation compensation for gray/white hair
+        if corrections.get("desat_comp", False):
+            try:
+                orig_s = image_hsv[:, :, 1]
+                low_sat_mask = (orig_s < float(corrections.get("desat_thresh", 35))) & (mask > 0.1)
+                if np.any(low_sat_mask):
+                    boost = float(corrections.get("desat_boost", 1.20))
+                    extra_hue_w = float(corrections.get("desat_hue_weight_boost", 0.10)) * alpha
+                    result_hsv[:, :, 0] = np.where(
+                        low_sat_mask,
+                        (result_hsv[:, :, 0] + (target_hsv[0] - result_hsv[:, :, 0]) * extra_hue_w) % 180,
+                        result_hsv[:, :, 0]
+                    )
+                    result_hsv[:, :, 1] = np.where(low_sat_mask, np.clip(result_hsv[:, :, 1] * boost, 0, 255), result_hsv[:, :, 1])
+            except Exception:
+                pass
 
         return result_hsv
-    
-    def handle_auburn_color(
-        self,
-        result_hsv: np.ndarray,
-        image_hsv: np.ndarray,
-        mask_normalized: np.ndarray
-    ) -> np.ndarray:
-        """
-        Apply specialized transformation for auburn hair.
-        Auburn is a reddish-brown color that needs careful hue handling.
-        
-        Args:
-            result_hsv: Current result HSV image
-            image_hsv: Original HSV image
-            mask_normalized: Normalized mask
-            
-        Returns:
-            np.ndarray: Transformed HSV image for auburn hair
-        """
-        # Auburn target hue is around 10° (reddish-brown)
-        auburn_hue = 10.0
-        
-        # Get current hue and apply transformation
-        current_hue = image_hsv[:,:,0]
-        
-        # Calculate hue difference, handling wraparound
-        hue_diff = auburn_hue - current_hue
-        hue_diff = np.where(hue_diff > 90, hue_diff - 180, hue_diff)
-        hue_diff = np.where(hue_diff < -90, hue_diff + 180, hue_diff)
-        
-        # Apply strong hue shift toward auburn
-        result_hsv[:,:,0] = np.where(
-            mask_normalized > 0.1,
-            np.mod(current_hue + hue_diff * 0.85, 180),
-            current_hue
-        )
-        
-        # Boost saturation for rich auburn color
-        current_sat = image_hsv[:,:,1]
-        auburn_sat = np.clip(current_sat * 1.4, 100, 255)  # Minimum saturation of 100
-        result_hsv[:,:,1] = np.where(
-            mask_normalized > 0.1,
-            auburn_sat,
-            current_sat
-        )
-        
-        # Adjust brightness for auburn warmth
-        current_val = image_hsv[:,:,2]
-        val_adjust = np.where(
-            current_val < 80,
-            current_val * 1.3,  # Boost dark areas
-            np.where(current_val > 180,
-                    current_val * 0.85,  # Tone down highlights
-                    current_val * 1.1   # Slight boost for mid-tones
-            )
-        )
-        result_hsv[:,:,2] = np.where(
-            mask_normalized > 0.1,
-            np.clip(val_adjust, 30, 220),
-            current_val
-        )
-        
-        return result_hsv
-    
-    def handle_copper_color(
-        self,
-        result_hsv: np.ndarray,
-        image_hsv: np.ndarray,
-        mask_normalized: np.ndarray
-    ) -> np.ndarray:
-        """
-        Apply specialized transformation for copper hair.
-        Copper is a warm orange-brown color.
-        
-        Args:
-            result_hsv: Current result HSV image
-            image_hsv: Original HSV image
-            mask_normalized: Normalized mask
-            
-        Returns:
-            np.ndarray: Transformed HSV image for copper hair
-        """
-        # Copper target hue is around 14° (orange-brown)
-        copper_hue = 14.0
-        
-        # Get current hue and apply transformation
-        current_hue = image_hsv[:,:,0]
-        
-        # Calculate hue difference, handling wraparound
-        hue_diff = copper_hue - current_hue
-        hue_diff = np.where(hue_diff > 90, hue_diff - 180, hue_diff)
-        hue_diff = np.where(hue_diff < -90, hue_diff + 180, hue_diff)
-        
-        # Apply strong hue shift toward copper
-        result_hsv[:,:,0] = np.where(
-            mask_normalized > 0.1,
-            np.mod(current_hue + hue_diff * 0.9, 180),
-            current_hue
-        )
-        
-        # High saturation for vibrant copper
-        current_sat = image_hsv[:,:,1]
-        copper_sat = np.clip(current_sat * 1.6, 150, 255)  # Minimum saturation of 150
-        result_hsv[:,:,1] = np.where(
-            mask_normalized > 0.1,
-            copper_sat,
-            current_sat
-        )
-        
-        # Bright copper adjustment
-        current_val = image_hsv[:,:,2]
-        val_adjust = np.where(
-            current_val < 100,
-            current_val * 1.4,  # Boost shadows significantly
-            np.where(current_val > 200,
-                    current_val * 0.9,  # Slight reduction for highlights
-                    current_val * 1.2   # Boost mid-tones
-            )
-        )
-        result_hsv[:,:,2] = np.where(
-            mask_normalized > 0.1,
-            np.clip(val_adjust, 50, 240),
-            current_val
-        )
-        
-        return result_hsv
-    
-    def handle_pink_color(
-        self,
-        result_hsv: np.ndarray,
-        image_hsv: np.ndarray,
-        mask_normalized: np.ndarray
-    ) -> np.ndarray:
-        """
-        Apply specialized transformation for pink hair.
-        Pink requires vibrant saturation and specific hue handling.
-        
-        Args:
-            result_hsv: Current result HSV image
-            image_hsv: Original HSV image
-            mask_normalized: Normalized mask
-            
-        Returns:
-            np.ndarray: Transformed HSV image for pink hair
-        """
-        # Pink target hue is around 165° (magenta/pink)
-        pink_hue = 165.0
-        
-        # Get current hue and apply transformation
-        current_hue = image_hsv[:,:,0]
-        
-        # Calculate hue difference, handling wraparound
-        hue_diff = pink_hue - current_hue
-        hue_diff = np.where(hue_diff > 90, hue_diff - 180, hue_diff)
-        hue_diff = np.where(hue_diff < -90, hue_diff + 180, hue_diff)
-        
-        # Apply strong hue shift toward pink
-        result_hsv[:,:,0] = np.where(
-            mask_normalized > 0.1,
-            np.mod(current_hue + hue_diff * 0.9, 180),
-            current_hue
-        )
-        
-        # High saturation for vibrant pink
-        current_sat = image_hsv[:,:,1]
-        pink_sat = np.clip(current_sat * 1.8, 120, 255)  # Minimum saturation of 120
-        result_hsv[:,:,1] = np.where(
-            mask_normalized > 0.1,
-            pink_sat,
-            current_sat
-        )
-        
-        # Brightness adjustment for pink vibrancy
-        current_val = image_hsv[:,:,2]
-        val_adjust = np.where(
-            current_val < 80,
-            current_val * 1.4,  # Boost dark areas significantly
-            np.where(current_val > 200,
-                    current_val * 0.95,  # Slight reduction for highlights
-                    current_val * 1.15  # Boost mid-tones
-            )
-        )
-        result_hsv[:,:,2] = np.where(
-            mask_normalized > 0.1,
-            np.clip(val_adjust, 40, 230),
-            current_val
-        )
-        
-        return result_hsv 

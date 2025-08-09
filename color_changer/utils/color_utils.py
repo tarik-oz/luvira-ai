@@ -48,7 +48,8 @@ class ColorUtils:
         base_rgb: List[int],
         saturation_factor: float = 1.0,
         brightness_factor: float = 1.0,
-        intensity: float = 1.0
+        intensity: float = 1.0,
+        hue_offset_degrees: float = 0.0,
     ) -> List[int]:
         """
         Create a custom tonal variation with specific parameters.
@@ -58,6 +59,7 @@ class ColorUtils:
             saturation_factor: Saturation adjustment factor (0.0 to 2.0)
             brightness_factor: Brightness adjustment factor (0.0 to 2.0)
             intensity: Overall intensity of the effect (0.0 to 1.0)
+            hue_offset_degrees: Optional hue offset in degrees (-180..+180). Positive values shift towards cooler hues.
         
         Returns:
             RGB color with applied toning
@@ -66,7 +68,7 @@ class ColorUtils:
         base_hsv = ColorUtils.rgb_to_hsv(base_rgb)
         h, s, v = base_hsv
         
-        # Apply intensity-modulated adjustments
+        # Apply intensity-modulated adjustments for S/V
         sat_adjustment = 1.0 + (saturation_factor - 1.0) * intensity
         bright_adjustment = 1.0 + (brightness_factor - 1.0) * intensity
         
@@ -74,8 +76,16 @@ class ColorUtils:
         new_s = int(np.clip(s * sat_adjustment, 0, 255))
         new_v = int(np.clip(v * bright_adjustment, 0, 255))
         
+        # Apply hue offset if given (degrees -> OpenCV hue units)
+        if abs(hue_offset_degrees) > 1e-6:
+            # OpenCV H is 0..179 which maps to 0..360 degrees (x2)
+            hue_offset_cv = hue_offset_degrees / 2.0
+            new_h = (float(h) + float(hue_offset_cv)) % 180.0
+        else:
+            new_h = float(h)
+        
         # Convert back to RGB
-        new_hsv = [h, new_s, new_v]
+        new_hsv = [int(new_h), new_s, new_v]
         return ColorUtils.hsv_to_rgb(new_hsv)
     
     @staticmethod
