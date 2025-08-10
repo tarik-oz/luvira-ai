@@ -8,6 +8,7 @@ import cv2
 from typing import Dict, Any, Optional
 
 from color_changer.config.color_config import COLOR_PROFILES
+from color_changer.utils.constants import MASK_THRESHOLD
 from color_changer.utils.hsv_utils import (
     shortest_hue_diff,
     approach_target,
@@ -62,7 +63,7 @@ class SpecialColorHandler:
         from color_changer.utils.gray_utils import GrayUtils
         original_saturation = image_hsv[:, :, 1]
         original_value = image_hsv[:, :, 2]
-        hair_pixels = (original_value * mask)[mask > 0.1]
+        hair_pixels = (original_value * mask)[mask > MASK_THRESHOLD]
         if len(hair_pixels) == 0:
             return image_hsv.copy()
         avg_hair_brightness = np.mean(hair_pixels)
@@ -91,7 +92,7 @@ class SpecialColorHandler:
         hue_weight = float(profile.get("hue", {}).get("weight", 0.9)) * alpha
         hue_diff = shortest_hue_diff(target_hsv[0], current_h)
         new_h = (current_h + hue_diff * hue_weight) % 180
-        result_hsv[:, :, 0] = np.where(mask > 0.1, new_h, result_hsv[:, :, 0])
+        result_hsv[:, :, 0] = np.where(mask > MASK_THRESHOLD, new_h, result_hsv[:, :, 0])
 
         # Saturation scaling and approach target
         sat_cfg = profile.get("sat", {})
@@ -108,7 +109,7 @@ class SpecialColorHandler:
         nudged_s = approach_target(scaled_s, target_s, sat_approach_w)
         if high_sat_boost and target_s > 200:
             nudged_s = approach_target(nudged_s, max(target_s, 220.0), 0.2 * alpha)
-        result_hsv[:, :, 1] = np.where(mask > 0.1, np.clip(nudged_s, 0, 255), result_hsv[:, :, 1])
+        result_hsv[:, :, 1] = np.where(mask > MASK_THRESHOLD, np.clip(nudged_s, 0, 255), result_hsv[:, :, 1])
 
         # Value (brightness) mapping using region gains
         val_cfg = profile.get("val", {})
@@ -133,14 +134,14 @@ class SpecialColorHandler:
         if isinstance(hue_band, (list, tuple)) and len(hue_band) == 2:
             hmin, hmax = float(hue_band[0]), float(hue_band[1])
             clamped_h = np.clip(result_hsv[:, :, 0], hmin, hmax)
-            result_hsv[:, :, 0] = np.where(mask > 0.1, clamped_h, result_hsv[:, :, 0])
+            result_hsv[:, :, 0] = np.where(mask > MASK_THRESHOLD, clamped_h, result_hsv[:, :, 0])
 
         # Hue center
         hue_center = corrections.get("hue_center")
         hue_center_weight = float(corrections.get("hue_center_weight", 0.3))
         if isinstance(hue_center, (int, float)):
             centered_h = approach_target(result_hsv[:, :, 0], float(hue_center), hue_center_weight * alpha)
-            result_hsv[:, :, 0] = np.where(mask > 0.1, centered_h, result_hsv[:, :, 0])
+            result_hsv[:, :, 0] = np.where(mask > MASK_THRESHOLD, centered_h, result_hsv[:, :, 0])
 
         # Value dependent hue center
         if corrections.get("value_dependent_hue_center", False):
@@ -149,7 +150,7 @@ class SpecialColorHandler:
                 if not isinstance(hue_center, (int, float)):
                     hue_center = float(target_hsv[0])
                 w = np.clip((100.0 - v) / 100.0, 0.0, 1.0) * alpha * 0.5
-                w = w * (mask > 0.1)
+                w = w * (mask > MASK_THRESHOLD)
                 stabilized_h = result_hsv[:, :, 0] * (1 - w) + float(hue_center) * w
                 result_hsv[:, :, 0] = stabilized_h
             except Exception:
@@ -160,7 +161,7 @@ class SpecialColorHandler:
             try:
                 h = result_hsv[:, :, 0]
                 s = result_hsv[:, :, 1]
-                near_pink = (h > 158) & (mask > 0.1)
+                near_pink = (h > 158) & (mask > MASK_THRESHOLD)
                 s = np.where(near_pink, s * (1.0 - 0.12 * alpha), s)
                 result_hsv[:, :, 1] = s
             except Exception:
@@ -184,7 +185,7 @@ class SpecialColorHandler:
             try:
                 h = result_hsv[:, :, 0].astype(np.float32)
                 h_b = cv2.bilateralFilter(h, d=5, sigmaColor=20, sigmaSpace=5)
-                result_hsv[:, :, 0] = np.where(mask > 0.1, h_b, result_hsv[:, :, 0])
+                result_hsv[:, :, 0] = np.where(mask > MASK_THRESHOLD, h_b, result_hsv[:, :, 0])
             except Exception:
                 pass
 
@@ -193,7 +194,7 @@ class SpecialColorHandler:
             try:
                 orig_s = image_hsv[:, :, 1]
                 orig_v = image_hsv[:, :, 2]
-                spec_mask = (orig_v > 220) & (mask > 0.1)
+                spec_mask = (orig_v > 220) & (mask > MASK_THRESHOLD)
                 if np.any(spec_mask):
                     hp_sat_reduce = float(corrections.get("hp_sat_reduce", 0.15))
                     hp_hue_blend = float(corrections.get("hp_hue_blend", 0.40))
@@ -212,7 +213,7 @@ class SpecialColorHandler:
         if corrections.get("desat_comp", False):
             try:
                 orig_s = image_hsv[:, :, 1]
-                low_sat_mask = (orig_s < float(corrections.get("desat_thresh", 35))) & (mask > 0.1)
+                low_sat_mask = (orig_s < float(corrections.get("desat_thresh", 35))) & (mask > MASK_THRESHOLD)
                 if np.any(low_sat_mask):
                     boost = float(corrections.get("desat_boost", 1.20))
                     extra_hue_w = float(corrections.get("desat_hue_weight_boost", 0.10)) * alpha

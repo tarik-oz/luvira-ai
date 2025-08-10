@@ -2,14 +2,13 @@ model/datasets/*
 model/trained_models/*
 
 model/test_results/*
+model/kaggle.zip
 
 color_changer/test_results/*
 color_changer/test_all_results/*
 
 logs/*
 .vscode/*
-
-hair_segmentation_kaggle_*
 
 session_data/*
 

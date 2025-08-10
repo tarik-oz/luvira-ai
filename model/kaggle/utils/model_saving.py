@@ -3,10 +3,9 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-def create_timestamped_folder(trained_models_dir: Path, best_val_accuracy: float) -> Path:
+def create_timestamped_folder(trained_models_dir: Path) -> Path:
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    accuracy_str = f"acc{best_val_accuracy:.4f}"
-    folder_name = f"{timestamp}_{accuracy_str}"
+    folder_name = f"{timestamp}"
     folder_path = trained_models_dir / folder_name
     folder_path.mkdir(parents=True, exist_ok=True)
     print(f"Created model folder: {folder_path}")

@@ -64,7 +64,7 @@ CUSTOM_TONES = {
         "classic": {"saturation_factor": 1.20, "brightness_factor": 1.00, "intensity": 1.00, "hue_offset": 0, "description": "Classic auburn"},
         "golden": {"saturation_factor": 1.40, "brightness_factor": 1.15, "intensity": 1.05, "hue_offset": +6, "description": "Golden auburn"},
         "dark": {"saturation_factor": 1.10, "brightness_factor": 0.85, "intensity": 0.95, "hue_offset": -4, "description": "Dark auburn"},
-        "copper": {"saturation_factor": 1.60, "brightness_factor": 1.05, "intensity": 1.00, "hue_offset": +10, "description": "Copper auburn"}
+        "rust": {"saturation_factor": 1.45, "brightness_factor": 0.95, "intensity": 1.00, "hue_offset": +4, "description": "Rust auburn"}
     },
     "Pink": {
         "rose": {"saturation_factor": 0.80, "brightness_factor": 1.25, "intensity": 0.95, "hue_offset": +6, "description": "Romantic rose pink"},
@@ -136,15 +136,15 @@ COLOR_PROFILES = {
     "Blonde": {
         "hue": {"weight": 0.90},
         "sat": {"scale": 1.15, "min": 0, "max": 255, "approach_target_weight": 0.3, "high_sat_boost": False},
-        "val": {"shadow_gain": 1.30, "mid_gain": 1.20, "highlight_gain": 0.95, "bounds": [10, 255]},
+        "val": {"shadow_gain": 1.70, "mid_gain": 1.40, "highlight_gain": 1.20, "bounds": [10, 255]},
         "corrections": {"anti_pink": False, "highlight_tamer": True, "gray_mode": False, "highlight_protect": True, "hp_sat_reduce": 0.18, "hp_hue_blend": 0.45, "hp_v_cap": 245, "desat_comp": True, "desat_thresh": 35, "desat_boost": 1.25, "desat_hue_weight_boost": 0.12},
         "lightening": {"enabled": True, "shadow": 0.52, "mid": 0.36, "highlight": 0.16, "desat": 0.08, "dark_thresh": 0.38, "light_thresh": 0.62, "upper_bound": 250}
     },
     "Copper": {
-        "hue": {"weight": 0.90},
-        "sat": {"scale": 1.60, "min": 150, "max": 255, "approach_target_weight": 0.4, "high_sat_boost": False},
-        "val": {"shadow_gain": 1.40, "mid_gain": 1.20, "highlight_gain": 0.90, "bounds": [50, 240]},
-        "corrections": {"anti_pink": False, "highlight_tamer": False, "gray_mode": False, "highlight_protect": True, "hp_sat_reduce": 0.15, "hp_hue_blend": 0.35},
+        "hue": {"weight": 0.85},
+        "sat": {"scale": 1.35, "min": 40, "max": 220, "approach_target_weight": 0.28, "high_sat_boost": False},
+        "val": {"shadow_gain": 1.65, "mid_gain": 1.35, "highlight_gain": 0.95, "bounds": [50, 238]},
+        "corrections": {"anti_pink": False, "highlight_tamer": False, "gray_mode": False, "hue_band": [12, 14], "hue_center": 13, "hue_center_weight": 0.20, "highlight_protect": True, "hp_sat_reduce": 0.40, "hp_hue_blend": 0.22, "hp_v_cap": 240, "post_smooth": True, "bilateral_hue_smooth": True, "value_dependent_hue_center": True},
         "lightening": {"enabled": True, "shadow": 0.22, "mid": 0.15, "highlight": 0.06, "desat": 0.04, "dark_thresh": 0.40, "light_thresh": 0.55, "upper_bound": 235}
     },
     "Brown": {
@@ -158,28 +158,28 @@ COLOR_PROFILES = {
         "hue": {"weight": 0.85},
         "sat": {"scale": 1.40, "min": 100, "max": 255, "approach_target_weight": 0.4, "high_sat_boost": False},
         "val": {"shadow_gain": 1.30, "mid_gain": 1.10, "highlight_gain": 0.85, "bounds": [30, 220]},
-        "corrections": {"anti_pink": False, "highlight_tamer": False, "gray_mode": False}
+        "corrections": {"anti_pink": False, "highlight_tamer": False, "gray_mode": False, "hue_band": [11, 14]}
     },
     "Pink": {
         "hue": {"weight": 0.90},
         "sat": {"scale": 1.80, "min": 120, "max": 255, "approach_target_weight": 0.5, "high_sat_boost": True},
         "val": {"shadow_gain": 1.40, "mid_gain": 1.15, "highlight_gain": 0.95, "bounds": [40, 230]},
-        "corrections": {"anti_pink": False, "highlight_tamer": False, "gray_mode": False},
+        "corrections": {"anti_pink": False, "highlight_tamer": False, "gray_mode": False, "hue_band": [165, 175]},
         "lightening": {"enabled": True, "shadow": 0.45, "mid": 0.30, "highlight": 0.12, "desat": 0.05, "dark_thresh": 0.40, "light_thresh": 0.60, "upper_bound": 245}
     },
     "Blue": {
         "hue": {"weight": 0.90},
         "sat": {"scale": 1.45, "min": 165, "max": 240, "approach_target_weight": 0.40, "high_sat_boost": True},
         "val": {"shadow_gain": 1.18, "mid_gain": 1.05, "highlight_gain": 0.92, "bounds": [25, 240]},
-        "corrections": {"anti_pink": False, "highlight_tamer": False, "gray_mode": False, "hue_band": [110, 125], "hue_center": 120, "post_smooth": True},
+        "corrections": {"anti_pink": False, "highlight_tamer": False, "gray_mode": False, "hue_band": [114, 120], "hue_center": 120, "post_smooth": True},
         "lightening": {"enabled": True, "shadow": 0.35, "mid": 0.25, "highlight": 0.10, "desat": 0.02, "dark_thresh": 0.40, "light_thresh": 0.60, "upper_bound": 240}
     },
     "Purple": {
         "hue": {"weight": 0.92},
-        "sat": {"scale": 1.62, "min": 190, "max": 255, "approach_target_weight": 0.50, "high_sat_boost": False},
-        "val": {"shadow_gain": 1.15, "mid_gain": 1.00, "highlight_gain": 0.66, "bounds": [60, 205]},
+        "sat": {"scale": 1.62, "min": 150, "max": 255, "approach_target_weight": 0.40, "high_sat_boost": False},
+        "val": {"shadow_gain": 1.6, "mid_gain": 1.4, "highlight_gain": 1, "bounds": [60, 205]},
         "corrections": {"anti_pink": True, "highlight_tamer": False, "gray_mode": False, "hue_band": [145, 149], "hue_center": 150, "hue_center_weight": 0.45, "desat_near_pink": True, "post_smooth": True, "value_dependent_hue_center": True, "bilateral_hue_smooth": True},
-        "lightening": {"enabled": True, "shadow": 0.32, "mid": 0.22, "highlight": 0.10, "desat": 0.03, "dark_thresh": 0.40, "light_thresh": 0.60, "upper_bound": 238}
+        "lightening": {"enabled": True, "shadow": 0.4, "mid": 0.28, "highlight": 0.10, "desat": 0.03, "dark_thresh": 0.40, "light_thresh": 0.50, "upper_bound": 245}
     },
     "Gray": {
         "hue": {"weight": 0.60, "suppress_factor": 0.40},
@@ -191,21 +191,21 @@ COLOR_PROFILES = {
     "Red": {
         "hue": {"weight": 0.88},
         "sat": {"scale": 1.45, "min": 100, "max": 255, "approach_target_weight": 0.5, "high_sat_boost": False},
-        "val": {"shadow_gain": 1.22, "mid_gain": 1.05, "highlight_gain": 0.86, "bounds": [20, 240]},
-        "corrections": {"anti_pink": False, "highlight_tamer": True, "gray_mode": False}
+        "val": {"shadow_gain": 1.22, "mid_gain": 1.05, "highlight_gain": 0.86, "bounds": [30, 230]},
+        "corrections": {"anti_pink": False, "highlight_tamer": True, "gray_mode": False, "hue_band": [4, 8]}
     },
     "Green": {
-        "hue": {"weight": 0.90},
+        "hue": {"weight": 0.87},
         "sat": {"scale": 1.58, "min": 135, "max": 255, "approach_target_weight": 0.5, "high_sat_boost": True},
-        "val": {"shadow_gain": 1.26, "mid_gain": 1.06, "highlight_gain": 0.92, "bounds": [15, 245]},
-        "corrections": {"anti_pink": False, "highlight_tamer": False, "gray_mode": False, "hue_band": [70, 90]},
+        "val": {"shadow_gain": 1.26, "mid_gain": 1.06, "highlight_gain": 0.92, "bounds": [25, 235]},
+        "corrections": {"anti_pink": False, "highlight_tamer": False, "gray_mode": False, "hue_band": [78, 80]},
         "lightening": {"enabled": True, "shadow": 0.30, "mid": 0.22, "highlight": 0.10, "desat": 0.03, "dark_thresh": 0.40, "light_thresh": 0.60, "upper_bound": 240}
     },
     "Teal": {
         "hue": {"weight": 0.92},
         "sat": {"scale": 1.60, "min": 150, "max": 255, "approach_target_weight": 0.45, "high_sat_boost": True},
         "val": {"shadow_gain": 1.12, "mid_gain": 1.04, "highlight_gain": 0.92, "bounds": [22, 245]},
-        "corrections": {"anti_pink": False, "highlight_tamer": False, "gray_mode": False, "hue_band": [90, 100], "hue_center": 95, "post_smooth": True, "value_dependent_hue_center": True, "bilateral_hue_smooth": True},
+        "corrections": {"anti_pink": False, "highlight_tamer": False, "gray_mode": False, "hue_band": [93, 97], "hue_center": 95, "post_smooth": True, "value_dependent_hue_center": True, "bilateral_hue_smooth": True},
         "lightening": {"enabled": True, "shadow": 0.28, "mid": 0.20, "highlight": 0.10, "desat": 0.03, "dark_thresh": 0.40, "light_thresh": 0.60, "upper_bound": 240}
     }
 }

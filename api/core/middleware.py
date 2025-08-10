@@ -5,6 +5,7 @@ Middleware for Hair Segmentation API
 import time
 import logging
 from typing import Callable
+import uuid
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
@@ -22,9 +23,11 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         # Start time
         start_time = time.time()
         
+        # Correlate logs with a request id
+        request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:12]
         # Log request
         logger.info(
-            f"Request: {request.method} {request.url.path} - "
+            f"[{request_id}] Request: {request.method} {request.url.path} - "
             f"Client: {request.client.host if request.client else 'unknown'}"
         )
         
@@ -37,7 +40,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             
             # Log response
             logger.info(
-                f"Response: {response.status_code} - "
+                f"[{request_id}] Response: {response.status_code} - "
                 f"Duration: {duration:.3f}s - "
                 f"Path: {request.url.path}"
             )
@@ -50,7 +53,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             
             # Log error
             logger.error(
-                f"Error: {str(e)} - "
+                f"[{request_id}] Error: {str(e)} - "
                 f"Duration: {duration:.3f}s - "
                 f"Path: {request.url.path}"
             )

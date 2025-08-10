@@ -10,6 +10,8 @@ from color_changer.transformers.hsv_transformer import HsvTransformer
 from color_changer.transformers.blender import Blender
 from color_changer.utils.color_utils import ColorUtils
 from color_changer.config.color_config import CUSTOM_TONES, COLORS
+from color_changer.utils.constants import MASK_THRESHOLD, MIN_MASK_COVERAGE_RATIO
+import logging
 
 
 class ColorTransformer:
@@ -21,6 +23,7 @@ class ColorTransformer:
     def __init__(self):
         self.hsv_transformer = HsvTransformer()
         self.blender = Blender()
+        self.logger = logging.getLogger(__name__)
     
     def change_hair_color(self, image: np.ndarray, mask: np.ndarray, color_input) -> np.ndarray:
         """
@@ -40,12 +43,8 @@ class ColorTransformer:
         if isinstance(color_input, str):
             target_rgb = self._get_rgb_from_color_name(color_input)
             # Resolve canonical color label for profile selection
-            try:
-                from color_changer.utils.color_utils import ColorUtils
-                _, found_name = ColorUtils.find_color_by_name(color_input)
-                color_label = found_name
-            except Exception:
-                color_label = None
+            _, found_name = ColorUtils.find_color_by_name(color_input)
+            color_label = found_name
         else:
             target_rgb = color_input  # Already RGB list
         
@@ -53,20 +52,29 @@ class ColorTransformer:
         image_rgb, image_float, mask_normalized, mask_3ch, target_rgb_norm, target_hsv = \
             self._preprocess_inputs(image, mask, target_rgb)
         
-        # Check if hair is detected
-        if np.sum(mask_normalized > 0.1) == 0:
-            return image_rgb  # No hair detected, return original
+        # Check if hair is detected (with coverage guard)
+        coverage = float(np.mean(mask_normalized > MASK_THRESHOLD))
+        if coverage < MIN_MASK_COVERAGE_RATIO:
+            self.logger.info("Mask coverage too low; returning original image")
+            return image_rgb
         
         # Analyze hair characteristics
         alpha, saturation_factor, brightness_adjustment = \
             self._analyze_hair_characteristics(image_float, mask_normalized, target_rgb_norm)
         
         # Convert to HSV for better color control
+        # Lightly smooth mask edge once to reduce halos
+        try:
+            smoothed_mask = cv2.GaussianBlur(mask_normalized.astype(np.float32), (0, 0), 0.7)
+            smoothed_mask = np.clip(smoothed_mask, 0.0, 1.0)
+        except Exception:
+            smoothed_mask = mask_normalized
+
         image_hsv = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2HSV).astype(np.float32)
         
         # Apply HSV transformations
         result_hsv = self.hsv_transformer.apply_hsv_transformations(
-            image_hsv, mask_normalized, target_hsv, alpha, saturation_factor, brightness_adjustment, color_label, None
+            image_hsv, smoothed_mask, target_hsv, alpha, saturation_factor, brightness_adjustment, color_label, None
         )
         
         # Convert back to RGB
@@ -100,27 +108,53 @@ class ColorTransformer:
         """
         # Get base color RGB from config
         base_color_rgb = self._get_rgb_from_color_name(color_name)
-        
+
         # Get tone configuration
         if color_name not in CUSTOM_TONES:
             raise ValueError(f"Invalid color name: {color_name}. Available: {list(CUSTOM_TONES.keys())}")
-            
+
         if tone_name not in CUSTOM_TONES[color_name]:
-            raise ValueError(f"Invalid tone name: {tone_name}. Available for {color_name}: {list(CUSTOM_TONES[color_name].keys())}")
-        
+            raise ValueError(
+                f"Invalid tone name: {tone_name}. Available for {color_name}: {list(CUSTOM_TONES[color_name].keys())}"
+            )
+
         tone_config = CUSTOM_TONES[color_name][tone_name]
-        
+
         # Generate toned color (support hue_offset and rgb_override if present)
         toned_color = ColorUtils.create_custom_tone(
             base_color_rgb,
             saturation_factor=tone_config["saturation_factor"],
             brightness_factor=tone_config["brightness_factor"],
             intensity=tone_config.get("intensity", 1.0),
-            hue_offset_degrees=float(tone_config.get("hue_offset", 0.0))
+            hue_offset_degrees=float(tone_config.get("hue_offset", 0.0)),
         )
-        
-        # Apply the toned color (now passing RGB values instead of color name)
-        return self.change_hair_color(image, mask, toned_color)
+
+        # Preprocess inputs using the toned target to compute toned HSV and analysis
+        image_rgb, image_float, mask_normalized, mask_3ch, target_rgb, target_hsv = \
+            self._preprocess_inputs(image, mask, toned_color)
+
+        # Analyze hair characteristics
+        alpha, saturation_factor, brightness_adjustment = \
+            self._analyze_hair_characteristics(image_float, mask_normalized, target_rgb)
+
+        # Prepare HSV
+        try:
+            smoothed_mask = cv2.GaussianBlur(mask_normalized.astype(np.float32), (0, 0), 0.7)
+            smoothed_mask = np.clip(smoothed_mask, 0.0, 1.0)
+        except Exception:
+            smoothed_mask = mask_normalized
+
+        image_hsv = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2HSV).astype(np.float32)
+
+        # Apply HSV transformations with color profile and tone label
+        result_hsv = self.hsv_transformer.apply_hsv_transformations(
+            image_hsv, smoothed_mask, target_hsv, alpha, saturation_factor, brightness_adjustment, color_name, tone_name
+        )
+
+        # Back to RGB and blend
+        result_rgb = cv2.cvtColor(result_hsv.astype(np.uint8), cv2.COLOR_HSV2RGB).astype(np.float32) / 255.0
+        result = self.blender.apply_natural_blending(image_float, result_rgb, mask_3ch, alpha)
+        return np.clip(result * 255, 0, 255).astype(np.uint8)
 
     def change_hair_color_with_all_tones(
         self, 
@@ -167,7 +201,8 @@ class ColorTransformer:
             self._preprocess_inputs(image, mask, base_color_rgb)
         
         # Check if hair is detected
-        if np.sum(mask_normalized > 0.1) == 0:
+        coverage = float(np.mean(mask_normalized > MASK_THRESHOLD))
+        if coverage < MIN_MASK_COVERAGE_RATIO:
             return {
                 'base_result': image_rgb,  # No hair detected
                 'tones': {}
@@ -178,13 +213,19 @@ class ColorTransformer:
             self._analyze_hair_characteristics(image_float, mask_normalized, target_rgb)
         
         # Convert to HSV once
+        try:
+            smoothed_mask = cv2.GaussianBlur(mask_normalized.astype(np.float32), (0, 0), 0.7)
+            smoothed_mask = np.clip(smoothed_mask, 0.0, 1.0)
+        except Exception:
+            smoothed_mask = mask_normalized
+
         image_hsv = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2HSV).astype(np.float32)
         
         results = {}
         
         # Generate base result
         result_hsv = self.hsv_transformer.apply_hsv_transformations(
-            image_hsv, mask_normalized, target_hsv, alpha, saturation_factor, brightness_adjustment, color_name, None
+            image_hsv, smoothed_mask, target_hsv, alpha, saturation_factor, brightness_adjustment, color_name, None
         )
         result_rgb = cv2.cvtColor(result_hsv.astype(np.uint8), cv2.COLOR_HSV2RGB).astype(np.float32) / 255.0
         base_result = self.blender.apply_natural_blending(image_float, result_rgb, mask_3ch, alpha)
@@ -208,7 +249,7 @@ class ColorTransformer:
                 
                 # Apply HSV transformations for this tone
                 tone_result_hsv = self.hsv_transformer.apply_hsv_transformations(
-                    image_hsv, mask_normalized, toned_hsv, alpha, saturation_factor, brightness_adjustment, color_name, tone_name
+                    image_hsv, smoothed_mask, toned_hsv, alpha, saturation_factor, brightness_adjustment, color_name, tone_name
                 )
                 tone_result_rgb = cv2.cvtColor(tone_result_hsv.astype(np.uint8), cv2.COLOR_HSV2RGB).astype(np.float32) / 255.0
                 tone_result = self.blender.apply_natural_blending(image_float, tone_result_rgb, mask_3ch, alpha)
@@ -242,7 +283,8 @@ class ColorTransformer:
         # Convert BGR to RGB for proper color handling
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image_float = image_rgb.astype(np.float32) / 255.0
-        target_rgb = np.array(target_color, dtype=np.float32) / 255.0
+        # Validate and clamp target color values to 0..255
+        target_rgb = np.clip(np.array(target_color, dtype=np.float32), 0, 255) / 255.0
         
         # Convert target color to HSV
         target_hsv = cv2.cvtColor(np.uint8([[target_color]]), cv2.COLOR_RGB2HSV)[0][0].astype(np.float32)
@@ -261,7 +303,7 @@ class ColorTransformer:
         Returns:
             tuple: (alpha, saturation_factor, brightness_adjustment)
         """
-        hair_pixels = image_float[mask_normalized > 0.1]
+        hair_pixels = image_float[mask_normalized > MASK_THRESHOLD]
         if len(hair_pixels) == 0:
             return 0.0, 1.0, 0.0  # No hair detected
         

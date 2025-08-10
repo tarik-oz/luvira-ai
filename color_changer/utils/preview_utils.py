@@ -4,6 +4,7 @@ Contains common functionality for mask generation and image processing.
 """
 
 import os
+from pathlib import Path
 
 # Import model predictor for automatic mask generation
 try:
@@ -149,7 +150,11 @@ def generate_hair_masks(image_paths, model_path, device='auto'):
             
             if success:
                 # The predictor saves masks to model/test_results directory
-                model_results_dir = os.path.join('..', 'model', 'test_results')
+                try:
+                    project_root = Path(__file__).resolve().parents[2]
+                    model_results_dir = str(project_root / 'model' / 'test_results')
+                except Exception:
+                    model_results_dir = os.path.join('..', 'model', 'test_results')
                 prob_mask_path = os.path.join(model_results_dir, f"{base_name}_prob_mask.png")
                 if os.path.exists(prob_mask_path):
                     image_to_mask[img_path] = prob_mask_path
@@ -176,7 +181,11 @@ def find_existing_masks(image_paths, images_dir):
         Dictionary mapping image paths to mask paths
     """
     image_to_mask = {}
-    model_results_dir = os.path.join('..', 'model', 'test_results')
+    try:
+        project_root = Path(__file__).resolve().parents[2]
+        model_results_dir = str(project_root / 'model' / 'test_results')
+    except Exception:
+        model_results_dir = os.path.join('..', 'model', 'test_results')
     
     for img_path in image_paths:
         img_name = os.path.basename(img_path)

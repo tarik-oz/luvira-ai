@@ -13,7 +13,8 @@ class GrayUtils:
         Returns:
             np.ndarray: Blended channel
         """
-        return np.where(mask > 0.1, new_channel, result_channel)
+        from color_changer.utils.constants import MASK_THRESHOLD
+        return np.where(mask > MASK_THRESHOLD, new_channel, result_channel)
 
     @staticmethod
     def get_gray_value_boost(avg_hair_brightness: float, target_value_factor: float, alpha: float, original_value: np.ndarray, mask: np.ndarray) -> np.ndarray:

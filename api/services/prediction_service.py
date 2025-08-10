@@ -43,7 +43,7 @@ class PredictionService:
             # Read and process image
             image = ImageUtils.process_uploaded_file(file)
             
-            # Create temporary file for prediction
+            # Create temporary file for prediction (use PNG to avoid JPEG artifacts on masks)
             temp_input_path = self._create_temp_image_file(image)
             
             # Make prediction
@@ -74,13 +74,13 @@ class PredictionService:
         """Create temporary image file"""
         try:
             # Create temp file with proper suffix
-            temp_fd, temp_input_path = tempfile.mkstemp(suffix='.jpg')
+            temp_fd, temp_input_path = tempfile.mkstemp(suffix='.png')
             
             try:
                 # Close the file descriptor since we'll use cv2.imwrite
                 os.close(temp_fd)
                 
-                # Save temporary image
+                # Save temporary image (PNG, lossless)
                 cv2.imwrite(temp_input_path, image)
                 return temp_input_path
                 

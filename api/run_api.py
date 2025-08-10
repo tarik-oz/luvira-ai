@@ -11,6 +11,7 @@ project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
 from api.config import API_CONFIG
+from api.config.logging_config import setup_logging
 
 def print_startup_info():
     """Print startup information"""
@@ -36,6 +37,7 @@ def print_startup_info():
 
 if __name__ == "__main__":
     try:
+        setup_logging()
         print_startup_info()
         
         uvicorn.run(

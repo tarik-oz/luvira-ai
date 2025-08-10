@@ -10,6 +10,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from pathlib import Path
 from typing import Dict, Any, Tuple
+import shutil
 import json
 from tqdm import tqdm
 import numpy as np
@@ -425,7 +426,11 @@ class HairSegmentationTrainer:
             checkpoint_path = self.config.get("checkpoint_path")
             if self.load_checkpoint(checkpoint_path):
                 self._restore_checkpoint_state()
-                print(f"🔄 Resuming training from epoch {self.start_epoch + 1}")
+                print(f"🔄 Resuming training from epoch {self.start_epoch}")
+                # If target epochs already reached or exceeded, extend like local trainer
+                if self.start_epoch >= epochs:
+                    print(f"Current epoch ({self.start_epoch}) >= target epochs ({epochs}). Extending by 5 epochs…")
+                    epochs = self.start_epoch + 5
             else:
                 print("❌ Failed to load checkpoint, starting fresh training")
                 self.start_epoch = 0
@@ -444,6 +449,22 @@ class HairSegmentationTrainer:
         print(f" - Loss function: {self.config['loss_function']}")
         print(f" - Device: {self.device}")
         
+        # Prepare archive folder at start so artifacts are always available even on interrupt
+        try:
+            dataset_info = self.data_loader.get_data_info() if self.data_loader else {}
+            archive_folder = create_timestamped_folder(TRAINED_MODELS_DIR)
+            # Write initial config/log
+            save_config_json(archive_folder, dict(MODEL_CONFIG), dict(self.config), CALLBACKS_CONFIG, dataset_info, {})
+            save_training_log(archive_folder, self.device, self.history, {})
+            # Copy models if already exist (likely not yet)
+            save_models_to_folder(archive_folder, self.model_path, self.latest_model_path)
+            # Copy checkpoint info if present
+            chk_info = self.latest_model_path.parent / "checkpoint_info.json"
+            if chk_info.exists():
+                shutil.copy2(chk_info, archive_folder / "checkpoint_info.json")
+        except Exception as e:
+            print(f"Failed to initialize archive folder: {e}")
+
         # Setup callbacks
         early_stopping = EarlyStopping(
             patience=CALLBACKS_CONFIG["early_stopping_patience"],
@@ -459,59 +480,115 @@ class HairSegmentationTrainer:
             best_val_loss = float('inf')
             best_val_dice = 0.0
         
-        for epoch in range(self.start_epoch, epochs):
-            print(f"\n{'='*60}")
-            print(f" Epoch {epoch+1}/{epochs}")
-            print(f"{'='*60}")
-            
-            # Training
-            train_loss, train_acc, train_dice, train_mse = self._train_epoch(train_loader, epoch, epochs)
-            
-            # Validation
-            val_loss, val_acc, val_dice, val_mse = self._validate_epoch(val_loader, epoch, epochs)
-            
-            # Log results with better formatting
-            print(f"Epoch {epoch+1}/{epochs} Results:")
-            print(f"   Train → Loss: {train_loss:.4f} | Acc: {train_acc:.4f} | Dice: {train_dice:.4f} | MSE: {train_mse:.6f}")
-            print(f"   Val   → Loss: {val_loss:.4f} | Acc: {val_acc:.4f} | Dice: {val_dice:.4f} | MSE: {val_mse:.6f}")
-            
-            # Save history
-            self.history['train_loss'].append(train_loss)
-            self.history['train_accuracy'].append(train_acc)
-            self.history['train_dice'].append(train_dice)
-            self.history['train_mse'].append(train_mse)
-            self.history['val_loss'].append(val_loss)
-            self.history['val_accuracy'].append(val_acc)
-            self.history['val_dice'].append(val_dice)
-            self.history['val_mse'].append(val_mse)
-            
-            # Save best model (with configurable monitor)
-            best_val_loss, best_val_dice = self._save_best_model(val_loss, val_dice, best_val_loss, best_val_dice)
-            
-            # Learning rate scheduling (reduce on plateau)
-            self._update_learning_rate(val_loss, val_dice)
-            
-            # Save checkpoint
-            self.save_checkpoint(epoch, val_loss, val_dice, best_val_loss, best_val_dice)
-            
-            # Early stopping
-            monitor_metric = val_loss if CALLBACKS_CONFIG["early_stopping_monitor"] == "val_loss" else val_dice
-            if early_stopping(monitor_metric):
-                print(f"Early stopping triggered based on {CALLBACKS_CONFIG['early_stopping_monitor']}")
-                break
-            
-            # Progress information
-            remaining_epochs = epochs - (epoch + 1)
-            progress_percent = ((epoch + 1) / epochs) * 100
-            print(f"Training Progress: {progress_percent:.1f}% | Remaining Epochs: {remaining_epochs}")
+        # Track last known validation metrics to allow safe interrupt checkpointing
+        last_val_loss = float('inf')
+        last_val_dice = 0.0
+        last_completed_epoch = self.start_epoch - 1
+
+        try:
+            for epoch in range(self.start_epoch, epochs):
+                print(f"\n{'='*60}")
+                print(f" Epoch {epoch+1}/{epochs}")
+                print(f"{'='*60}")
+                
+                # Training
+                train_loss, train_acc, train_dice, train_mse = self._train_epoch(train_loader, epoch, epochs)
+                
+                # Validation
+                val_loss, val_acc, val_dice, val_mse = self._validate_epoch(val_loader, epoch, epochs)
+                
+                # Log results with better formatting
+                print(f"Epoch {epoch+1}/{epochs} Results:")
+                print(f"   Train → Loss: {train_loss:.4f} | Acc: {train_acc:.4f} | Dice: {train_dice:.4f} | MSE: {train_mse:.6f}")
+                print(f"   Val   → Loss: {val_loss:.4f} | Acc: {val_acc:.4f} | Dice: {val_dice:.4f} | MSE: {val_mse:.6f}")
+                
+                # Save history
+                self.history['train_loss'].append(train_loss)
+                self.history['train_accuracy'].append(train_acc)
+                self.history['train_dice'].append(train_dice)
+                self.history['train_mse'].append(train_mse)
+                self.history['val_loss'].append(val_loss)
+                self.history['val_accuracy'].append(val_acc)
+                self.history['val_dice'].append(val_dice)
+                self.history['val_mse'].append(val_mse)
+
+                # Update last known metrics and epoch
+                last_val_loss = val_loss
+                last_val_dice = val_dice
+                last_completed_epoch = epoch
+                
+                # Save best model (with configurable monitor)
+                best_val_loss, best_val_dice = self._save_best_model(val_loss, val_dice, best_val_loss, best_val_dice)
+                
+                # Learning rate scheduling (reduce on plateau)
+                self._update_learning_rate(val_loss, val_dice)
+                
+                # Save checkpoint
+                self.save_checkpoint(epoch, val_loss, val_dice, best_val_loss, best_val_dice)
+
+                # Update archive folder artifacts each epoch
+                try:
+                    summary_now = self.get_training_summary()
+                    save_config_json(archive_folder, dict(MODEL_CONFIG), dict(self.config), CALLBACKS_CONFIG, dataset_info, summary_now)
+                    save_training_log(archive_folder, self.device, self.history, summary_now)
+                    save_models_to_folder(archive_folder, self.model_path, self.latest_model_path)
+                    chk_info = self.latest_model_path.parent / "checkpoint_info.json"
+                    if chk_info.exists():
+                        shutil.copy2(chk_info, archive_folder / "checkpoint_info.json")
+                except Exception as e:
+                    print(f"Failed to update archive folder: {e}")
+                
+                # Early stopping
+                monitor_metric = val_loss if CALLBACKS_CONFIG["early_stopping_monitor"] == "val_loss" else val_dice
+                if early_stopping(monitor_metric):
+                    print(f"Early stopping triggered based on {CALLBACKS_CONFIG['early_stopping_monitor']}")
+                    break
+                
+                # Progress information
+                remaining_epochs = epochs - (epoch + 1)
+                progress_percent = ((epoch + 1) / epochs) * 100
+                print(f"Training Progress: {progress_percent:.1f}% | Remaining Epochs: {remaining_epochs}")
+        except KeyboardInterrupt:
+            # Graceful interrupt: ensure we persist the most recent state and checkpoint
+            print("\n🛑 KeyboardInterrupt received. Saving latest checkpoint before exiting…")
+            # If no epoch completed yet, we still save a minimal latest weight file
+            if last_completed_epoch < self.start_epoch:
+                # Save at least the raw weights to latest_model
+                torch.save(self.model.state_dict(), self.latest_model_path)
+                # Also write a minimal checkpoint to enable resume
+                self.save_checkpoint(self.start_epoch - 1, last_val_loss, last_val_dice, best_val_loss, best_val_dice)
+            else:
+                self.save_checkpoint(last_completed_epoch, last_val_loss, last_val_dice, best_val_loss, best_val_dice)
+            print("Checkpoint saved. Exiting training loop.")
+            # Final archive update on interrupt
+            try:
+                summary_now = self.get_training_summary() if self.history['train_loss'] else {}
+                save_config_json(archive_folder, dict(MODEL_CONFIG), dict(self.config), CALLBACKS_CONFIG, dataset_info, summary_now)
+                save_training_log(archive_folder, self.device, self.history, summary_now)
+                save_models_to_folder(archive_folder, self.model_path, self.latest_model_path)
+                chk_info = self.latest_model_path.parent / "checkpoint_info.json"
+                if chk_info.exists():
+                    shutil.copy2(chk_info, archive_folder / "checkpoint_info.json")
+                print(f"Interrupted training archived to: {archive_folder}")
+            except Exception as e:
+                print(f"Archiving on interrupt failed: {e}")
+            # Additionally, archive like local flow if we have at least one epoch history
+            try:
+                if self.history['train_loss']:
+                    dataset_info = self.data_loader.get_data_info() if self.data_loader else {}
+                    folder = self.save_trained_model(dataset_info)
+                    print(f"Interrupted training archived to: {folder}")
+            except Exception as e:
+                print(f"Archiving on interrupt failed: {e}")
         
         print(f"\n{'='*60}")
         print("Training Completed!")
-        print(f"Final Results:")
-        print(f"   - Total Epochs: {len(self.history['train_loss'])}")
-        print(f"   - Best Val Loss: {min(self.history['val_loss']):.4f}")
-        print(f"   - Best Val Acc: {max(self.history['val_accuracy']):.3f}")
-        print(f"   - Best Val Dice: {max(self.history['val_dice']):.3f}")
+        if self.history['val_loss']:
+            print(f"Final Results:")
+            print(f"   - Total Epochs: {len(self.history['train_loss'])}")
+            print(f"   - Best Val Loss: {min(self.history['val_loss']):.4f}")
+            print(f"   - Best Val Acc: {max(self.history['val_accuracy']):.3f}")
+            print(f"   - Best Val Dice: {max(self.history['val_dice']):.3f}")
         print(f"{'='*60}")
         return self.history
     
@@ -563,9 +640,7 @@ class HairSegmentationTrainer:
         model_config = dict(MODEL_CONFIG)
         training_config = dict(self.config)
 
-        # Use current best validation accuracy (not from checkpoint)
-        current_best_val_accuracy = summary['best_val_accuracy']
-        folder_path = create_timestamped_folder(TRAINED_MODELS_DIR, current_best_val_accuracy)
+        folder_path = create_timestamped_folder(TRAINED_MODELS_DIR)
         save_config_json(folder_path, model_config, training_config, CALLBACKS_CONFIG, dataset_info, summary)
         save_training_log(folder_path, self.device, self.history, summary)
         save_models_to_folder(folder_path, self.model_path, self.latest_model_path)
