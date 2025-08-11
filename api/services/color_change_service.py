@@ -3,6 +3,7 @@ Color change service for hair color modification
 """
 
 import logging
+import cv2
 import signal
 import numpy as np
 import sys
@@ -155,6 +156,84 @@ class ColorChangeService:
         except Exception as e:
             logger.error(f"Color change failed for session {session_id}: {str(e)}")
             raise ImageProcessingException(f"Color change failed: {str(e)}")
+
+    def build_overlays_with_all_tones_session(self, session_id: str, color_name: str) -> bytes:
+        """
+        Using cached image+mask, generate WEBP overlays for base color and all tones,
+        and return a ZIP archive (bytes) containing:
+          - base.webp
+          - tones/{tone}.webp
+          - metadata.json
+        """
+        # Validate color
+        ColorValidator.validate_color_name(color_name)
+        correct_color_name = ColorValidator.get_correct_color_name(color_name)
+
+        # Load session data
+        session_data = session_manager.load_session_data(session_id)
+        original_image = session_data['image']
+        mask_array = session_data['mask']
+
+        # Use transformer fast path to compute all tones once
+        try:
+            results = self.color_transformer.change_hair_color_with_all_tones(
+                original_image, mask_array, correct_color_name
+            )
+        except Exception as e:
+            logger.error(f"Failed to generate tones for session {session_id}: {e}")
+            raise ImageProcessingException(f"Failed to generate tones: {e}")
+
+        # Build overlays (WEBP) and zip
+        import io, json, zipfile
+        memory_zip = io.BytesIO()
+        with zipfile.ZipFile(memory_zip, mode='w', compression=zipfile.ZIP_STORED) as zf:
+            meta = {
+                "session_id": session_id,
+                "color": correct_color_name,
+                "format": "webp",
+                "alpha": True,
+                "items": []
+            }
+
+            def encode_webp_rgba(img_rgb: np.ndarray, alpha_mask: np.ndarray) -> bytes:
+                # Prepare BGRA and encode
+                try:
+                    alpha_f = cv2.GaussianBlur(alpha_mask.astype("float32") / 255.0, (0, 0), 0.7)
+                    alpha_f = np.clip(alpha_f, 0.0, 1.0)
+                    alpha = (alpha_f * 255.0).astype("uint8")
+                except Exception:
+                    alpha = alpha_mask.astype("uint8")
+                bgra = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGRA)
+                bgra[:, :, 3] = alpha
+                fully_transparent = (alpha == 0)
+                if fully_transparent.any():
+                    bgra[fully_transparent, :3] = 0
+                params = [cv2.IMWRITE_WEBP_QUALITY, 95]
+                ok, buf = cv2.imencode('.webp', bgra, params)
+                if not ok:
+                    raise ImageProcessingException("WEBP encode failed")
+                return buf.tobytes()
+
+            # Base result
+            base_rgb = results.get('base_result')
+            if base_rgb is not None:
+                webp_bytes = encode_webp_rgba(base_rgb, mask_array)
+                zf.writestr('base.webp', webp_bytes)
+                meta["items"].append({"name": "base", "path": "base.webp"})
+
+            # Tones
+            tones = results.get('tones', {})
+            for tone_name, tone_img in tones.items():
+                if tone_img is None:
+                    continue
+                webp_bytes = encode_webp_rgba(tone_img, mask_array)
+                path = f"tones/{tone_name}.webp"
+                zf.writestr(path, webp_bytes)
+                meta["items"].append({"name": tone_name, "path": path})
+
+            zf.writestr('metadata.json', json.dumps(meta))
+
+        return memory_zip.getvalue()
     
     def change_hair_color(self, file, color_name: str, tone: str = None) -> bytes:
         """
@@ -226,6 +305,96 @@ class ColorChangeService:
         finally:
             # Cleanup
             ImageUtils.cleanup_temp_file(temp_input_path)
+
+    def change_hair_color_overlay(
+        self,
+        file,
+        color_name: str,
+        tone: str = None,
+    ) -> bytes:
+        """
+        Change hair color and return only the hair region as an RGBA overlay.
+
+        The returned image keeps original dimensions, with transparent background
+        and hair area containing the recolored result. Intended for client-side
+        compositing over the original image.
+
+        Args:
+            file: Uploaded image file
+            color_name: Color name from config
+            tone: Optional tone name
+            Output is WEBP with alpha (quality=95)
+
+        Returns:
+            Bytes of the overlay image (with alpha channel)
+        """
+        # Validate file
+        FileValidator.validate_upload_file(file)
+
+        # Validate color and tone
+        ColorValidator.validate_color_name(color_name)
+        correct_color_name = ColorValidator.get_correct_color_name(color_name)
+        if tone:
+            ColorValidator.validate_tone_name(color_name, tone)
+            correct_tone = ColorValidator.get_correct_tone_name(color_name, tone)
+        else:
+            correct_tone = None
+
+        # Ensure model is loaded to generate mask
+        if not self.prediction_service.model_service.is_model_loaded():
+            raise PredictionException("Model is not loaded - cannot generate hair mask")
+
+        try:
+            # Read and process image
+            original_image = ImageUtils.process_uploaded_file(file)
+
+            # Generate hair mask
+            mask_bytes = self.prediction_service.predict_mask_file(file)
+            mask_array = ImageUtils.bytes_to_mask(mask_bytes)
+
+            # Apply color change to get the recolored full image (RGB)
+            if correct_tone:
+                result_image = self._apply_color_change_with_tone(
+                    original_image, mask_array, correct_color_name, correct_tone
+                )
+            else:
+                result_image = self._apply_color_change(
+                    original_image, mask_array, correct_color_name
+                )
+
+            # Prepare alpha channel (always soft edges)
+            try:
+                alpha_f = cv2.GaussianBlur(mask_array.astype("float32") / 255.0, (0, 0), 0.7)
+                alpha_f = np.clip(alpha_f, 0.0, 1.0)
+                alpha = (alpha_f * 255.0).astype("uint8")
+            except Exception:
+                alpha = mask_array.astype("uint8")
+
+            # Convert result RGB -> BGRA and set alpha
+            # result_image is RGB np.uint8
+            result_bgra = cv2.cvtColor(result_image, cv2.COLOR_RGB2BGRA)
+            result_bgra[:, :, 3] = alpha
+            # Zero RGB where fully transparent to reduce payload size
+            fully_transparent = (alpha == 0)
+            if fully_transparent.any():
+                result_bgra[fully_transparent, 0] = 0
+                result_bgra[fully_transparent, 1] = 0
+                result_bgra[fully_transparent, 2] = 0
+
+            # Encode WEBP with alpha, high quality
+            params = [cv2.IMWRITE_WEBP_QUALITY, 95]
+            success, buffer = cv2.imencode('.webp', result_bgra, params)
+            if not success:
+                raise ImageProcessingException("Failed to encode overlay image")
+
+            logger.info(
+                f"Successfully generated hair overlay (format=webp, quality=95)"
+            )
+            return buffer.tobytes()
+
+        except Exception as e:
+            logger.error(f"Overlay generation failed for file {getattr(file, 'filename', 'uploaded')}: {str(e)}")
+            raise ImageProcessingException(f"Overlay generation failed: {str(e)}")
     
     def _apply_color_change(self, original_image: np.ndarray, mask_array: np.ndarray, color_name: str) -> np.ndarray:
         """Apply color change by name with timeout"""

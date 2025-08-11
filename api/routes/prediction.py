@@ -43,6 +43,42 @@ async def predict_mask(
         )
 
 
+@router.post("/change-hair-color-overlay")
+async def change_hair_color_overlay(
+    file: UploadFile = File(...),
+    color_name: str = Form(..., description="Hair color name (e.g., Blonde, Brown, etc.)"),
+    tone: Optional[str] = Form(None, description="Optional tone for the color (e.g., golden, ash, etc.)"),
+    color_change_service: ColorChangeService = Depends(get_color_change_service)
+):
+    """
+    Change hair color and return only the hair region as an RGBA overlay.
+
+    The returned image matches the original size. Non-hair pixels are fully
+    transparent so the client can composite it over the original image.
+    """
+    try:
+        overlay_bytes = color_change_service.change_hair_color_overlay(
+            file=file,
+            color_name=color_name,
+            tone=tone,
+        )
+
+        tone_suffix = f"_{tone}" if tone else ""
+        filename = f"overlay_{color_name.lower()}{tone_suffix}_{file.filename.split('.')[0]}.webp"
+
+        return Response(
+            content=overlay_bytes,
+            media_type="image/webp",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Overlay generation failed: {str(e)}"
+        )
+
 @router.get("/available-colors")
 async def get_available_colors(
     color_change_service: ColorChangeService = Depends(get_color_change_service)

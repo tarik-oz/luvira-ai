@@ -18,7 +18,7 @@ DEFAULT_MODEL_PATH = PROJECT_ROOT / "model" / "trained_models" / "2025-07-14_02-
 
 # Predefined colors in RGB format [R, G, B] with names
 COLORS = [
-    ([0, 0, 0], "Black"),
+    ([15, 15, 15], "Black"),
     ([240, 220, 170], "Blonde"),
     ([184, 115, 51], "Copper"),
     ([120, 85, 60], "Brown"),

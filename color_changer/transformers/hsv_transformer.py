@@ -81,7 +81,7 @@ class HsvTransformer:
 
         # Delegate to unified handler
         result_hsv = self.special_color_handler.handle_color(
-            result_hsv, image_hsv, smooth_mask, target_hsv, alpha, effective_color_label
+            result_hsv, image_hsv, smooth_mask, target_hsv, alpha, effective_color_label, tone_label
         )
 
         # Optional soft lightening for very dark base -> very light target (config-driven)

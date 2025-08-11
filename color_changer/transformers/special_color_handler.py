@@ -38,7 +38,8 @@ class SpecialColorHandler:
         mask_normalized: np.ndarray,
         target_hsv: np.ndarray,
         alpha: float,
-        color_label: Optional[str] = None
+        color_label: Optional[str] = None,
+        tone_label: Optional[str] = None
     ) -> np.ndarray:
         """Apply config-driven HSV transformations for given color profile."""
         profile = self._get_profile(color_label)
@@ -50,8 +51,8 @@ class SpecialColorHandler:
         # Base HSV adjustments
         result_hsv = self._apply_base_hsv_adjustments(result_hsv, image_hsv, mask_normalized, target_hsv, alpha, profile)
 
-        # Corrections in sequence
-        result_hsv = self._apply_corrections(result_hsv, image_hsv, mask_normalized, target_hsv, alpha, profile)
+        # Corrections in sequence (with optional tone relaxation)
+        result_hsv = self._apply_corrections(result_hsv, image_hsv, mask_normalized, target_hsv, alpha, profile, tone_label)
 
         # Final safety clip
         result_hsv = clip_hsv_channels(result_hsv)
@@ -122,9 +123,37 @@ class SpecialColorHandler:
         result_hsv[:, :, 2] = new_v
         return result_hsv
 
-    def _apply_corrections(self, result_hsv, image_hsv, mask, target_hsv, alpha, profile):
+    def _apply_corrections(self, result_hsv, image_hsv, mask, target_hsv, alpha, profile, tone_label: Optional[str] = None):
         corrections = profile.get("corrections", {})
         bounds = np.array(profile.get("val", {}).get("bounds", [0, 255]), dtype=np.float32)
+
+        # Tone relaxation: when a specific tone is requested, relax hue constraints
+        # and enhance approach to target saturation for more visible tonal separation.
+        if tone_label is not None:
+            try:
+                # Relax hue band
+                hue_band = corrections.get("hue_band")
+                if isinstance(hue_band, (list, tuple)) and len(hue_band) == 2:
+                    center = 0.5 * (float(hue_band[0]) + float(hue_band[1]))
+                    width = max(6.0, float(hue_band[1]) - float(hue_band[0]))  # ensure minimum width
+                    new_width = width * 2.0  # widen band for tone
+                    corrections["hue_band"] = [center - new_width / 2.0, center + new_width / 2.0]
+
+                # Reduce hue center weight
+                if "hue_center_weight" in corrections:
+                    corrections["hue_center_weight"] = float(corrections["hue_center_weight"]) * 0.6
+                else:
+                    corrections["hue_center_weight"] = 0.18
+
+                # Increase saturation approach slightly
+                sat_cfg = profile.setdefault("sat", {})
+                sat_cfg["approach_target_weight"] = float(sat_cfg.get("approach_target_weight", 0.35)) * 1.25
+
+                # Enforce smoothing on tone for clean transitions
+                corrections["post_smooth"] = True
+                corrections["bilateral_hue_smooth"] = True
+            except Exception:
+                pass
 
         if corrections.get("anti_pink", False):
             result_hsv[:, :, 0] = anti_pink_correction(result_hsv[:, :, 0], mask)
