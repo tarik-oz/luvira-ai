@@ -5,7 +5,7 @@ Prediction routes for Hair Segmentation API
 from fastapi import APIRouter, File, UploadFile, HTTPException, Depends, Form
 from fastapi.responses import Response
 from typing import Optional
-from ..core import get_prediction_service, get_color_change_service
+from ..core import get_prediction_service, get_color_change_service, SessionExpiredException
 from ..services import PredictionService, ColorChangeService
 
 router = APIRouter()
@@ -43,41 +43,40 @@ async def predict_mask(
         )
 
 
-@router.post("/change-hair-color-overlay")
-async def change_hair_color_overlay(
-    file: UploadFile = File(...),
+@router.post("/change-hair-color-with-session/{session_id}")
+async def change_hair_color_with_session(
+    session_id: str,
     color_name: str = Form(..., description="Hair color name (e.g., Blonde, Brown, etc.)"),
     tone: Optional[str] = Form(None, description="Optional tone for the color (e.g., golden, ash, etc.)"),
     color_change_service: ColorChangeService = Depends(get_color_change_service)
 ):
     """
-    Change hair color and return only the hair region as an RGBA overlay.
-
-    The returned image matches the original size. Non-hair pixels are fully
-    transparent so the client can composite it over the original image.
+    Hair color change using cached session data (NO mask generation!)
+    
+    Args:
+        session_id: Session identifier from upload-and-prepare
+        color_name: Hair color name from available colors
+        tone: Optional tone name for the color
+        
+    Returns:
+        Color-changed image file for download
     """
     try:
-        overlay_bytes = color_change_service.change_hair_color_overlay(
-            file=file,
-            color_name=color_name,
-            tone=tone,
-        )
-
+        result_bytes = color_change_service.change_hair_color_with_session(session_id, color_name, tone)
         tone_suffix = f"_{tone}" if tone else ""
-        filename = f"overlay_{color_name.lower()}{tone_suffix}_{file.filename.split('.')[0]}.webp"
-
+        filename = f"session_color_{color_name.lower()}{tone_suffix}_{session_id}.png"
         return Response(
-            content=overlay_bytes,
-            media_type="image/webp",
+            content=result_bytes,
+            media_type="image/png",
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
+    except SessionExpiredException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Overlay generation failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Session color change failed: {str(e)}")
+
 
 @router.get("/available-colors")
 async def get_available_colors(

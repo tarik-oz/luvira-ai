@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, onUnmounted } from 'vue'
+import { ref, watch, onUnmounted, computed } from 'vue'
 import { useAppState } from '../../composables/useAppState'
 import { useI18n } from 'vue-i18n'
 
@@ -12,22 +12,13 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const { t } = useI18n()
-const { uploadedImage, processedImage, isProcessing } = useAppState()
+const { uploadedImage, processedImage, isProcessing, currentColorResult, selectedTone } =
+  useAppState()
 
 // Compare mode functionality
 const containerRef = ref<HTMLElement>()
 const sliderPosition = ref(50) // Percentage
 const isDragging = ref(false)
-
-// Gösterilecek image - eğer processedImage varsa onu, yoksa uploadedImage'i göster
-const displayImage = computed(() => {
-  return processedImage.value || uploadedImage.value
-})
-
-// Compare mode için after image - processedImage yoksa uploadedImage'i göster (user'ı korkutmamak için)
-const afterImage = computed(() => {
-  return processedImage.value || uploadedImage.value
-})
 
 const handleMouseDown = (event: MouseEvent) => {
   if (!props.compareMode || !containerRef.value) return
@@ -83,6 +74,19 @@ onUnmounted(() => {
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
 })
+
+// Label text for active color/tone
+const labelText = computed(() => {
+  if (!currentColorResult.value) return ''
+  const colorKey = currentColorResult.value.originalColor
+  const colorLabel = t('colors.' + colorKey) as string
+  const tone = selectedTone.value
+  if (tone) {
+    const toneLabel = tone.charAt(0).toUpperCase() + tone.slice(1)
+    return `${colorLabel} · ${toneLabel}`
+  }
+  return colorLabel
+})
 </script>
 
 <template>
@@ -110,12 +114,20 @@ onUnmounted(() => {
         @mousedown="handleMouseDown"
         @click="handleClick"
       >
-        <!-- Normal Mode -->
+        <!-- Normal Mode: layer original (bottom) + overlay (top) -->
         <template v-if="!compareMode">
           <img
-            :src="displayImage!"
-            alt="Hair image"
+            v-if="uploadedImage"
+            :src="uploadedImage"
+            alt="Original"
             class="w-full h-full object-cover"
+            :class="{ 'opacity-75': isProcessing }"
+          />
+          <img
+            v-if="processedImage"
+            :src="processedImage"
+            alt="Overlay"
+            class="w-full h-full object-cover absolute inset-0 pointer-events-none z-10"
             :class="{ 'opacity-75': isProcessing }"
           />
         </template>
@@ -138,15 +150,12 @@ onUnmounted(() => {
             <!-- Before Label (Only visible in left part) -->
             <div
               class="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-base-100 text-base-content text-sm font-semibold shadow-lg"
-              :style="{
-                clipPath: `polygon(0 0, ${sliderPosition > 20 ? '100%' : Math.max(0, sliderPosition * 5)}% 0, ${sliderPosition > 20 ? '100%' : Math.max(0, sliderPosition * 5)}% 100%, 0 100%)`,
-              }"
             >
               {{ t('processing.before') }}
             </div>
           </div>
 
-          <!-- Processed Image (Right Side) -->
+          <!-- Processed Image (Right Side): original + overlay layered -->
           <div
             class="absolute inset-0 w-full h-full overflow-hidden"
             :style="{
@@ -154,17 +163,20 @@ onUnmounted(() => {
             }"
           >
             <img
-              v-if="afterImage"
-              :src="afterImage"
-              alt="Processed"
+              v-if="uploadedImage"
+              :src="uploadedImage"
+              alt="Original"
               class="w-full h-full object-cover"
+            />
+            <img
+              v-if="processedImage"
+              :src="processedImage"
+              alt="Overlay"
+              class="w-full h-full object-cover absolute inset-0 pointer-events-none z-10"
             />
             <!-- After Label (Only visible in right part) -->
             <div
               class="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-base-100 text-base-content text-sm font-semibold shadow-lg"
-              :style="{
-                clipPath: `polygon(${sliderPosition < 80 ? '0' : Math.max(0, (sliderPosition - 80) * 5)}% 0, 100% 0, 100% 100%, ${sliderPosition < 80 ? '0' : Math.max(0, (sliderPosition - 80) * 5)}% 100%)`,
-              }"
             >
               {{ t('processing.after') }}
             </div>
@@ -189,17 +201,16 @@ onUnmounted(() => {
             </div>
           </div>
         </template>
+
+        <!-- Bottom centered color/tone label (only in normal mode) -->
+        <div
+          v-if="!compareMode && labelText"
+          class="absolute left-1/2 bottom-4 -translate-x-1/2 px-4 py-2 rounded-full bg-base-100 text-base-content text-sm font-semibold shadow-md z-30 transition ease-out duration-200 transform"
+          :class="[isProcessing ? 'opacity-75' : 'opacity-100', 'translate-y-0']"
+        >
+          {{ labelText }}
+        </div>
       </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-/* Prevent image selection */
-img {
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-}
-</style>

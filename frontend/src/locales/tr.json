@@ -9,12 +9,16 @@
   "colors": {
     "Black": "Siyah",
     "Blonde": "Sarışın",
-    "Auburn": "Kumral",
+    "Auburn": "Kestane",
     "Brown": "Kahverengi",
     "Pink": "Pembe",
     "Blue": "Mavi",
     "Gray": "Gri",
-    "Purple": "Mor"
+    "Purple": "Mor",
+    "Copper": "Bakır",
+    "Red": "Kırmızı",
+    "Green": "Yeşil",
+    "Teal": "Turkuaz"
   },
   "camera": {
     "title": "Kamera",

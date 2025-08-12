@@ -14,7 +14,11 @@
     "Pink": "Pink",
     "Blue": "Blue",
     "Gray": "Gray",
-    "Purple": "Purple"
+    "Purple": "Purple",
+    "Copper": "Copper",
+    "Red": "Red",
+    "Green": "Green",
+    "Teal": "Teal"
   },
   "camera": {
     "title": "Camera",

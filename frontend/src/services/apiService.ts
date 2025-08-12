@@ -56,18 +56,13 @@ class ApiService {
   }
 
   /**
-   * Change hair color with session
+   * Fetch overlays bundle (ZIP) with base + all tones (WEBP with alpha)
    */
-  async changeHairColor(sessionId: string, colorName: string, tone?: string): Promise<Blob> {
+  async fetchOverlaysBundle(sessionId: string, colorName: string): Promise<Blob> {
     const formData = new FormData()
     formData.append('color_name', colorName)
-
-    if (tone) {
-      formData.append('tone', tone)
-    }
-
     try {
-      const response = await fetch(`${this.baseUrl}/change-hair-color-fast/${sessionId}`, {
+      const response = await fetch(`${this.baseUrl}/overlays-with-session/${sessionId}`, {
         method: 'POST',
         body: formData,
       })
@@ -79,44 +74,7 @@ class ApiService {
 
       return await response.blob()
     } catch (error) {
-      console.error('Color change API error:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Get hair color change with all tones using session
-   */
-  async changeHairColorAllTones(
-    sessionId: string,
-    colorName: string,
-  ): Promise<{
-    success: boolean
-    color: string
-    session_id: string
-    base_result: string
-    tones: Record<string, string>
-  }> {
-    const formData = new FormData()
-    formData.append('color_name', colorName)
-
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/change-hair-color-all-tones-fast/${sessionId}`,
-        {
-          method: 'POST',
-          body: formData,
-        },
-      )
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.detail || `API error! status: ${response.status}`)
-      }
-
-      return await response.json()
-    } catch (error) {
-      console.error('Change hair color all tones API error:', error)
+      console.error('Overlays bundle API error:', error)
       throw error
     }
   }

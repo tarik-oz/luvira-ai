@@ -1,75 +1,15 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../composables/useAppState'
+import { TONE_DEFINITIONS } from '../../config/colorConfig'
 import hairService from '../../services/hairService'
 
 const { t } = useI18n()
-const {
-  isProcessing,
-  currentColorResult,
-  getColorToneState,
-  setColorToneState,
-  setProcessedImageToTone,
-} = useAppState()
+const { isProcessing, currentColorResult, getColorToneState, setColorToneState } = useAppState()
 
 // Backend'deki CUSTOM_TONES ile eşleşen ton tanımları
-const toneDefinitions: Record<string, Record<string, { description: string }>> = {
-  Black: {
-    jet: { description: 'Pure jet black' },
-    soft: { description: 'Soft, warm black' },
-    onyx: { description: 'Deep, rich onyx black' },
-    charcoal: { description: 'Charcoal gray-black' },
-  },
-  Blonde: {
-    platinum: { description: 'Ultra-light platinum blonde' },
-    golden: { description: 'Warm golden blonde' },
-    ash: { description: 'Cool ash blonde' },
-    honey: { description: 'Sweet honey blonde' },
-    strawberry: { description: 'Strawberry blonde with red hints' },
-  },
-  Brown: {
-    chestnut: { description: 'Rich chestnut brown' },
-    chocolate: { description: 'Dark chocolate brown' },
-    caramel: { description: 'Sweet caramel brown' },
-    mahogany: { description: 'Reddish mahogany brown' },
-    espresso: { description: 'Deep espresso brown' },
-  },
-  Auburn: {
-    classic: { description: 'Classic auburn' },
-    golden: { description: 'Golden auburn' },
-    dark: { description: 'Dark auburn' },
-    copper: { description: 'Copper auburn' },
-  },
-  Pink: {
-    rose: { description: 'Romantic rose pink' },
-    fuchsia: { description: 'Vibrant fuchsia pink' },
-    blush: { description: 'Soft blush pink' },
-    magenta: { description: 'Bold magenta pink' },
-    coral: { description: 'Warm coral pink' },
-  },
-  Blue: {
-    navy: { description: 'Deep navy blue' },
-    electric: { description: 'Electric bright blue' },
-    ice: { description: 'Ice blue' },
-    midnight: { description: 'Midnight blue' },
-    sky: { description: 'Sky blue' },
-  },
-  Purple: {
-    violet: { description: 'Rich violet purple' },
-    lavender: { description: 'Soft lavender purple' },
-    plum: { description: 'Deep plum purple' },
-    amethyst: { description: 'Gemstone amethyst purple' },
-    orchid: { description: 'Delicate orchid purple' },
-  },
-  Gray: {
-    silver: { description: 'Bright silver gray' },
-    ash: { description: 'Cool ash gray' },
-    charcoal: { description: 'Dark charcoal gray' },
-    pearl: { description: 'Lustrous pearl gray' },
-    steel: { description: 'Cool steel gray' },
-  },
-}
+const toneDefinitions = TONE_DEFINITIONS
 
 // Mevcut rengin tonları
 const availableTones = computed(() => {
@@ -117,9 +57,8 @@ const selectTone = async (toneName: string) => {
   console.log('Selected tone:', toneName, 'for color:', colorName)
 
   try {
-    // Backend'e ton değişim isteği gönder
-    await hairService.changeHairColor(colorName, toneName)
-    console.log('Tone change completed successfully')
+    await hairService.applyToneLocally(toneName)
+    console.log('Tone switch completed locally')
   } catch (error) {
     console.error('Tone change failed:', error)
     // TODO: Show error message to user
@@ -137,8 +76,8 @@ const selectBase = async () => {
 
   console.log('Selected base color:', colorName)
 
-  // Base rengini göstermek için setProcessedImageToTone kullan
-  setProcessedImageToTone(null)
+  // Base rengini göstermek için local compose kullan
+  await hairService.applyToneLocally(null)
 }
 </script>
 

@@ -2,22 +2,14 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../composables/useAppState'
+import { AVAILABLE_COLORS } from '../../config/colorConfig'
 import hairService from '../../services/hairService'
 
 const { t } = useI18n()
 const { isProcessing } = useAppState()
 const selectedColor = ref<string | null>(null)
 
-const colors = [
-  { name: 'Black' },
-  { name: 'Blonde' },
-  { name: 'Brown' },
-  { name: 'Auburn' },
-  { name: 'Pink' },
-  { name: 'Blue' },
-  { name: 'Purple' },
-  { name: 'Gray' },
-]
+const colors = AVAILABLE_COLORS.map((name) => ({ name }))
 
 const selectColor = async (colorName: string) => {
   if (isProcessing.value) return // Prevent multiple requests
@@ -26,7 +18,7 @@ const selectColor = async (colorName: string) => {
   console.log('Selected color:', colorName)
 
   try {
-    await hairService.changeHairColor(colorName)
+    await hairService.changeHairColorAllTones(colorName)
     console.log('Color change completed successfully')
   } catch (error) {
     console.error('Color change failed:', error)

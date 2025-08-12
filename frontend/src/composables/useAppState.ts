@@ -11,8 +11,8 @@ export interface ColorChangeResult {
   color: string
   originalColor: string // Ana renk adı (Purple, Black, vs)
   selectedTone: string | null // Seçilen ton (plum, onyx, vs)
-  baseResult: string // base64 image
-  tones: Record<string, string> // tone name -> base64 image
+  baseResult: string // Composed image URL (PNG/WebP)
+  tones: { [tone: string]: string } // Mutable mapping for composed tone URLs
 }
 
 export interface ColorCache {
@@ -31,16 +31,6 @@ const colorCache = ref<ColorCache>({})
 const colorToneStates = ref<Record<string, string | null>>({}) // Per-color tone selection state
 
 export function useAppState() {
-  // NOTE: uploadFileAndSetSession moved to hairService
-  // Helper function for blob conversion - DEPRECATED, moved to hairService
-  const blobToBase64 = (blob: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onloadend = () => resolve(reader.result as string)
-      reader.onerror = reject
-      reader.readAsDataURL(blob)
-    })
-  }
   const setSessionId = (id: string | null) => {
     sessionId.value = id
     // Clear tone states when new session starts (new image)
@@ -84,7 +74,7 @@ export function useAppState() {
       }
 
       // Set processed image to base result
-      processedImage.value = `data:image/png;base64,${result.baseResult}`
+      processedImage.value = result.baseResult
       selectedTone.value = null
     } else {
       currentColorResult.value = null
@@ -99,11 +89,11 @@ export function useAppState() {
     selectedTone.value = toneName
 
     if (toneName === null) {
-      // Show base result
-      processedImage.value = `data:image/png;base64,${currentColorResult.value.baseResult}`
+      // Show base result (URL or data URI)
+      processedImage.value = currentColorResult.value.baseResult
     } else if (currentColorResult.value.tones[toneName]) {
       // Show specific tone
-      processedImage.value = `data:image/png;base64,${currentColorResult.value.tones[toneName]}`
+      processedImage.value = currentColorResult.value.tones[toneName]
     }
   }
 
