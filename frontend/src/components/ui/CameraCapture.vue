@@ -39,6 +39,12 @@ const open = async () => {
   errorMessage.value = null
 
   try {
+    if (!isSecureContext) {
+      throw new DOMException('HTTPS is required for camera access', 'SecurityError')
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new DOMException('Camera not supported', 'NotSupportedError')
+    }
     pendingStreamPromise = navigator.mediaDevices.getUserMedia({ video: true, audio: false })
     const newStream = await pendingStreamPromise
     stream.value = newStream
@@ -54,6 +60,14 @@ const open = async () => {
         errorMessage.value = t('camera.notFound')
       } else if (err.name === 'NotAllowedError') {
         errorMessage.value = t('camera.noPermission')
+      } else if (err.name === 'NotReadableError') {
+        errorMessage.value = t('camera.notReadable')
+      } else if (err.name === 'OverconstrainedError') {
+        errorMessage.value = t('camera.overconstrained')
+      } else if (err.name === 'SecurityError') {
+        errorMessage.value = isSecureContext ? t('camera.genericError') : t('camera.httpsRequired')
+      } else if (err.name === 'NotSupportedError') {
+        errorMessage.value = t('camera.notSupported')
       } else {
         errorMessage.value = t('camera.genericError')
       }
@@ -229,7 +243,14 @@ const submitPhoto = async () => {
     router.push('/color-tone-changer')
   } catch (error) {
     console.error('Camera upload failed:', error)
-    errorMessage.value = t('sampleImages.errorMessage')
+    const message = error instanceof Error ? error.message : String(error)
+    if (!navigator.onLine || message === 'Failed to fetch' || /network/i.test(message)) {
+      errorMessage.value = t('processing.networkError')
+    } else if (message === 'TIMEOUT') {
+      errorMessage.value = t('camera.uploading')
+    } else {
+      errorMessage.value = t('sampleImages.errorMessage')
+    }
   }
 }
 
@@ -267,28 +288,28 @@ defineExpose({ open })
     @click.self="close"
   >
     <div
-      class="relative flex flex-col items-center w-full p-8 rounded-xl bg-base-content/80 shadow-2xl"
+      class="bg-base-content/80 relative flex w-full flex-col items-center rounded-xl p-8 shadow-2xl"
       :class="[capturedImage ? 'max-w-md' : 'max-w-2xl']"
     >
       <button
         @click="close"
-        class="absolute top-4 right-4 btn btn-sm btn-circle border-none btn-ghost text-base-100 hover:bg-accent/80 shadow-none"
+        class="btn btn-sm btn-circle btn-ghost text-base-100 hover:bg-accent/80 absolute top-4 right-4 border-none shadow-none"
       >
-        <PhX class="w-4 h-4" weight="bold" />
+        <PhX class="h-4 w-4" weight="bold" />
       </button>
-      <div class="text-2xl font-bold text-center text-base-100 mb-6">
+      <div class="text-base-100 mb-6 text-center text-2xl font-bold">
         {{ capturedImage ? t('camera.preview') : t('camera.title') }}
       </div>
       <!-- Camera Box with overlay -->
       <div
-        class="relative flex items-center justify-center w-full mb-1 overflow-hidden rounded-lg transition-all duration-500 ease-in-out"
+        class="relative mb-1 flex w-full items-center justify-center overflow-hidden rounded-lg transition-all duration-500 ease-in-out"
         :class="[capturedImage ? 'h-96' : 'h-72', capturedImage ? '' : 'bg-base-200']"
       >
         <!-- Video Stream -->
         <video
           v-show="!capturedImage"
           ref="videoRef"
-          class="w-full h-full object-cover rounded-lg transition-all duration-500 ease-in-out"
+          class="h-full w-full rounded-lg object-cover transition-all duration-500 ease-in-out"
           autoplay
           playsinline
         />
@@ -296,29 +317,29 @@ defineExpose({ open })
         <!-- Captured Image Preview (only cropped area, centered) -->
         <div
           v-if="capturedImage"
-          class="flex items-center justify-center w-full h-full transition-all duration-500 ease-in-out"
+          class="flex h-full w-full items-center justify-center transition-all duration-500 ease-in-out"
         >
           <img
             :src="capturedImage"
-            class="h-full object-contain rounded-lg transition-all duration-500 ease-in-out"
+            class="h-full rounded-lg object-contain transition-all duration-500 ease-in-out"
             alt="Captured photo"
           />
         </div>
 
         <!-- Loading Spinner -->
-        <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center z-10">
+        <div v-if="isLoading" class="absolute inset-0 z-10 flex items-center justify-center">
           <div
-            class="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-accent"
+            class="border-accent h-12 w-12 animate-spin rounded-full border-t-4 border-b-4"
           ></div>
         </div>
 
         <!-- Portrait overlay: only visible when video is showing -->
         <div
           v-show="!capturedImage"
-          class="absolute top-0 left-1/2 hidden h-full md:flex flex-col items-center justify-center -translate-x-1/2"
+          class="absolute top-0 left-1/2 hidden h-full -translate-x-1/2 flex-col items-center justify-center md:flex"
           style="width: 40%; pointer-events: none"
         >
-          <div class="h-full w-full border-4 border-accent"></div>
+          <div class="border-accent h-full w-full border-4"></div>
         </div>
 
         <!-- Darkening: left (only when video is showing) -->
@@ -336,20 +357,20 @@ defineExpose({ open })
         ></div>
       </div>
       <!-- Guidance text: only when video is showing -->
-      <div v-show="!capturedImage" class="hidden md:flex items-center justify-center w-full mb-1">
-        <span class="text-sm text-center italic drop-shadow-md text-base-100/70">
+      <div v-show="!capturedImage" class="mb-1 hidden w-full items-center justify-center md:flex">
+        <span class="text-base-100/70 text-center text-sm italic drop-shadow-md">
           {{ t('camera.guidance') }}
         </span>
       </div>
 
       <!-- Error Section -->
-      <div v-if="errorMessage" class="text-center my-4 flex items-center justify-center gap-2">
-        <PhWarning class="w-5 h-5 text-red-600 shrink-0" />
-        <span class="text-red-600 text-sm font-medium">{{ errorMessage }}</span>
+      <div v-if="errorMessage" class="my-4 flex items-center justify-center gap-2 text-center">
+        <PhWarning class="h-5 w-5 shrink-0 text-red-600" />
+        <span class="text-sm font-medium text-red-600">{{ errorMessage }}</span>
       </div>
 
       <!-- Buttons Row -->
-      <div class="flex w-full gap-4 mt-2 md:mt-4">
+      <div class="mt-2 flex w-full gap-4 md:mt-4">
         <!-- Only take photo button when video is showing -->
         <template v-if="!capturedImage">
           <AppButton
@@ -359,7 +380,7 @@ defineExpose({ open })
             @click="takePhoto"
           >
             <template #icon>
-              <PhCamera class="w-5 h-5" />
+              <PhCamera class="h-5 w-5" />
             </template>
             {{ t('camera.takePhoto') }}
           </AppButton>
@@ -367,17 +388,17 @@ defineExpose({ open })
 
         <!-- 2 buttons when photo is taken -->
         <template v-else>
-          <div class="flex justify-center w-full gap-2">
+          <div class="flex w-full justify-center gap-2">
             <AppButton class="px-4 py-2" type="button" :disabled="isUploading" @click="retakePhoto">
               <template #icon>
-                <PhArrowClockwise class="w-4 h-4" />
+                <PhArrowClockwise class="h-4 w-4" />
               </template>
               {{ t('camera.retake') }}
             </AppButton>
 
             <AppButton class="px-4 py-2" type="button" :disabled="isUploading" @click="submitPhoto">
               <template #icon>
-                <PhCheck class="w-4 h-4" />
+                <PhCheck class="h-4 w-4" />
               </template>
               {{ isUploading ? t('camera.uploading') : t('camera.submit') }}
             </AppButton>

@@ -175,28 +175,28 @@ const getTransitionStyle = () => ({
 </script>
 
 <template>
-  <div class="flex flex-col items-center justify-center gap-4 h-full">
+  <div class="flex h-full flex-col items-center justify-center gap-4">
     <!-- Main Showcase -->
     <div
-      class="relative overflow-hidden rounded-xl w-96 h-[28rem] transition-opacity duration-300"
+      class="relative h-[28rem] w-96 overflow-hidden rounded-xl transition-opacity duration-300"
       :style="{ opacity: showcaseOpacity }"
     >
       <!-- Base Image (Current Color) -->
       <img
         :src="currentColor.src"
         :alt="currentColor.alt"
-        class="absolute inset-0 w-full h-full object-cover"
+        class="absolute inset-0 h-full w-full object-cover"
       />
       <!-- Overlay Image (Next Color) -->
       <img
         :src="nextColor.src"
         :alt="nextColor.alt"
-        class="absolute inset-0 w-full h-full object-cover"
+        class="absolute inset-0 h-full w-full object-cover"
         :style="getTransitionStyle()"
       />
       <!-- Color Label -->
       <div
-        class="absolute left-1/2 bottom-4 -translate-x-1/2 px-4 py-2 rounded-full bg-base-100 text-base-content text-base font-semibold transition-opacity duration-1000"
+        class="bg-base-100 text-base-content absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full px-4 py-2 text-base font-semibold transition-opacity duration-1000"
         :style="{ opacity: textOpacity }"
       >
         {{
@@ -211,13 +211,13 @@ const getTransitionStyle = () => ({
         v-for="(model, index) in models"
         :key="model.id"
         @click="selectModel(index)"
-        class="overflow-hidden rounded-lg w-24 h-24 cursor-pointer transition-all duration-500"
+        class="h-24 w-24 cursor-pointer overflow-hidden rounded-lg transition-all duration-500"
         :class="{
-          'border-2 border-primary shadow-lg scale-110': activeModelIndex === index,
-          'border-2 border-transparent hover:border-base-content/50': activeModelIndex !== index,
+          'border-primary scale-110 border-2 shadow-lg': activeModelIndex === index,
+          'hover:border-base-content/50 border-2 border-transparent': activeModelIndex !== index,
         }"
       >
-        <img :src="model.thumbnail" :alt="`Model ${model.id}`" class="w-full h-full object-cover" />
+        <img :src="model.thumbnail" :alt="`Model ${model.id}`" class="h-full w-full object-cover" />
       </div>
     </div>
   </div>

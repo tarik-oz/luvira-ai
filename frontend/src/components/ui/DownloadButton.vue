@@ -130,12 +130,12 @@ const generateFileName = (): string => {
     :disabled="!processedImage"
     :class="
       processedImage
-        ? 'flex-1 px-4 py-2 max-w-60'
-        : 'flex-1 px-4 py-2 max-w-60 opacity-50 cursor-not-allowed'
+        ? 'max-w-60 flex-1 px-4 py-2'
+        : 'max-w-60 flex-1 cursor-not-allowed px-4 py-2 opacity-50'
     "
   >
     <template #icon>
-      <PhDownloadSimple class="w-4 h-4" />
+      <PhDownloadSimple class="h-4 w-4" />
     </template>
     {{ t('processing.downloadButton') }}
   </AppButton>

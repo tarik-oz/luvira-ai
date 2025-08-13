@@ -80,10 +80,18 @@ class ImageProcessingException(APIException):
 class SessionExpiredException(APIException):
     """Raised when session has expired or doesn't exist"""
     
-    def __init__(self, session_id: str, detail: str = "Session has expired or doesn't exist"):
+    def __init__(
+        self,
+        session_id: str,
+        detail: str = "Session has expired or doesn't exist",
+        reason: Optional[str] = None,
+    ):
+        extra: Dict[str, Any] = {"session_id": session_id}
+        if reason is not None:
+            extra["reason"] = reason
         super().__init__(
             status_code=404,
             detail=f"{detail}: {session_id}",
             error_code="SESSION_EXPIRED",
-            extra_data={"session_id": session_id}
-        ) 
+            extra_data=extra,
+        )

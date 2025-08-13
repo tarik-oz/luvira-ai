@@ -32,12 +32,23 @@
     "uploading": "Uploading...",
     "noPermission": "Camera access denied. Please allow camera permissions in your browser settings.",
     "notFound": "No camera found. Please make sure a camera is connected and enabled.",
-    "genericError": "Could not access the camera. Please try again or check your device."
+    "genericError": "Could not access the camera. Please try again or check your device.",
+    "notSupported": "Camera is not supported on this device/browser.",
+    "httpsRequired": "Camera requires HTTPS. Please use a secure connection.",
+    "notReadable": "Camera is in use by another application or not readable.",
+    "overconstrained": "Camera constraints cannot be satisfied by available devices."
   },
   "uploadSection": {
     "uploadImage": "Choose or drag image",
     "tooltip": "JPG, PNG, Max 10MB",
-    "validationError": "Invalid file. Please use JPG/PNG, max 10MB."
+    "validationError": "Invalid file. Please use JPG/PNG, max 10MB.",
+    "invalidType": "Unsupported file type. Please use JPG or PNG.",
+    "maxSize": "File is too large. Max 10MB.",
+    "tooSmall": "Image is too small. Minimum {min}x{min} px.",
+    "decodeError": "Could not read the image file. Please try a different file.",
+    "zeroSize": "File is empty. Please choose a valid image.",
+    "networkError": "Network error. Please check your connection and try again.",
+    "timeout": "Upload timed out. Please try again."
   },
   "footer": {
     "copyright": "© 2025 Tarık Öz. All rights reserved."
@@ -47,7 +58,12 @@
     "downloadButton": "Download",
     "compareMode": "Compare",
     "before": "Before",
-    "after": "After"
+    "after": "After",
+    "sessionExpiredTitle": "Session expired",
+    "sessionExpiredMessage": "Your session has expired. Please upload your image again to continue.",
+    "sessionExpiredConfirm": "Okay",
+    "networkError": "Network error. Please check your connection and try again.",
+    "working": "Processing hair color..."
   },
   "sampleImages": {
     "loadingSelected": "Selected image is uploading...",
@@ -55,10 +71,15 @@
   },
   "colorPalette": {
     "title": "Color Palette",
-    "instruction": "Select a color to start your transformation"
+    "instruction": "Select a color to start your transformation",
+    "error": "Failed to apply color. Please try again."
   },
   "tonePalette": {
     "title": "Choose Tone",
-    "instruction": "Select a tone variation for your chosen color"
+    "instruction": "Select a tone variation for your chosen color",
+    "error": "Failed to switch tone. Please try again."
+  },
+  "common": {
+    "dismiss": "Dismiss"
   }
 }

@@ -65,7 +65,18 @@ async def overlays_with_session(
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
     except SessionExpiredException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.detail)
+        # Return structured JSON so clients can reliably detect session expiration
+        import json
+        payload = {
+            "detail": e.detail,
+            "error_code": e.error_code,
+            "extra": getattr(e, "extra_data", {}),
+        }
+        return Response(
+            content=json.dumps(payload),
+            media_type="application/json",
+            status_code=e.status_code,
+        )
     except HTTPException:
         raise
     except Exception as e:

@@ -2,16 +2,11 @@
  * API Service for Hair Segmentation
  */
 
-const API_BASE_URL = 'http://localhost:8000'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
 export interface UploadResponse {
   session_id: string
   message?: string
-}
-
-export interface ApiError {
-  detail: string
-  status?: number
 }
 
 class ApiService {
@@ -50,8 +45,8 @@ class ApiService {
     } catch (error) {
       clearTimeout(timeoutId)
       console.error('Upload API error:', error)
-
-      throw new Error('UPLOAD_FAILED')
+      // Propagate original error (TypeError => network, DOMException AbortError => timeout)
+      throw error
     }
   }
 
@@ -61,22 +56,24 @@ class ApiService {
   async fetchOverlaysBundle(sessionId: string, colorName: string): Promise<Blob> {
     const formData = new FormData()
     formData.append('color_name', colorName)
-    try {
-      const response = await fetch(`${this.baseUrl}/overlays-with-session/${sessionId}`, {
-        method: 'POST',
-        body: formData,
-      })
+    const response = await fetch(`${this.baseUrl}/overlays-with-session/${sessionId}`, {
+      method: 'POST',
+      body: formData,
+    })
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.detail || `API error! status: ${response.status}`)
-      }
-
-      return await response.blob()
-    } catch (error) {
-      console.error('Overlays bundle API error:', error)
-      throw error
+    if (!response.ok) {
+      // Mark SessionExpiredException specially for clean handling
+      type Err = { detail?: string; error_code?: string }
+      const errorData: Err = await response.json().catch(() => ({}) as Err)
+      const msg =
+        errorData?.error_code === 'SESSION_EXPIRED' ||
+        /session.*expired/i.test(errorData?.detail || '')
+          ? 'SESSION_EXPIRED'
+          : errorData?.detail || `API error! status: ${response.status}`
+      throw new Error(msg)
     }
+
+    return await response.blob()
   }
 }
 

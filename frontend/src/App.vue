@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import Header from './components/layout/Header.vue'
-import Footer from './components/layout/Footer.vue'
+import Header from './components/layout/AppHeader.vue'
+import Footer from './components/layout/AppFooter.vue'
 </script>
 
 <template>
-  <div class="flex flex-col h-screen">
+  <div class="flex h-screen flex-col">
     <Header />
 
     <!-- Main Content -->
-    <main class="flex-1 overflow-y-auto py-6 bg-base-100">
-      <div class="max-w-7xl mx-auto px-4 mt-16 pt-10 mb-4">
+    <main class="bg-base-100 flex-1 overflow-y-auto py-6">
+      <div class="mx-auto mt-16 mb-4 max-w-7xl px-4 pt-10">
         <router-view />
       </div>
     </main>

@@ -30,6 +30,14 @@ class HairService {
 
       return response.session_id
     } catch (error) {
+      // Map common network/timeout errors for UI to display a better message
+      const message = error instanceof Error ? error.message : String(error)
+      if (message === 'Failed to fetch' || /network/i.test(message)) {
+        throw new Error('NETWORK_ERROR')
+      }
+      if (message === 'AbortError') {
+        throw new Error('TIMEOUT')
+      }
       throw error
     } finally {
       setIsUploading(false)
@@ -41,8 +49,13 @@ class HairService {
    * Caches per base color key (e.g., "Blonde").
    */
   async changeHairColorAllTones(colorName: string) {
-    const { sessionId, setIsProcessing, getCachedColorResult, setCurrentColorResult } =
-      useAppState()
+    const {
+      sessionId,
+      setIsProcessing,
+      getCachedColorResult,
+      setCurrentColorResult,
+      setSessionError,
+    } = useAppState()
 
     if (!sessionId.value) {
       throw new Error('No session ID available')
@@ -113,63 +126,25 @@ class HairService {
       }
 
       setCurrentColorResult(colorResult)
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ All-tones change failed:', error)
-      throw error
+      const message = error instanceof Error ? error.message : String(error)
+      if (message === 'SESSION_EXPIRED') {
+        setSessionError('SESSION_EXPIRED')
+        return
+      }
+      throw error instanceof Error ? error : new Error(message)
     } finally {
       setIsProcessing(false)
     }
   }
 
   /** Compose original + overlay to a single image and return a Blob URL */
-  private async composeOverlay(
-    originalUrl: string,
-    overlayUrl: string,
-    mime: 'image/png' | 'image/webp' = 'image/png',
-  ): Promise<string> {
-    const [baseImg, overlayImg] = await Promise.all([
-      this.loadImage(originalUrl),
-      this.loadImage(overlayUrl),
-    ])
-    const width = overlayImg.naturalWidth || baseImg.naturalWidth
-    const height = overlayImg.naturalHeight || baseImg.naturalHeight
-    const canvas = document.createElement('canvas')
-    canvas.width = width
-    canvas.height = height
-    const ctx = canvas.getContext('2d')!
-    ctx.drawImage(baseImg, 0, 0, width, height)
-    ctx.drawImage(overlayImg, 0, 0, width, height)
-    const blob: Blob = await new Promise((resolve) => canvas.toBlob((b) => resolve(b!), mime))
-    return URL.createObjectURL(blob)
-  }
-
-  private loadImage(url: string): Promise<HTMLImageElement> {
-    return new Promise((resolve, reject) => {
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      img.onload = () => resolve(img)
-      img.onerror = reject
-      img.src = url
-    })
-  }
-
   /** Apply tone locally by switching to the selected overlay (no server request) */
   async applyToneLocally(toneName: string | null) {
     const { currentColorResult, setProcessedImageToTone } = useAppState()
     if (!currentColorResult.value) return
     setProcessedImageToTone(toneName)
-  }
-
-  /**
-   * Helper: Convert blob to base64
-   */
-  private blobToBase64(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onloadend = () => resolve(reader.result as string)
-      reader.onerror = reject
-      reader.readAsDataURL(blob)
-    })
   }
 }
 

@@ -6,7 +6,13 @@ import { TONE_DEFINITIONS } from '../../config/colorConfig'
 import hairService from '../../services/hairService'
 
 const { t } = useI18n()
-const { isProcessing, currentColorResult, getColorToneState, setColorToneState } = useAppState()
+const {
+  isProcessing,
+  currentColorResult,
+  getColorToneState,
+  setColorToneState,
+  setProcessingError,
+} = useAppState()
 
 // Backend'deki CUSTOM_TONES ile eşleşen ton tanımları
 const toneDefinitions = TONE_DEFINITIONS
@@ -49,6 +55,9 @@ watch(
 const selectTone = async (toneName: string) => {
   if (isProcessing.value || !currentColorResult.value) return
 
+  // Clear previous processing error on new action
+  setProcessingError(null)
+
   const colorName = currentColorResult.value.originalColor // Use originalColor
 
   // State'i güncelle
@@ -61,7 +70,7 @@ const selectTone = async (toneName: string) => {
     console.log('Tone switch completed locally')
   } catch (error) {
     console.error('Tone change failed:', error)
-    // TODO: Show error message to user
+    setProcessingError(t('tonePalette.error') as string)
   }
 }
 
@@ -85,14 +94,14 @@ const selectBase = async () => {
   <!-- Sadece bir renk seçilmişse göster -->
   <div
     v-if="currentColorResult"
-    class="bg-base-content/70 rounded-2xl shadow-lg border border-base-content/80 p-4"
+    class="bg-base-content/70 border-base-content/80 rounded-2xl border p-4 shadow-lg"
   >
     <!-- Header -->
     <div class="mb-4">
-      <h3 class="text-lg font-bold text-base-100 mb-1">
+      <h3 class="text-base-100 mb-1 text-lg font-bold">
         {{ t('tonePalette.title') }} - {{ currentColorResult.originalColor }}
       </h3>
-      <p class="text-xs text-base-100/70">{{ t('tonePalette.instruction') }}</p>
+      <p class="text-base-100/70 text-xs">{{ t('tonePalette.instruction') }}</p>
     </div>
 
     <!-- Base Color + Tones Grid -->
@@ -103,35 +112,33 @@ const selectBase = async () => {
         :class="[
           'bg-base-content/80 rounded-xl border-2 p-2 transition-all duration-200',
           currentSelectedTone === null
-            ? 'border-primary ring-2 ring-primary/20 shadow-lg'
+            ? 'border-primary ring-primary/20 shadow-lg ring-2'
             : 'border-gray-200',
           isProcessing
             ? currentSelectedTone === null
               ? 'cursor-wait'
-              : 'opacity-50 cursor-not-allowed pointer-events-none'
-            : 'cursor-pointer hover:border-gray-300 hover:scale-105 hover:shadow-md',
+              : 'pointer-events-none cursor-not-allowed opacity-50'
+            : 'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
         ]"
       >
         <!-- Loading Spinner for base -->
         <div
           v-if="isProcessing && currentSelectedTone === null"
-          class="w-8 h-8 rounded-lg mx-auto mb-1 bg-base-100 flex items-center justify-center"
+          class="bg-base-100 mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-lg"
         >
-          <div
-            class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"
-          ></div>
+          <div class="border-accent h-6 w-6 animate-spin rounded-full border-t-4 border-b-4"></div>
         </div>
         <!-- Base Preview -->
         <div
           v-else
-          class="w-8 h-8 rounded-lg mx-auto mb-1 bg-base-100 flex items-center justify-center"
+          class="bg-base-100 mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-lg"
         >
           <span class="text-base-300 text-sm">🏠</span>
         </div>
         <!-- Base Label -->
         <span
           :class="[
-            'text-xs font-medium text-center block transition-colors duration-200',
+            'block text-center text-xs font-medium transition-colors duration-200',
             currentSelectedTone === null ? 'text-primary' : 'text-base-300',
             isProcessing && currentSelectedTone !== null ? 'opacity-50' : '',
           ]"
@@ -148,35 +155,33 @@ const selectBase = async () => {
         :class="[
           'bg-base-content/80 rounded-xl border-2 p-2 transition-all duration-200',
           currentSelectedTone === tone.name
-            ? 'border-primary ring-2 ring-primary/20 shadow-lg'
+            ? 'border-primary ring-primary/20 shadow-lg ring-2'
             : 'border-gray-200',
           isProcessing
             ? currentSelectedTone === tone.name
               ? 'cursor-wait'
-              : 'opacity-50 cursor-not-allowed pointer-events-none'
-            : 'cursor-pointer hover:border-gray-300 hover:scale-105 hover:shadow-md',
+              : 'pointer-events-none cursor-not-allowed opacity-50'
+            : 'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
         ]"
       >
         <!-- Loading Spinner for selected tone -->
         <div
           v-if="isProcessing && currentSelectedTone === tone.name"
-          class="w-8 h-8 rounded-lg mx-auto mb-1 bg-base-100 flex items-center justify-center"
+          class="bg-base-100 mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-lg"
         >
-          <div
-            class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"
-          ></div>
+          <div class="border-accent h-4 w-4 animate-spin rounded-full border-t-2 border-b-2"></div>
         </div>
         <!-- Tone Preview -->
         <div
           v-else
-          class="w-8 h-8 rounded-lg mx-auto mb-1 bg-base-100 flex items-center justify-center"
+          class="bg-base-100 mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-lg"
         >
           <span class="text-base-300 text-sm">✨</span>
         </div>
         <!-- Tone Name -->
         <span
           :class="[
-            'text-xs font-medium text-center block transition-colors duration-200',
+            'block text-center text-xs font-medium transition-colors duration-200',
             currentSelectedTone === tone.name ? 'text-primary' : 'text-base-300',
             isProcessing && currentSelectedTone !== tone.name ? 'opacity-50' : '',
           ]"
@@ -188,7 +193,7 @@ const selectBase = async () => {
 
     <!-- Selected Tone Description -->
     <div v-if="currentSelectedTone" class="mt-3 text-center">
-      <p class="text-xs text-base-100/80 italic">
+      <p class="text-base-100/80 text-xs italic">
         {{
           availableTones.find((t) => t.name === currentSelectedTone)?.description || 'Base color'
         }}

@@ -15,9 +15,10 @@ async def get_session_stats():
     
     Returns:
         Dictionary with cache statistics including:
+        - total_sessions: Total number of sessions
         - active_sessions: Number of active sessions
+        - expired_sessions: Number of expired sessions
         - total_size_mb: Total cache size in MB
-        - oldest_session: Age of oldest session in minutes
     """
     return session_manager.get_cache_stats()
 

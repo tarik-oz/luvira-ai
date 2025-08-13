@@ -6,8 +6,6 @@ import { useAppState } from '../../composables/useAppState'
 import { useRouter } from 'vue-router'
 import hairService from '../../services/hairService'
 
-const emit = defineEmits<{ 'file-select': [file: File] }>()
-
 const { t } = useI18n()
 const { isUploading } = useAppState()
 const router = useRouter()
@@ -22,15 +20,24 @@ const errorMessage = ref<string | null>(null)
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png']
 const MAX_DIMENSION = 4096 // Maximum width or height
+const MIN_DIMENSION = 400 // Minimum width and height
 
 const resizeImage = (file: File): Promise<File> => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')!
     const img = new Image()
+    const objectUrl = URL.createObjectURL(file)
 
     img.onload = () => {
+      URL.revokeObjectURL(objectUrl)
       const { width, height } = img
+
+      // Minimum dimension validation
+      if (width < MIN_DIMENSION || height < MIN_DIMENSION) {
+        reject(new Error('TOO_SMALL'))
+        return
+      }
 
       // Check if resizing is needed
       if (width <= MAX_DIMENSION && height <= MAX_DIMENSION) {
@@ -79,7 +86,12 @@ const resizeImage = (file: File): Promise<File> => {
       ) // 90% quality
     }
 
-    img.src = URL.createObjectURL(file)
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('DECODE_ERROR'))
+    }
+
+    img.src = objectUrl
   })
 }
 
@@ -95,34 +107,59 @@ const processFile = async (file: File) => {
     sizeInMB: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
   })
 
+  // Validate zero-byte file
+  if (file.size === 0) {
+    errorMessage.value = t('uploadSection.zeroSize')
+    return
+  }
+
   // Validate file type
   if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-    errorMessage.value = t('uploadSection.validationError')
+    errorMessage.value = t('uploadSection.invalidType')
     return
   }
 
   // Validate file size
   if (file.size > MAX_FILE_SIZE) {
-    errorMessage.value = t('uploadSection.validationError')
+    errorMessage.value = t('uploadSection.maxSize')
     return
   }
 
+  // Resize image if necessary
+  let processedFile: File
   try {
-    // Resize image if necessary
-    const processedFile = await resizeImage(file)
+    processedFile = await resizeImage(file)
+  } catch (error) {
+    if (error instanceof Error && error.message === 'TOO_SMALL') {
+      errorMessage.value = t('uploadSection.tooSmall', { min: MIN_DIMENSION })
+    } else if (error instanceof Error && error.message === 'DECODE_ERROR') {
+      errorMessage.value = t('uploadSection.decodeError')
+    } else {
+      errorMessage.value = t('sampleImages.errorMessage')
+    }
+    return
+  }
 
-    console.log('Processed file details:', {
-      name: processedFile.name,
-      size: processedFile.size,
-      type: processedFile.type,
-      sizeInMB: (processedFile.size / (1024 * 1024)).toFixed(2) + ' MB',
-    })
+  console.log('Processed file details:', {
+    name: processedFile.name,
+    size: processedFile.size,
+    type: processedFile.type,
+    sizeInMB: (processedFile.size / (1024 * 1024)).toFixed(2) + ' MB',
+  })
 
+  try {
     await hairService.uploadImage(processedFile)
     router.push('/color-tone-changer')
   } catch (error) {
     console.error('Upload failed:', error)
-    errorMessage.value = t('sampleImages.errorMessage')
+    const message = error instanceof Error ? error.message : String(error)
+    if (!navigator.onLine || message === 'Failed to fetch' || message === 'NETWORK_ERROR') {
+      errorMessage.value = t('uploadSection.networkError')
+    } else if (message === 'TIMEOUT') {
+      errorMessage.value = t('camera.uploading')
+    } else {
+      errorMessage.value = t('sampleImages.errorMessage')
+    }
   }
 }
 
@@ -168,12 +205,12 @@ const handleDragLeave = (event: DragEvent) => {
   <div>
     <div
       :class="[
-        'relative flex flex-col items-center justify-center group p-10 rounded-xl border-2 text-center transition-all duration-300',
+        'group relative flex flex-col items-center justify-center rounded-xl border-2 p-10 text-center transition-all duration-300',
         isUploading
           ? 'border-base-content/10 bg-base-content/5 cursor-not-allowed'
           : isDragOver
             ? 'border-accent bg-accent/10'
-            : 'border-base-content/20 bg-base-content cursor-pointer hover:bg-accent',
+            : 'border-base-content/20 bg-base-content hover:bg-accent cursor-pointer',
       ]"
       @click="openFileDialog"
       @drop="handleDrop"
@@ -184,26 +221,26 @@ const handleDragLeave = (event: DragEvent) => {
       <!-- Loading Spinner -->
       <div
         v-if="isUploading"
-        class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-base-content/30 backdrop-blur-sm"
+        class="bg-base-content/30 absolute inset-0 z-20 flex flex-col items-center justify-center backdrop-blur-sm"
       >
         <!-- Progress bar style loading -->
-        <div class="w-32 bg-base-200 rounded-full h-2 mb-4">
-          <div class="bg-accent h-2 rounded-full animate-pulse" style="width: 100%"></div>
+        <div class="bg-base-200 mb-4 h-2 w-32 rounded-full">
+          <div class="bg-accent h-2 animate-pulse rounded-full" style="width: 100%"></div>
         </div>
-        <p class="font-semibold text-base-100">{{ t('camera.uploading') }}</p>
+        <p class="text-base-100 font-semibold">{{ t('camera.uploading') }}</p>
       </div>
 
       <!-- Upload icon -->
       <div
         :class="[
-          'flex items-center justify-center w-20 h-20 mb-5 rounded-full shadow-sm transition-colors duration-300',
+          'mb-5 flex h-20 w-20 items-center justify-center rounded-full shadow-sm transition-colors duration-300',
           isDragOver ? 'bg-accent/20' : 'bg-base-100/10',
           !isDragOver && 'group-hover:bg-base-100/20',
         ]"
       >
         <PhUploadSimple
           :class="[
-            'w-8 h-8 transition-colors duration-300',
+            'h-8 w-8 transition-colors duration-300',
             isDragOver ? 'text-accent/70' : 'text-base-100/80',
             !isDragOver && 'group-hover:text-base-100',
           ]"
@@ -241,14 +278,14 @@ const handleDragLeave = (event: DragEvent) => {
       >
         <PhInfo
           :class="[
-            'w-6 h-6 transition-colors duration-300',
+            'h-6 w-6 transition-colors duration-300',
             isDragOver ? 'text-accent/70' : 'text-base-100/60 group-hover:text-base-100/70',
             !isDragOver && 'group-hover:text-accent',
           ]"
         />
         <div
           v-if="showTooltip"
-          class="absolute right-0 bottom-7 px-3 py-1 rounded bg-base-100/100 text-xs font-bold text-base-content/90 shadow whitespace-nowrap transition-colors duration-300"
+          class="bg-base-100/100 text-base-content/90 absolute right-0 bottom-7 rounded px-3 py-1 text-xs font-bold whitespace-nowrap shadow transition-colors duration-300"
         >
           {{ t('uploadSection.tooltip') }}
         </div>

@@ -28,6 +28,8 @@ const currentColorResult = ref<ColorChangeResult | null>(null)
 const processedImage = ref<string | null>(null)
 const selectedTone = ref<string | null>(null)
 const colorCache = ref<ColorCache>({})
+const sessionError = ref<string | null>(null)
+const processingError = ref<string | null>(null)
 const colorToneStates = ref<Record<string, string | null>>({}) // Per-color tone selection state
 
 export function useAppState() {
@@ -53,6 +55,14 @@ export function useAppState() {
 
   const setIsProcessing = (processing: boolean) => {
     isProcessing.value = processing
+  }
+
+  const setSessionError = (message: string | null) => {
+    sessionError.value = message
+  }
+
+  const setProcessingError = (message: string | null) => {
+    processingError.value = message
   }
 
   const setCurrentColorResult = (result: ColorChangeResult | null) => {
@@ -134,6 +144,8 @@ export function useAppState() {
     selectedTone.value = null
     clearCache()
     clearColorToneStates()
+    sessionError.value = null
+    processingError.value = null
   }
 
   const createImageUrl = (file: File): string => {
@@ -152,12 +164,16 @@ export function useAppState() {
     processedImage: readonly(processedImage),
     selectedTone: readonly(selectedTone),
     colorCache: readonly(colorCache),
+    sessionError: readonly(sessionError),
+    processingError: readonly(processingError),
 
     // Actions
     setSessionId,
     setUploadedImage,
     setIsUploading,
     setIsProcessing,
+    setSessionError,
+    setProcessingError,
     setCurrentColorResult,
     setProcessedImageToTone,
     getCachedColorResult,

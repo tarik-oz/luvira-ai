@@ -143,7 +143,7 @@ class SessionManager:
         try:
             session_dir = CACHE_DIR / session_id
             if not session_dir.exists():
-                raise SessionExpiredException(session_id, "Session not found")
+                raise SessionExpiredException(session_id, "Session not found", reason="not_found")
             
             metadata = self._get_session_metadata(session_dir)
             if metadata and self._is_session_expired(metadata):
@@ -152,7 +152,8 @@ class SessionManager:
                 elapsed_minutes = int((time.time() - metadata.get('timestamp', 0)) / 60)
                 raise SessionExpiredException(
                     session_id, 
-                    f"Session expired (created {elapsed_minutes} minutes ago)"
+                    f"Session expired (created {elapsed_minutes} minutes ago)",
+                    reason="expired",
                 )
             
             # Session is valid, no exception raised

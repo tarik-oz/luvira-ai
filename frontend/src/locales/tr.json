@@ -32,12 +32,23 @@
     "uploading": "Yükleniyor...",
     "noPermission": "Kamera erişimi reddedildi. Lütfen tarayıcı ayarlarından kamera izinlerine izin verin.",
     "notFound": "Kamera bulunamadı. Lütfen bir kameranın bağlı ve etkin olduğundan emin olun.",
-    "genericError": "Kameraya erişilemedi. Lütfen tekrar deneyin veya cihazınızı kontrol edin."
+    "genericError": "Kameraya erişilemedi. Lütfen tekrar deneyin veya cihazınızı kontrol edin.",
+    "notSupported": "Bu cihaz/tarayıcı kamerayı desteklemiyor.",
+    "httpsRequired": "Kamera için HTTPS gereklidir. Lütfen güvenli bir bağlantı kullanın.",
+    "notReadable": "Kamera başka bir uygulama tarafından kullanılıyor veya okunamıyor.",
+    "overconstrained": "Kamera kısıtları mevcut cihazlarla karşılanamıyor."
   },
   "uploadSection": {
     "uploadImage": "Sürükle & bırak veya tıkla",
     "tooltip": "JPG, PNG, Maks. 10MB",
-    "validationError": "Geçersiz dosya. Lütfen JPG/PNG formatında, maks. 10MB."
+    "validationError": "Geçersiz dosya. Lütfen JPG/PNG formatında, maks. 10MB.",
+    "invalidType": "Desteklenmeyen dosya türü. Lütfen JPG veya PNG kullanın.",
+    "maxSize": "Dosya çok büyük. Maksimum 10MB.",
+    "tooSmall": "Görsel çok küçük. Minimum {min}x{min} px.",
+    "decodeError": "Görsel dosyası okunamadı. Lütfen farklı bir dosya deneyin.",
+    "zeroSize": "Dosya boş. Lütfen geçerli bir görsel seçin.",
+    "networkError": "Ağ hatası. Lütfen bağlantınızı kontrol edip tekrar deneyin.",
+    "timeout": "Yükleme zaman aşımına uğradı. Lütfen tekrar deneyin."
   },
   "footer": {
     "copyright": "© 2025 Tarık Öz. Tüm hakları saklıdır."
@@ -47,7 +58,12 @@
     "downloadButton": "İndir",
     "compareMode": "Karşılaştır",
     "before": "Önce",
-    "after": "Sonra"
+    "after": "Sonra",
+    "sessionExpiredTitle": "Oturum süresi doldu",
+    "sessionExpiredMessage": "Oturumunuzun süresi doldu. Devam etmek için lütfen görseli tekrar yükleyin.",
+    "sessionExpiredConfirm": "Tamam",
+    "networkError": "Ağ hatası. Lütfen bağlantınızı kontrol edip tekrar deneyin.",
+    "working": "Saç rengi işleniyor..."
   },
   "sampleImages": {
     "loadingSelected": "Seçilen resim yükleniyor...",
@@ -55,10 +71,15 @@
   },
   "colorPalette": {
     "title": "Renk Paleti",
-    "instruction": "Dönüşüme başlamak için bir renk seçin"
+    "instruction": "Dönüşüme başlamak için bir renk seçin",
+    "error": "Renk uygulanamadı. Lütfen tekrar deneyin."
   },
   "tonePalette": {
     "title": "Ton Seçimi",
-    "instruction": "Seçtiğiniz rengin ton çeşidini belirleyin"
+    "instruction": "Seçtiğiniz rengin ton çeşidini belirleyin",
+    "error": "Ton değiştirilemedi. Lütfen tekrar deneyin."
+  },
+  "common": {
+    "dismiss": "Kapat"
   }
 }

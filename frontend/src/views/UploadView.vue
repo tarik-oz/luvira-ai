@@ -6,55 +6,52 @@ import CameraCapture from '../components/ui/CameraCapture.vue'
 import HairColorShowcase from '../components/ui/HairColorShowcase.vue'
 import { PhImage, PhCamera } from '@phosphor-icons/vue'
 import { ref } from 'vue'
+import { useAppState } from '../composables/useAppState'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
+const { isUploading } = useAppState()
 
 const sampleImagesModal = ref()
 const cameraCaptureModal = ref()
-
-const handleFileSelect = (file: File) => {
-  // Handle selected file
-  console.log('Selected file:', file.name) // TODO: Process file
-}
 </script>
 
 <template>
-  <div class="grid md:grid-cols-2 grid-cols-1">
+  <div class="grid grid-cols-1 md:grid-cols-2">
     <!-- Left column -->
     <div class="flex flex-col items-start justify-center px-4 md:px-0">
       <!-- Title -->
-      <h1 class="text-5xl md:text-6xl font-extrabold leading-tight text-base-content mb-6">
+      <h1 class="text-base-content mb-6 text-5xl leading-tight font-extrabold md:text-6xl">
         {{ t('upload.title') }}
       </h1>
 
       <!-- Description -->
-      <p class="text-lg md:text-xl max-w-xl mb-8 text-base-content/70">
+      <p class="text-base-content/70 mb-8 max-w-xl text-lg md:text-xl">
         {{ t('upload.description') }}
       </p>
 
       <!-- UploadSection -->
-      <UploadSection @file-select="handleFileSelect" class="max-w-xl w-full" />
+      <UploadSection class="w-full max-w-xl" />
 
       <!-- Divider -->
-      <div class="divider max-w-xl w-full my-6 font-semibold select-none text-base-content/70">
+      <div class="divider text-base-content/70 my-6 w-full max-w-xl font-semibold select-none">
         {{ t('upload.divider') }}
       </div>
 
       <!-- Buttons -->
-      <div class="flex gap-4 max-w-xl w-full mb-5">
+      <div class="mb-5 flex w-full max-w-xl gap-4">
         <!-- Sample Images Button -->
-        <AppButton class="flex-1" @click="sampleImagesModal.open()">
+        <AppButton class="flex-1" :disabled="isUploading" @click="sampleImagesModal.open()">
           <template #icon>
-            <PhImage class="w-5 h-5" />
+            <PhImage class="h-5 w-5" />
           </template>
           {{ t('upload.sampleButton') }}
         </AppButton>
 
         <!-- Camera Button -->
-        <AppButton class="flex-1" @click="cameraCaptureModal.open()">
+        <AppButton class="flex-1" :disabled="isUploading" @click="cameraCaptureModal.open()">
           <template #icon>
-            <PhCamera class="w-5 h-5" />
+            <PhCamera class="h-5 w-5" />
           </template>
           {{ t('upload.cameraButton') }}
         </AppButton>

@@ -6,7 +6,7 @@ import { AVAILABLE_COLORS } from '../../config/colorConfig'
 import hairService from '../../services/hairService'
 
 const { t } = useI18n()
-const { isProcessing } = useAppState()
+const { isProcessing, setProcessingError } = useAppState()
 const selectedColor = ref<string | null>(null)
 
 const colors = AVAILABLE_COLORS.map((name) => ({ name }))
@@ -14,6 +14,10 @@ const colors = AVAILABLE_COLORS.map((name) => ({ name }))
 const selectColor = async (colorName: string) => {
   if (isProcessing.value) return // Prevent multiple requests
 
+  // Clear previous processing error on new action
+  setProcessingError(null)
+
+  const previous = selectedColor.value
   selectedColor.value = colorName
   console.log('Selected color:', colorName)
 
@@ -22,17 +26,24 @@ const selectColor = async (colorName: string) => {
     console.log('Color change completed successfully')
   } catch (error) {
     console.error('Color change failed:', error)
-    // TODO: Show error message to user
+    const message = error instanceof Error ? error.message : String(error)
+    if (message === 'Failed to fetch' || /network/i.test(message)) {
+      setProcessingError(t('processing.networkError') as string)
+    } else {
+      setProcessingError(t('colorPalette.error') as string)
+    }
+    // Revert selection to previous on failure
+    selectedColor.value = previous
   }
 }
 </script>
 
 <template>
-  <div class="bg-base-content/70 rounded-2xl shadow-lg border border-base-content/80 p-4">
+  <div class="bg-base-content/70 border-base-content/80 rounded-2xl border p-4 shadow-lg">
     <!-- Header -->
     <div class="mb-4">
-      <h3 class="text-lg font-bold text-base-100 mb-1">{{ t('colorPalette.title') }}</h3>
-      <p class="text-xs text-base-100/70">{{ t('colorPalette.instruction') }}</p>
+      <h3 class="text-base-100 mb-1 text-lg font-bold">{{ t('colorPalette.title') }}</h3>
+      <p class="text-base-100/70 text-xs">{{ t('colorPalette.instruction') }}</p>
     </div>
 
     <!-- Color Grid -->
@@ -44,33 +55,33 @@ const selectColor = async (colorName: string) => {
         :class="[
           'bg-base-content/80 rounded-xl border-2 p-3 transition-all duration-200',
           selectedColor === color.name
-            ? 'border-primary ring-2 ring-primary/20 shadow-lg'
+            ? 'border-primary ring-primary/20 shadow-lg ring-2'
             : 'border-gray-200',
           isProcessing
             ? selectedColor === color.name
               ? 'cursor-wait'
-              : 'opacity-50 cursor-not-allowed pointer-events-none'
-            : 'cursor-pointer hover:border-gray-300 hover:scale-105 hover:shadow-md',
+              : 'pointer-events-none cursor-not-allowed opacity-50'
+            : 'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
         ]"
       >
         <!-- Loading Spinner for selected color -->
         <div
           v-if="isProcessing && selectedColor === color.name"
-          class="w-12 h-12 rounded-lg mx-auto mb-2 bg-base-100 flex items-center justify-center"
+          class="bg-base-100 mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-lg"
         >
-          <div class="animate-spin rounded-full h-6 w-6 border-t-4 border-b-4 border-accent"></div>
+          <div class="border-accent h-6 w-6 animate-spin rounded-full border-t-4 border-b-4"></div>
         </div>
         <!-- Placeholder Image -->
         <div
           v-else
-          class="w-12 h-12 rounded-lg mx-auto mb-2 bg-base-100 flex items-center justify-center"
+          class="bg-base-100 mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-lg"
         >
           <span class="text-base-300 text-xl">🖼️</span>
         </div>
         <!-- Color Name -->
         <span
           :class="[
-            'text-xs font-medium text-center block transition-colors duration-200',
+            'block text-center text-xs font-medium transition-colors duration-200',
             selectedColor === color.name ? 'text-primary' : 'text-base-300',
             isProcessing && selectedColor !== color.name ? 'opacity-50' : '',
           ]"
