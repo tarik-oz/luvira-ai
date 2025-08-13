@@ -93,6 +93,61 @@ export function useAppState() {
     }
   }
 
+  // Incremental cache helpers for streaming
+  const setColorBaseResult = (colorName: string, baseUrl: string) => {
+    // Ensure cache entry
+    const cache = colorCache.value
+    const existing = cache[colorName]
+    const colorResult: ColorChangeResult = existing
+      ? { ...existing, baseResult: baseUrl || existing.baseResult }
+      : {
+          color: colorName,
+          originalColor: colorName,
+          selectedTone: null,
+          baseResult: baseUrl,
+          tones: {},
+        }
+
+    cache[colorName] = colorResult
+
+    const priorTone = colorToneStates.value[colorName]
+    const switchingToThisColor =
+      !currentColorResult.value || currentColorResult.value.color !== colorName
+
+    // Update tone state only if undefined (first time we see this color)
+    if (priorTone === undefined) {
+      colorToneStates.value[colorName] = null
+    }
+
+    // Make this color current
+    currentColorResult.value = colorResult
+
+    // Determine selectedTone without clobbering a user-chosen tone
+    if (switchingToThisColor) {
+      selectedTone.value = priorTone !== undefined ? priorTone : null
+    }
+
+    // Only override processed image with base if no tone is selected and we have a base URL
+    if ((selectedTone.value === null || selectedTone.value === undefined) && baseUrl) {
+      processedImage.value = baseUrl
+    }
+  }
+
+  const upsertColorTone = (colorName: string, toneName: string, toneUrl: string) => {
+    const cache = colorCache.value
+    const existing = cache[colorName]
+    if (!existing) return
+    existing.tones[toneName] = toneUrl
+    // If this color is active and selected tone matches, update view
+    if (
+      currentColorResult.value &&
+      currentColorResult.value.color === colorName &&
+      selectedTone.value === toneName
+    ) {
+      processedImage.value = toneUrl
+    }
+  }
+
   const setProcessedImageToTone = (toneName: string | null) => {
     if (!currentColorResult.value) return
 
@@ -176,6 +231,8 @@ export function useAppState() {
     setProcessingError,
     setCurrentColorResult,
     setProcessedImageToTone,
+    setColorBaseResult,
+    upsertColorTone,
     getCachedColorResult,
     clearCache,
     resetState,

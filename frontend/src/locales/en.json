@@ -48,7 +48,8 @@
     "decodeError": "Could not read the image file. Please try a different file.",
     "zeroSize": "File is empty. Please choose a valid image.",
     "networkError": "Network error. Please check your connection and try again.",
-    "timeout": "Upload timed out. Please try again."
+    "timeout": "Upload timed out. Please try again.",
+    "noHairDetected": "No hair area detected. Please upload a photo where hair is clearly visible."
   },
   "footer": {
     "copyright": "© 2025 Tarık Öz. All rights reserved."

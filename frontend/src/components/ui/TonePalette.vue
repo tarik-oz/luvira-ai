@@ -53,15 +53,21 @@ watch(
 
 // Ton seçimi
 const selectTone = async (toneName: string) => {
-  if (isProcessing.value || !currentColorResult.value) return
+  if (!currentColorResult.value) return
 
   // Clear previous processing error on new action
   setProcessingError(null)
 
   const colorName = currentColorResult.value.originalColor // Use originalColor
 
-  // State'i güncelle
+  // State'i hemen güncelle ki loading seçilen ton üzerinde görünsün
   setColorToneState(colorName, toneName)
+
+  // Eğer tone henüz cache'te yoksa stream'i başlat (tek istek mantığı)
+  const toneUrl = currentColorResult.value.tones[toneName]
+  if (!toneUrl) {
+    await hairService.ensureColorStream(colorName)
+  }
 
   console.log('Selected tone:', toneName, 'for color:', colorName)
 
@@ -76,7 +82,7 @@ const selectTone = async (toneName: string) => {
 
 // Base rengi seç (ton yok)
 const selectBase = async () => {
-  if (isProcessing.value || !currentColorResult.value) return
+  if (!currentColorResult.value) return
 
   const colorName = currentColorResult.value.originalColor // Use originalColor
 
@@ -114,10 +120,8 @@ const selectBase = async () => {
           currentSelectedTone === null
             ? 'border-primary ring-primary/20 shadow-lg ring-2'
             : 'border-gray-200',
-          isProcessing
-            ? currentSelectedTone === null
-              ? 'cursor-wait'
-              : 'pointer-events-none cursor-not-allowed opacity-50'
+          isProcessing && currentSelectedTone === null
+            ? 'cursor-wait'
             : 'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
         ]"
       >
@@ -157,11 +161,7 @@ const selectBase = async () => {
           currentSelectedTone === tone.name
             ? 'border-primary ring-primary/20 shadow-lg ring-2'
             : 'border-gray-200',
-          isProcessing
-            ? currentSelectedTone === tone.name
-              ? 'cursor-wait'
-              : 'pointer-events-none cursor-not-allowed opacity-50'
-            : 'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
+          'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
         ]"
       >
         <!-- Loading Spinner for selected tone -->
@@ -176,7 +176,16 @@ const selectBase = async () => {
           v-else
           class="bg-base-100 mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-lg"
         >
-          <span class="text-base-300 text-sm">✨</span>
+          <template
+            v-if="currentSelectedTone === tone.name && !currentColorResult?.tones[tone.name]"
+          >
+            <div
+              class="border-accent h-4 w-4 animate-spin rounded-full border-t-2 border-b-2"
+            ></div>
+          </template>
+          <template v-else>
+            <span class="text-base-300 text-sm">✨</span>
+          </template>
         </div>
         <!-- Tone Name -->
         <span

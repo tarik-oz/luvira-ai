@@ -48,7 +48,8 @@
     "decodeError": "Görsel dosyası okunamadı. Lütfen farklı bir dosya deneyin.",
     "zeroSize": "Dosya boş. Lütfen geçerli bir görsel seçin.",
     "networkError": "Ağ hatası. Lütfen bağlantınızı kontrol edip tekrar deneyin.",
-    "timeout": "Yükleme zaman aşımına uğradı. Lütfen tekrar deneyin."
+    "timeout": "Yükleme zaman aşımına uğradı. Lütfen tekrar deneyin.",
+    "noHairDetected": "Saç alanı tespit edilemedi. Lütfen saçın net göründüğü bir fotoğraf yükleyin."
   },
   "footer": {
     "copyright": "© 2025 Tarık Öz. Tüm hakları saklıdır."

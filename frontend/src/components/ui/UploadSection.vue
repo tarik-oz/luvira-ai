@@ -153,10 +153,17 @@ const processFile = async (file: File) => {
   } catch (error) {
     console.error('Upload failed:', error)
     const message = error instanceof Error ? error.message : String(error)
+    const errorWithCode = error as Error & { error_code?: string }
+    const errorCode =
+      error && typeof error === 'object' && 'error_code' in errorWithCode
+        ? errorWithCode.error_code
+        : undefined
     if (!navigator.onLine || message === 'Failed to fetch' || message === 'NETWORK_ERROR') {
       errorMessage.value = t('uploadSection.networkError')
     } else if (message === 'TIMEOUT') {
       errorMessage.value = t('camera.uploading')
+    } else if (errorCode === 'NO_HAIR_DETECTED') {
+      errorMessage.value = t('uploadSection.noHairDetected')
     } else {
       errorMessage.value = t('sampleImages.errorMessage')
     }

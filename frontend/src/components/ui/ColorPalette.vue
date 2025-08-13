@@ -27,7 +27,10 @@ const selectColor = async (colorName: string) => {
   } catch (error) {
     console.error('Color change failed:', error)
     const message = error instanceof Error ? error.message : String(error)
-    if (message === 'Failed to fetch' || /network/i.test(message)) {
+    if (message === 'SESSION_EXPIRED') {
+      // Do not revert UI; modal will handle session end
+      return
+    } else if (message === 'Failed to fetch' || /network/i.test(message)) {
       setProcessingError(t('processing.networkError') as string)
     } else {
       setProcessingError(t('colorPalette.error') as string)

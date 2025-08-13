@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { ref, onUnmounted } from 'vue'
 import { defineExpose } from 'vue'
-import { PhCamera, PhCheck, PhX, PhArrowClockwise, PhWarning } from '@phosphor-icons/vue'
+import {
+  PhCamera,
+  PhCheck,
+  PhX,
+  PhArrowClockwise,
+  PhWarning,
+  PhCameraRotate,
+} from '@phosphor-icons/vue'
 import AppButton from './AppButton.vue'
 import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../composables/useAppState'
@@ -22,6 +29,62 @@ const isLoading = ref(false)
 const isStreamReady = ref(false)
 const capturedImage = ref<string | null>(null)
 const errorMessage = ref<string | null>(null)
+
+// Camera preferences and orientation handling
+const preferredFacing = ref<'user' | 'environment'>('user')
+const isPortraitVideo = ref(false)
+const useCroppingOverlay = ref(false)
+const hasMultipleCameras = ref(false)
+
+const updateOrientationFromVideo = () => {
+  if (!videoRef.value) return
+  const vw = videoRef.value.videoWidth
+  const vh = videoRef.value.videoHeight
+  if (!vw || !vh) return
+  isPortraitVideo.value = vh >= vw
+  // Show overlay only for landscape videos
+  useCroppingOverlay.value = !isPortraitVideo.value
+}
+
+const updateHasMultipleCameras = async () => {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+    hasMultipleCameras.value = false
+    return
+  }
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    const videoInputs = devices.filter((d) => d.kind === 'videoinput')
+    hasMultipleCameras.value = videoInputs.length >= 2
+  } catch {
+    hasMultipleCameras.value = false
+  }
+}
+
+// Prefer front (user-facing) camera when available, with safe fallbacks
+const getPreferredCameraStream = async (
+  prefer: 'user' | 'environment' = 'user',
+): Promise<MediaStream> => {
+  const attempts: MediaStreamConstraints[] = [
+    { video: { facingMode: { exact: prefer } }, audio: false },
+    { video: { facingMode: { ideal: prefer } }, audio: false },
+    // Some browsers accept string form as well
+    { video: { facingMode: prefer }, audio: false },
+    // Try the opposite as a fallback (in case front cam is unavailable)
+    { video: { facingMode: { ideal: prefer === 'user' ? 'environment' : 'user' } }, audio: false },
+    // Final fallback: any camera
+    { video: true, audio: false },
+  ]
+
+  let lastError: unknown = null
+  for (const constraints of attempts) {
+    try {
+      return await navigator.mediaDevices.getUserMedia(constraints)
+    } catch (err) {
+      lastError = err
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('Camera not available')
+}
 
 const open = async () => {
   if (stream.value) {
@@ -45,13 +108,19 @@ const open = async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new DOMException('Camera not supported', 'NotSupportedError')
     }
-    pendingStreamPromise = navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+    // Always start with front camera on open
+    preferredFacing.value = 'user'
+    pendingStreamPromise = getPreferredCameraStream(preferredFacing.value)
     const newStream = await pendingStreamPromise
     stream.value = newStream
     if (videoRef.value) {
       videoRef.value.srcObject = newStream
       await videoRef.value.play()
       isStreamReady.value = true
+      updateOrientationFromVideo()
+      // Update orientation once metadata is loaded too
+      videoRef.value.onloadedmetadata = () => updateOrientationFromVideo()
+      await updateHasMultipleCameras()
     }
   } catch (err) {
     console.error('Camera error:', err)
@@ -149,13 +218,17 @@ const takePhoto = async () => {
     }
     // --- END: object-cover CALCULATION ---
 
-    // --- START: 40% AREA CALCULATION ---
-    // Now we'll take 40% from the cropped (visible) area
-    const finalCropWidth = Math.floor(sourceWidth * 0.4)
-    const finalCropHeight = sourceHeight
-    const finalCropX = sourceX + Math.floor((sourceWidth - finalCropWidth) / 2)
-    const finalCropY = sourceY
-    // --- END: 40% AREA CALCULATION ---
+    // --- START: FINAL CROP DECISION ---
+    // If video is portrait, send exactly what user sees (full visible area)
+    // If landscape, keep center 40% width crop
+    const portrait = videoHeight >= videoWidth
+    const finalCropWidth = portrait ? Math.floor(sourceWidth) : Math.floor(sourceWidth * 0.4)
+    const finalCropHeight = Math.floor(sourceHeight)
+    const finalCropX = portrait
+      ? Math.floor(sourceX)
+      : Math.floor(sourceX + (sourceWidth - finalCropWidth) / 2)
+    const finalCropY = Math.floor(sourceY)
+    // --- END: FINAL CROP DECISION ---
 
     // Set canvas size to final cropped dimensions
     canvas.width = finalCropWidth
@@ -196,13 +269,16 @@ const retakePhoto = async () => {
   // Restart camera
   isLoading.value = true
   try {
-    pendingStreamPromise = navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+    pendingStreamPromise = getPreferredCameraStream(preferredFacing.value)
     const newStream = await pendingStreamPromise
     stream.value = newStream
     if (videoRef.value) {
       videoRef.value.srcObject = newStream
       await videoRef.value.play()
       isStreamReady.value = true
+      updateOrientationFromVideo()
+      videoRef.value.onloadedmetadata = () => updateOrientationFromVideo()
+      await updateHasMultipleCameras()
     }
   } catch (err) {
     console.error('Camera error during retake:', err)
@@ -244,13 +320,54 @@ const submitPhoto = async () => {
   } catch (error) {
     console.error('Camera upload failed:', error)
     const message = error instanceof Error ? error.message : String(error)
+    const errorWithCode = error as Error & { error_code?: string }
+    const errorCode =
+      error && typeof error === 'object' && 'error_code' in errorWithCode
+        ? errorWithCode.error_code
+        : undefined
     if (!navigator.onLine || message === 'Failed to fetch' || /network/i.test(message)) {
       errorMessage.value = t('processing.networkError')
     } else if (message === 'TIMEOUT') {
       errorMessage.value = t('camera.uploading')
+    } else if (errorCode === 'NO_HAIR_DETECTED') {
+      errorMessage.value = t('uploadSection.noHairDetected')
     } else {
       errorMessage.value = t('sampleImages.errorMessage')
     }
+  }
+}
+
+const switchCamera = async () => {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return
+  if (isLoading.value) return
+  const previous = preferredFacing.value
+  preferredFacing.value = previous === 'user' ? 'environment' : 'user'
+  isLoading.value = true
+  errorMessage.value = null
+  try {
+    const newStream = await getPreferredCameraStream(preferredFacing.value)
+    // Stop old stream
+    if (stream.value) {
+      stream.value.getTracks().forEach((track: MediaStreamTrack) => track.stop())
+    }
+    stream.value = newStream
+    if (videoRef.value) {
+      videoRef.value.srcObject = newStream
+      await videoRef.value.play()
+      isStreamReady.value = true
+      updateOrientationFromVideo()
+      videoRef.value.onloadedmetadata = () => updateOrientationFromVideo()
+      await updateHasMultipleCameras()
+    }
+  } catch (err) {
+    console.error('Camera switch error:', err)
+    // Revert preference on failure
+    preferredFacing.value = previous
+    if (err instanceof DOMException) {
+      errorMessage.value = t('camera.genericError')
+    }
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -305,6 +422,16 @@ defineExpose({ open })
         class="relative mb-1 flex w-full items-center justify-center overflow-hidden rounded-lg transition-all duration-500 ease-in-out"
         :class="[capturedImage ? 'h-96' : 'h-72', capturedImage ? '' : 'bg-base-200']"
       >
+        <!-- Camera switch button (top-right, round) -->
+        <button
+          v-show="!capturedImage && hasMultipleCameras"
+          @click="switchCamera"
+          :disabled="isLoading || isUploading"
+          class="btn btn-circle btn-ghost bg-base-100/90 text-base-content hover:bg-accent/80 absolute top-3 right-3 z-20 border-none shadow-md"
+          title="Switch camera"
+        >
+          <PhCameraRotate class="h-5 w-5" />
+        </button>
         <!-- Video Stream -->
         <video
           v-show="!capturedImage"
@@ -333,25 +460,25 @@ defineExpose({ open })
           ></div>
         </div>
 
-        <!-- Portrait overlay: only visible when video is showing -->
+        <!-- Landscape overlay: only when streaming and landscape -->
         <div
-          v-show="!capturedImage"
+          v-show="!capturedImage && useCroppingOverlay"
           class="absolute top-0 left-1/2 hidden h-full -translate-x-1/2 flex-col items-center justify-center md:flex"
           style="width: 40%; pointer-events: none"
         >
           <div class="border-accent h-full w-full border-4"></div>
         </div>
 
-        <!-- Darkening: left (only when video is showing) -->
+        <!-- Darkening: left (only when streaming and landscape) -->
         <div
-          v-show="!capturedImage"
+          v-show="!capturedImage && useCroppingOverlay"
           class="absolute top-0 left-0 hidden h-full md:block"
           style="width: 30%; background: rgba(0, 0, 0, 0.5); pointer-events: none"
         ></div>
 
-        <!-- Darkening: right (only when video is showing) -->
+        <!-- Darkening: right (only when streaming and landscape) -->
         <div
-          v-show="!capturedImage"
+          v-show="!capturedImage && useCroppingOverlay"
           class="absolute top-0 right-0 hidden h-full md:block"
           style="width: 30%; background: rgba(0, 0, 0, 0.5); pointer-events: none"
         ></div>

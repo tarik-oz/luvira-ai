@@ -77,6 +77,17 @@ class ImageProcessingException(APIException):
         )
 
 
+class NoHairDetectedException(APIException):
+    """Raised when no hair area is detected in the image"""
+    
+    def __init__(self, detail: str = "No hair area detected in the image"):
+        super().__init__(
+            status_code=400,
+            detail=detail,
+            error_code="NO_HAIR_DETECTED"
+        )
+
+
 class SessionExpiredException(APIException):
     """Raised when session has expired or doesn't exist"""
     

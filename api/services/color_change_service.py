@@ -13,7 +13,12 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'color_changer'))
 from color_changer import ColorTransformer
 
-from ..core.exceptions import PredictionException, ImageProcessingException
+from ..core.exceptions import (
+    APIException,
+    PredictionException,
+    ImageProcessingException,
+    NoHairDetectedException,
+)
 from ..utils import FileValidator, ColorValidator, ImageUtils
 from ..config import MODEL_CONFIG
 from .session_manager import session_manager
@@ -97,6 +102,18 @@ class ColorChangeService:
             # Generate mask
             mask_bytes = self.prediction_service.predict_mask_file(file)
             mask_array = ImageUtils.bytes_to_mask(mask_bytes)
+
+            # Validate hair presence in mask (upload-only gate; does not affect actual processing mask)
+            try:
+                pixel_threshold = int(MODEL_CONFIG.get("hair_presence_pixel_threshold", 64))
+                hair_pixels = int((mask_array > pixel_threshold).sum())
+                total_pixels = int(mask_array.size)
+                hair_ratio = (hair_pixels / max(total_pixels, 1)) if total_pixels else 0.0
+            except Exception:
+                hair_ratio = 0.0
+            minimal_ratio = MODEL_CONFIG.get("minimal_hair_ratio", 0.005)  # 0.5%
+            if hair_ratio < minimal_ratio:
+                raise NoHairDetectedException("No hair area detected in the image")
             
             # Create session and save data
             session_id = session_manager.create_session()
@@ -105,6 +122,12 @@ class ColorChangeService:
             logger.info(f"Image uploaded and prepared successfully. Session: {session_id}")
             return session_id
             
+        except NoHairDetectedException:
+            # Preserve specific error for frontend mapping
+            raise
+        except APIException:
+            # Bubble up structured API exceptions
+            raise
         except Exception as e:
             logger.error(f"Failed to upload and prepare image: {str(e)}")
             raise ImageProcessingException(f"Failed to upload and prepare image: {str(e)}")
@@ -157,83 +180,69 @@ class ColorChangeService:
             logger.error(f"Color change failed for session {session_id}: {str(e)}")
             raise ImageProcessingException(f"Color change failed: {str(e)}")
 
-    def build_overlays_with_all_tones_session(self, session_id: str, color_name: str) -> bytes:
+    def iter_overlays_with_session(self, session_id: str, color_name: str, webp_quality: int = 90):
         """
-        Using cached image+mask, generate WEBP overlays for base color and all tones,
-        and return a ZIP archive (bytes) containing:
-          - base.webp
-          - tones/{tone}.webp
-          - metadata.json
+        Generator that yields (part_name, webp_bytes) for base and each tone.
+
+        Yields:
+            ("base", bytes) first, followed by (tone_name, bytes) for each tone.
         """
         # Validate color
         ColorValidator.validate_color_name(color_name)
         correct_color_name = ColorValidator.get_correct_color_name(color_name)
 
-        # Load session data
+        # Load session data (raises SessionExpiredException if invalid)
         session_data = session_manager.load_session_data(session_id)
         original_image = session_data['image']
         mask_array = session_data['mask']
 
-        # Use transformer fast path to compute all tones once
+        def encode_webp_rgba(img_rgb: np.ndarray, alpha_mask: np.ndarray, q: int) -> bytes:
+            # Prepare BGRA and encode with soft edges and zeroed RGB for fully transparent
+            try:
+                alpha_f = cv2.GaussianBlur(alpha_mask.astype("float32") / 255.0, (0, 0), 0.7)
+                alpha_f = np.clip(alpha_f, 0.0, 1.0)
+                alpha = (alpha_f * 255.0).astype("uint8")
+            except Exception:
+                alpha = alpha_mask.astype("uint8")
+            bgra = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGRA)
+            bgra[:, :, 3] = alpha
+            fully_transparent = (alpha == 0)
+            if fully_transparent.any():
+                bgra[fully_transparent, :3] = 0
+            params = [cv2.IMWRITE_WEBP_QUALITY, int(q)]
+            ok, buf = cv2.imencode('.webp', bgra, params)
+            if not ok:
+                raise ImageProcessingException("WEBP encode failed")
+            return buf.tobytes()
+
+        # 1) Base overlay (yield early)
         try:
-            results = self.color_transformer.change_hair_color_with_all_tones(
-                original_image, mask_array, correct_color_name
-            )
+            base_rgb = self._apply_color_change(original_image, mask_array, correct_color_name)
+            base_webp = encode_webp_rgba(base_rgb, mask_array, webp_quality)
+            yield ("base", base_webp)
+        except Exception as e:
+            logger.error(f"Failed to generate base overlay for session {session_id}: {e}")
+            raise
+
+        # 2) Tones (yield incrementally)
+        try:
+            tone_names = self.get_available_tones(correct_color_name)
+            for tone_name in tone_names:
+                try:
+                    tone_rgb = self._apply_color_change_with_tone(
+                        original_image, mask_array, correct_color_name, tone_name
+                    )
+                    tone_webp = encode_webp_rgba(tone_rgb, mask_array, webp_quality)
+                    yield (tone_name, tone_webp)
+                except Exception as tone_err:
+                    logger.warning(
+                        f"Tone generation failed for session {session_id}, color {correct_color_name}, tone {tone_name}: {tone_err}"
+                    )
+                    continue
         except Exception as e:
             logger.error(f"Failed to generate tones for session {session_id}: {e}")
-            raise ImageProcessingException(f"Failed to generate tones: {e}")
-
-        # Build overlays (WEBP) and zip
-        import io, json, zipfile
-        memory_zip = io.BytesIO()
-        with zipfile.ZipFile(memory_zip, mode='w', compression=zipfile.ZIP_STORED) as zf:
-            meta = {
-                "session_id": session_id,
-                "color": correct_color_name,
-                "format": "webp",
-                "alpha": True,
-                "items": []
-            }
-
-            def encode_webp_rgba(img_rgb: np.ndarray, alpha_mask: np.ndarray) -> bytes:
-                # Prepare BGRA and encode
-                try:
-                    alpha_f = cv2.GaussianBlur(alpha_mask.astype("float32") / 255.0, (0, 0), 0.7)
-                    alpha_f = np.clip(alpha_f, 0.0, 1.0)
-                    alpha = (alpha_f * 255.0).astype("uint8")
-                except Exception:
-                    alpha = alpha_mask.astype("uint8")
-                bgra = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGRA)
-                bgra[:, :, 3] = alpha
-                fully_transparent = (alpha == 0)
-                if fully_transparent.any():
-                    bgra[fully_transparent, :3] = 0
-                params = [cv2.IMWRITE_WEBP_QUALITY, 95]
-                ok, buf = cv2.imencode('.webp', bgra, params)
-                if not ok:
-                    raise ImageProcessingException("WEBP encode failed")
-                return buf.tobytes()
-
-            # Base result
-            base_rgb = results.get('base_result')
-            if base_rgb is not None:
-                webp_bytes = encode_webp_rgba(base_rgb, mask_array)
-                zf.writestr('base.webp', webp_bytes)
-                meta["items"].append({"name": "base", "path": "base.webp"})
-
-            # Tones
-            tones = results.get('tones', {})
-            for tone_name, tone_img in tones.items():
-                if tone_img is None:
-                    continue
-                webp_bytes = encode_webp_rgba(tone_img, mask_array)
-                path = f"tones/{tone_name}.webp"
-                zf.writestr(path, webp_bytes)
-                meta["items"].append({"name": tone_name, "path": path})
-
-            zf.writestr('metadata.json', json.dumps(meta))
-
-        return memory_zip.getvalue()
+            # Stop iteration; base already sent
+            return
     
     def change_hair_color(self, file, color_name: str, tone: str = None) -> bytes:
         """

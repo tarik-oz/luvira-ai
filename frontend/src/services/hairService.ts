@@ -6,9 +6,12 @@
 import apiService from './apiService'
 import { useAppState } from '../composables/useAppState'
 import type { ColorChangeResult } from '../composables/useAppState'
-import type { JSZipInstance, JSZipFolder, JSZipObject } from 'jszip'
 
 class HairService {
+  private activeController: AbortController | null = null
+  private activeRequestId = 0
+  private activeColor: string | null = null
+
   /**
    * Upload image and prepare session
    */
@@ -55,6 +58,8 @@ class HairService {
       getCachedColorResult,
       setCurrentColorResult,
       setSessionError,
+      setColorBaseResult,
+      upsertColorTone,
     } = useAppState()
 
     if (!sessionId.value) {
@@ -68,64 +73,14 @@ class HairService {
       return
     }
 
-    setIsProcessing(true)
     try {
-      // Fetch ZIP
-      const zipBlob = await apiService.fetchOverlaysBundle(sessionId.value, colorName)
-      const arrayBuf = await zipBlob.arrayBuffer()
+      // Seed UI so TonePalette opens immediately; base overlay will replace soon
+      setColorBaseResult(cacheKey, '')
 
-      // Lazy load JSZip
-      const JSZipMod = await import('jszip')
-      const zip = await (
-        JSZipMod.default as {
-          loadAsync: (data: ArrayBuffer | Uint8Array) => Promise<JSZipInstance>
-        }
-      ).loadAsync(arrayBuf)
-
-      // Helper to convert Uint8Array to data URL (WEBP)
-      const u8ToDataUrl = (u8: Uint8Array) => {
-        const blob = new Blob([u8], { type: 'image/webp' })
-        return URL.createObjectURL(blob)
-      }
-
-      // Base overlay
-      let baseOverlayUrl = ''
-      if (zip.file('base.webp')) {
-        const baseU8 = await zip.file('base.webp')!.async('uint8array')
-        baseOverlayUrl = u8ToDataUrl(baseU8)
-      }
-
-      // Tones
-      const tones: Record<string, string> = {}
-      const tonesFolder = zip.folder('tones') as JSZipFolder | null
-      const toneFiles: Array<Promise<void>> = []
-      tonesFolder?.forEach((relPath: string, file: JSZipObject) => {
-        if (relPath.endsWith('.webp')) {
-          const basename = relPath.split('/').pop() || relPath
-          const toneName = basename.replace('.webp', '')
-          toneFiles.push(
-            file.async('uint8array').then((u8: Uint8Array) => {
-              tones[toneName] = u8ToDataUrl(u8)
-            }),
-          )
-        }
+      await this.startStream(sessionId.value, cacheKey, true, (name, url) => {
+        if (name === 'base') setColorBaseResult(cacheKey, url)
+        else upsertColorTone(cacheKey, name, url)
       })
-      await Promise.all(toneFiles)
-
-      // Compose base overlay over original for immediate display
-      const composedBaseUrl = baseOverlayUrl
-
-      // Build result and cache
-      const colorResult: ColorChangeResult = {
-        color: cacheKey,
-        originalColor: colorName,
-        selectedTone: null,
-        // Store composed base for display
-        baseResult: composedBaseUrl,
-        tones,
-      }
-
-      setCurrentColorResult(colorResult)
     } catch (error: unknown) {
       console.error('❌ All-tones change failed:', error)
       const message = error instanceof Error ? error.message : String(error)
@@ -134,8 +89,6 @@ class HairService {
         return
       }
       throw error instanceof Error ? error : new Error(message)
-    } finally {
-      setIsProcessing(false)
     }
   }
 
@@ -145,6 +98,76 @@ class HairService {
     const { currentColorResult, setProcessedImageToTone } = useAppState()
     if (!currentColorResult.value) return
     setProcessedImageToTone(toneName)
+  }
+
+  /** Ensure streaming is running for given color (used when a missing tone is clicked) */
+  async ensureColorStream(colorName: string) {
+    const { sessionId, setColorBaseResult, upsertColorTone } = useAppState()
+    if (!sessionId.value) return
+    // If already streaming same color, do nothing
+    if (this.activeColor === colorName && this.activeController) return
+    await this.startStream(sessionId.value, colorName, false, (name, url) => {
+      if (name === 'base') setColorBaseResult(colorName, url)
+      else upsertColorTone(colorName, name, url)
+    })
+  }
+
+  /** Internal: start streaming; markProcessing controls global overlay spinner behavior */
+  private async startStream(
+    sessionId: string,
+    colorName: string,
+    markProcessing: boolean,
+    onPartUrl: (name: string, url: string) => void,
+  ) {
+    const { setIsProcessing, selectedTone, getCachedColorResult } = useAppState()
+    // Abort previous
+    if (this.activeController) {
+      try {
+        this.activeController.abort()
+      } catch {}
+    }
+    const requestId = ++this.activeRequestId
+    this.activeColor = colorName
+    const controller = new AbortController()
+    this.activeController = controller
+    if (markProcessing) setIsProcessing(true)
+
+    try {
+      await apiService.streamOverlays(
+        sessionId,
+        colorName,
+        (name, bytes) => {
+          if (requestId !== this.activeRequestId) return // stale
+          const url = URL.createObjectURL(new Blob([bytes], { type: 'image/webp' }))
+          onPartUrl(name, url)
+          if (name === 'base' && markProcessing) {
+            // If a non-base tone is selected and not yet ready, keep spinner
+            const sel = selectedTone.value
+            let ready = true
+            if (sel) {
+              const cached = getCachedColorResult(colorName)
+              ready = Boolean(cached && cached.tones && cached.tones[sel])
+            }
+            if (ready) setIsProcessing(false)
+          }
+        },
+        controller.signal,
+      )
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      // Swallow abort/cancel or stale request errors to avoid UI rollback
+      if (requestId !== this.activeRequestId) return
+      if (controller.signal.aborted) return
+      if (message === 'AbortError' || message === 'Failed to fetch') return
+      // Propagate others (e.g., SESSION_EXPIRED)
+      throw error
+    } finally {
+      if (requestId === this.activeRequestId) {
+        this.activeController = null
+        this.activeColor = null
+        if (markProcessing) setIsProcessing(false)
+      }
+    }
   }
 }
 

@@ -35,7 +35,12 @@ MODEL_CONFIG = {
     "default_model_path": str(PROJECT_ROOT / "model" / "trained_models" / "2025-07-15_06-54-35_acc0.9757" / "best_model.pth"),
     "prediction_timeout": 30,  # seconds
     "color_change_timeout": 30,  # seconds
-    "device_preference": "auto"  # auto, cpu or cuda
+    "device_preference": "auto",  # auto, cpu or cuda
+    # Hair presence validation (upload-only gate)
+    # Pixels above this grayscale value are counted as hair for presence check
+    "hair_presence_pixel_threshold": 35,
+    # Minimal ratio of hair pixels to accept image (e.g., 0.5%)
+    "minimal_hair_ratio": 0.005,
 }
 
 # Session/Cache settings
