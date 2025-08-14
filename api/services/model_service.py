@@ -4,8 +4,9 @@ Model management service for Hair Segmentation API
 
 import json
 import logging
+import os
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from ..core.exceptions import ModelNotLoadedException, ModelLoadException
 from ..utils import ModelPathValidator
 from ..config import MODEL_CONFIG
@@ -13,6 +14,14 @@ from model.training.trainer import create_trainer
 from model.inference.predictor import create_predictor
 
 logger = logging.getLogger(__name__)
+
+# boto3 is optional; only needed when MODEL_S3_URI is configured
+try:
+    import boto3  # type: ignore
+    from botocore.exceptions import BotoCoreError, ClientError  # type: ignore
+except Exception:  # pragma: no cover
+    boto3 = None  # type: ignore
+    BotoCoreError = ClientError = Exception  # type: ignore
 
 
 class ModelService:
@@ -87,6 +96,14 @@ class ModelService:
         """
         try:
             model_path = model_path or MODEL_CONFIG["default_model_path"]
+
+            # Fetch from S3 if configured and local file is missing
+            model_s3_uri = (MODEL_CONFIG.get("model_s3_uri") or "").strip()
+            if model_s3_uri and not Path(model_path).exists():
+                try:
+                    self._ensure_local_model_file_from_s3(model_s3_uri, model_path)
+                except Exception as e:
+                    logger.error(f"Failed to fetch model from S3: {e}")
             
             # Validate model path
             ModelPathValidator.validate_model_path(model_path)
@@ -134,6 +151,14 @@ class ModelService:
         """
         try:
             model_path = model_path or MODEL_CONFIG["default_model_path"]
+
+            # Ensure local availability from S3 if necessary
+            model_s3_uri = (MODEL_CONFIG.get("model_s3_uri") or "").strip()
+            if model_s3_uri and not Path(model_path).exists():
+                try:
+                    self._ensure_local_model_file_from_s3(model_s3_uri, model_path)
+                except Exception as e:
+                    logger.error(f"Failed to fetch model from S3 for reload: {e}")
             
             # Validate model path
             ModelPathValidator.validate_model_path(model_path)
@@ -261,3 +286,39 @@ class ModelService:
         except Exception as e:
             logger.error(f"Failed to load model: {e}")
             return False 
+
+    # --- S3 helpers ---
+    def _parse_s3_uri(self, s3_uri: str) -> Tuple[str, str]:
+        if not s3_uri.startswith("s3://"):
+            raise ValueError("MODEL_S3_URI must start with s3://")
+        without_scheme = s3_uri[len("s3://"):]
+        parts = without_scheme.split("/", 1)
+        if len(parts) != 2 or not parts[0] or not parts[1]:
+            raise ValueError("Invalid S3 URI. Expected s3://bucket/key")
+        return parts[0], parts[1]
+
+    def _ensure_local_model_file_from_s3(self, s3_uri: str, local_path: str) -> None:
+        if boto3 is None:
+            raise RuntimeError("boto3 is required to download model from S3. Please install boto3.")
+        bucket, key = self._parse_s3_uri(s3_uri)
+        target = Path(local_path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Downloading model from S3 s3://{bucket}/{key} -> {target}")
+        try:
+            s3 = boto3.client("s3")
+            s3.download_file(bucket, key, str(target))
+            # Try to download sibling config.json if it exists
+            try:
+                if "/" in key:
+                    prefix = key.rsplit('/', 1)[0]
+                    config_key = f"{prefix}/config.json"
+                else:
+                    config_key = "config.json"
+                config_local = target.parent / "config.json"
+                s3.head_object(Bucket=bucket, Key=config_key)
+                logger.info(f"Found config.json in S3, downloading: s3://{bucket}/{config_key}")
+                s3.download_file(bucket, config_key, str(config_local))
+            except Exception:
+                logger.info("No config.json found alongside model in S3; proceeding without it")
+        except (BotoCoreError, ClientError) as e:
+            raise RuntimeError(f"S3 download failed: {e}")
