@@ -178,7 +178,7 @@ const getTransitionStyle = () => ({
   <div class="flex h-full flex-col items-center justify-center gap-4">
     <!-- Main Showcase -->
     <div
-      class="relative h-[28rem] w-96 overflow-hidden rounded-xl transition-opacity duration-300"
+      class="relative aspect-[3/4] w-full max-w-[22rem] overflow-hidden rounded-xl transition-opacity duration-300 sm:max-w-[24rem] md:aspect-auto md:h-[31rem] md:w-[29rem] md:max-w-none lg:h-[28rem] lg:w-96"
       :style="{ opacity: showcaseOpacity }"
     >
       <!-- Base Image (Current Color) -->
@@ -206,12 +206,14 @@ const getTransitionStyle = () => ({
     </div>
 
     <!-- Model Selection Thumbnails -->
-    <div class="flex gap-4">
+    <div
+      class="mx-auto flex w-full max-w-[22rem] justify-center gap-3 sm:max-w-[24rem] md:w-[29rem] md:max-w-none md:gap-4 lg:w-96"
+    >
       <div
         v-for="(model, index) in models"
         :key="model.id"
         @click="selectModel(index)"
-        class="h-24 w-24 cursor-pointer overflow-hidden rounded-lg transition-all duration-500"
+        class="h-20 w-20 cursor-pointer overflow-hidden rounded-lg transition-all duration-500 sm:h-24 sm:w-24"
         :class="{
           'border-primary scale-110 border-2 shadow-lg': activeModelIndex === index,
           'hover:border-base-content/50 border-2 border-transparent': activeModelIndex !== index,

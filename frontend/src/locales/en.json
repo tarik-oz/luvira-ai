@@ -40,9 +40,9 @@
   },
   "uploadSection": {
     "uploadImage": "Choose or drag image",
-    "tooltip": "JPG, PNG, Max 10MB",
-    "validationError": "Invalid file. Please use JPG/PNG, max 10MB.",
-    "invalidType": "Unsupported file type. Please use JPG or PNG.",
+    "tooltip": "JPG/JPEG, PNG, Max 10MB",
+    "validationError": "Invalid file. Please use JPG/JPEG or PNG (max 10MB).",
+    "invalidType": "Unsupported file type. Please use JPG/JPEG or PNG.",
     "maxSize": "File is too large. Max 10MB.",
     "tooSmall": "Image is too small. Minimum {min}x{min} px.",
     "decodeError": "Could not read the image file. Please try a different file.",

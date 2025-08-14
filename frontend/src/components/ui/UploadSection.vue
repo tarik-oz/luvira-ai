@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { PhUploadSimple, PhInfo, PhWarning } from '@phosphor-icons/vue'
 import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../composables/useAppState'
@@ -13,13 +13,34 @@ const router = useRouter()
 // Refs
 const fileInput = ref<HTMLInputElement>()
 const showTooltip = ref(false)
+let tooltipTimeout: number | null = null
+const toggleTooltip = () => {
+  showTooltip.value = !showTooltip.value
+  if (tooltipTimeout) {
+    clearTimeout(tooltipTimeout)
+    tooltipTimeout = null
+  }
+  if (showTooltip.value) {
+    tooltipTimeout = window.setTimeout(() => {
+      showTooltip.value = false
+      tooltipTimeout = null
+    }, 2500)
+  }
+}
+
+onUnmounted(() => {
+  if (tooltipTimeout) {
+    clearTimeout(tooltipTimeout)
+    tooltipTimeout = null
+  }
+})
 const isDragOver = ref(false)
 const errorMessage = ref<string | null>(null)
 
 // Constants for validation
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
-const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png']
-const MAX_DIMENSION = 4096 // Maximum width or height
+const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/jpg']
+const MAX_DIMENSION = 1600 // Maximum width or height
 const MIN_DIMENSION = 400 // Minimum width and height
 
 const resizeImage = (file: File): Promise<File> => {
@@ -212,12 +233,12 @@ const handleDragLeave = (event: DragEvent) => {
   <div>
     <div
       :class="[
-        'group relative flex flex-col items-center justify-center rounded-xl border-2 p-10 text-center transition-all duration-300',
+        'group focus-visible:ring-primary/40 no-callout relative flex flex-col items-center justify-center rounded-xl border-2 p-10 text-center transition-all duration-300 select-none focus-visible:ring-2 focus-visible:outline-none active:scale-[0.98]',
         isUploading
           ? 'border-base-content/10 bg-base-content/5 cursor-not-allowed'
           : isDragOver
             ? 'border-accent bg-accent/10'
-            : 'border-base-content/20 bg-base-content hover:bg-accent cursor-pointer',
+            : 'border-base-content/20 bg-base-content md:hover:bg-primary cursor-pointer',
       ]"
       @click="openFileDialog"
       @drop="handleDrop"
@@ -242,25 +263,25 @@ const handleDragLeave = (event: DragEvent) => {
         :class="[
           'mb-5 flex h-20 w-20 items-center justify-center rounded-full shadow-sm transition-colors duration-300',
           isDragOver ? 'bg-accent/20' : 'bg-base-100/10',
-          !isDragOver && 'group-hover:bg-base-100/20',
+          !isDragOver && 'md:group-hover:bg-base-100/20',
         ]"
       >
         <PhUploadSimple
           :class="[
             'h-8 w-8 transition-colors duration-300',
             isDragOver ? 'text-accent/70' : 'text-base-100/80',
-            !isDragOver && 'group-hover:text-base-100',
+            !isDragOver && 'md:group-hover:text-base-100',
           ]"
         />
       </div>
 
       <!-- Upload text -->
-      <div class="mb-1">
+      <div class="mb-1 select-none">
         <h3
           :class="[
             'text-xl font-semibold transition-colors duration-300',
             isDragOver ? 'text-accent' : 'text-base-100/80',
-            !isDragOver && 'group-hover:text-base-100',
+            !isDragOver && 'md:group-hover:text-base-100',
           ]"
         >
           {{ t('uploadSection.uploadImage') }}
@@ -279,20 +300,22 @@ const handleDragLeave = (event: DragEvent) => {
 
       <!-- Info icon and tooltip -->
       <div
-        class="absolute right-3 bottom-3 z-20 transition-colors duration-300"
+        class="absolute right-3 bottom-3 z-20 transition-colors duration-200"
         @mouseenter="showTooltip = true"
         @mouseleave="showTooltip = false"
+        @click.stop.prevent="toggleTooltip()"
+        @touchstart.stop.prevent="toggleTooltip()"
       >
         <PhInfo
           :class="[
-            'h-6 w-6 transition-colors duration-300',
-            isDragOver ? 'text-accent/70' : 'text-base-100/60 group-hover:text-base-100/70',
-            !isDragOver && 'group-hover:text-accent',
+            'h-6 w-6 cursor-help transition-colors duration-200',
+            isDragOver ? 'text-accent/70' : 'text-base-100/70',
+            !isDragOver && 'md:group-hover:text-base-100/70',
           ]"
         />
         <div
           v-if="showTooltip"
-          class="bg-base-100/100 text-base-content/90 absolute right-0 bottom-7 rounded px-3 py-1 text-xs font-bold whitespace-nowrap shadow transition-colors duration-300"
+          class="bg-base-100 text-base-content ring-base-content/10 pointer-events-none absolute right-0 bottom-7 z-30 rounded-md px-3 py-1.5 text-xs font-semibold whitespace-nowrap shadow-lg ring-1 transition-all duration-200"
         >
           {{ t('uploadSection.tooltip') }}
         </div>

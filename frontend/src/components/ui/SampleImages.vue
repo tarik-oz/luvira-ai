@@ -71,10 +71,12 @@ defineExpose({ open })
   <!-- Full Screen Modal -->
   <div
     v-if="showModal"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs"
+    class="no-callout fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-[clamp(12px,5vw,24px)] backdrop-blur-xs select-none"
     @click.self="close"
   >
-    <div class="bg-base-content/80 relative w-full max-w-2xl rounded-xl p-8 shadow-2xl">
+    <div
+      class="bg-base-content/80 relative w-full max-w-2xl rounded-xl p-[clamp(12px,3vw,24px)] shadow-2xl"
+    >
       <button
         @click="close"
         :disabled="isUploading"
@@ -83,18 +85,20 @@ defineExpose({ open })
         <PhX class="h-4 w-4" weight="bold" />
       </button>
 
-      <div class="text-base-100 mb-6 text-center text-2xl font-bold">
+      <div class="text-base-100 mb-4 text-center text-2xl font-bold">
         {{ t('upload.sampleButton') }}
       </div>
 
       <!-- Image Grid -->
-      <div class="mb-6 grid grid-cols-4 place-items-center gap-4">
+      <div
+        class="mb-4 grid grid-cols-2 place-items-center gap-x-2 gap-y-3 sm:grid-cols-3 md:grid-cols-3 md:gap-x-1"
+      >
         <div
           v-for="(img, index) in sampleImages"
           :key="img.id"
           @click="handleImageSelect(index, img.url)"
           :class="[
-            'bg-base-200 flex h-40 w-32 cursor-pointer items-center justify-center overflow-hidden rounded-lg transition-all duration-300',
+            'bg-base-200 flex h-36 w-28 cursor-pointer items-center justify-center overflow-hidden rounded-lg transition-all duration-300 md:h-40 md:w-32',
             selectedImageIndex === index
               ? 'ring-primary scale-105 ring-4'
               : isUploading

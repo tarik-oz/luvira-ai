@@ -11,6 +11,9 @@ const selectedColor = ref<string | null>(null)
 
 const colors = AVAILABLE_COLORS.map((name) => ({ name }))
 
+// Default vertical pattern preview
+const defaultPatternUrl = new URL('../../assets/hair_patterns/default.webp', import.meta.url).href
+
 const selectColor = async (colorName: string) => {
   if (isProcessing.value) return // Prevent multiple requests
 
@@ -50,47 +53,52 @@ const selectColor = async (colorName: string) => {
     </div>
 
     <!-- Color Grid -->
-    <div class="grid grid-cols-4 gap-3">
+    <div class="grid grid-cols-6 gap-2 md:grid-cols-6 lg:grid-cols-7">
       <div
         v-for="color in colors"
         :key="color.name"
         @click="selectColor(color.name)"
         :class="[
-          'bg-base-content/80 rounded-xl border-2 p-3 transition-all duration-200',
-          selectedColor === color.name
-            ? 'border-primary ring-primary/20 shadow-lg ring-2'
-            : 'border-gray-200',
+          'bg-base-content/80 border-base-100/20 rounded-xl border p-0.5 transition-all duration-200',
+          selectedColor === color.name ? 'border-primary ring-primary/20 shadow-lg ring-2' : '',
           isProcessing
             ? selectedColor === color.name
-              ? 'cursor-wait'
+              ? 'cursor-wait opacity-60'
               : 'pointer-events-none cursor-not-allowed opacity-50'
             : 'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
         ]"
       >
-        <!-- Loading Spinner for selected color -->
         <div
-          v-if="isProcessing && selectedColor === color.name"
-          class="bg-base-100 mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-lg"
+          class="bg-base-100 relative w-full overflow-hidden rounded-lg"
+          style="aspect-ratio: 9 / 16"
         >
-          <div class="border-accent h-6 w-6 animate-spin rounded-full border-t-4 border-b-4"></div>
+          <img
+            :src="defaultPatternUrl"
+            :alt="t(`colors.${color.name}`) as string"
+            class="h-full w-full object-cover"
+          />
+          <!-- Loading overlay on selected color -->
+          <div
+            v-if="isProcessing && selectedColor === color.name"
+            class="bg-base-content/30 absolute inset-0 flex items-center justify-center"
+          >
+            <div
+              class="border-accent h-7 w-7 animate-spin rounded-full border-t-4 border-b-4"
+            ></div>
+          </div>
+          <!-- Bottom label bar -->
+          <div class="bg-base-100/95 absolute right-0 bottom-0 left-0" style="height: 20%">
+            <div class="flex h-full w-full items-center justify-center">
+              <span
+                :class="[
+                  'text-xs font-semibold',
+                  selectedColor === color.name ? 'text-primary' : 'text-base-content',
+                ]"
+                >{{ t(`colors.${color.name}`) }}</span
+              >
+            </div>
+          </div>
         </div>
-        <!-- Placeholder Image -->
-        <div
-          v-else
-          class="bg-base-100 mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-lg"
-        >
-          <span class="text-base-300 text-xl">🖼️</span>
-        </div>
-        <!-- Color Name -->
-        <span
-          :class="[
-            'block text-center text-xs font-medium transition-colors duration-200',
-            selectedColor === color.name ? 'text-primary' : 'text-base-300',
-            isProcessing && selectedColor !== color.name ? 'opacity-50' : '',
-          ]"
-        >
-          {{ t(`colors.${color.name}`) }}
-        </span>
       </div>
     </div>
   </div>

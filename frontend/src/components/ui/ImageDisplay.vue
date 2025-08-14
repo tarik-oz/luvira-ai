@@ -15,6 +15,26 @@ const { t } = useI18n()
 const { uploadedImage, processedImage, isProcessing, currentColorResult, selectedTone } =
   useAppState()
 
+// Keep container aspect ratio equal to the image to avoid cropping tall/portrait photos
+const containerAspect = ref('1 / 1')
+const updateAspectFromImage = () => {
+  if (!uploadedImage.value) {
+    containerAspect.value = '1 / 1'
+    return
+  }
+  const img = new Image()
+  img.onload = () => {
+    const w = img.naturalWidth || img.width
+    const h = img.naturalHeight || img.height
+    if (w > 0 && h > 0) {
+      containerAspect.value = `${w} / ${h}`
+    }
+  }
+  img.src = uploadedImage.value
+}
+
+watch(uploadedImage, () => updateAspectFromImage(), { immediate: true })
+
 // Compare mode functionality
 const containerRef = ref<HTMLElement>()
 const sliderPosition = ref(50) // Percentage
@@ -96,7 +116,7 @@ const labelText = computed(() => {
       <!-- Loading Overlay -->
       <div
         v-if="isProcessing"
-        class="absolute inset-0 z-20 flex items-center justify-center bg-black/50"
+        class="absolute inset-0 z-10 flex items-center justify-center bg-black/50"
       >
         <div class="flex flex-col items-center gap-3">
           <span
@@ -109,7 +129,8 @@ const labelText = computed(() => {
       <!-- Image Display Area -->
       <div
         ref="containerRef"
-        class="relative aspect-square w-full bg-gradient-to-br from-gray-50 to-gray-100"
+        class="bg-base-content relative w-full"
+        :style="{ aspectRatio: containerAspect, maxHeight: '75vh' }"
         :class="{ 'cursor-pointer select-none': compareMode }"
         @mousedown="handleMouseDown"
         @click="handleClick"
@@ -120,14 +141,14 @@ const labelText = computed(() => {
             v-if="uploadedImage"
             :src="uploadedImage"
             alt="Original"
-            class="h-full w-full object-cover"
+            class="h-full w-full object-contain"
             :class="{ 'opacity-75': isProcessing }"
           />
           <img
             v-if="processedImage"
             :src="processedImage"
             alt="Overlay"
-            class="pointer-events-none absolute inset-0 z-10 h-full w-full object-cover"
+            class="pointer-events-none absolute inset-0 z-0 h-full w-full object-contain"
             :class="{ 'opacity-75': isProcessing }"
           />
         </template>
@@ -145,7 +166,7 @@ const labelText = computed(() => {
               v-if="uploadedImage"
               :src="uploadedImage"
               alt="Original"
-              class="h-full w-full object-cover"
+              class="h-full w-full object-contain"
             />
             <!-- Before Label (Only visible in left part) -->
             <div
@@ -166,13 +187,13 @@ const labelText = computed(() => {
               v-if="uploadedImage"
               :src="uploadedImage"
               alt="Original"
-              class="h-full w-full object-cover"
+              class="h-full w-full object-contain"
             />
             <img
               v-if="processedImage"
               :src="processedImage"
               alt="Overlay"
-              class="pointer-events-none absolute inset-0 z-10 h-full w-full object-cover"
+              class="pointer-events-none absolute inset-0 z-0 h-full w-full object-contain"
             />
             <!-- After Label (Only visible in right part) -->
             <div

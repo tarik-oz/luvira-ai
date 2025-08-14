@@ -12,7 +12,11 @@ const {
   getColorToneState,
   setColorToneState,
   setProcessingError,
+  setIsProcessing,
 } = useAppState()
+
+// Temporary pattern: use a single default preview for all tones
+const defaultPatternUrl = new URL('../../assets/hair_patterns/default.webp', import.meta.url).href
 
 // Backend'deki CUSTOM_TONES ile eşleşen ton tanımları
 const toneDefinitions = TONE_DEFINITIONS
@@ -66,6 +70,7 @@ const selectTone = async (toneName: string) => {
   // Eğer tone henüz cache'te yoksa stream'i başlat (tek istek mantığı)
   const toneUrl = currentColorResult.value.tones[toneName]
   if (!toneUrl) {
+    setIsProcessing(true)
     await hairService.ensureColorStream(colorName)
   }
 
@@ -100,55 +105,56 @@ const selectBase = async () => {
   <!-- Sadece bir renk seçilmişse göster -->
   <div
     v-if="currentColorResult"
-    class="bg-base-content/70 border-base-content/80 rounded-2xl border p-4 shadow-lg"
+    class="bg-base-content/70 border-base-content/80 rounded-2xl border p-3 shadow-lg lg:p-4"
   >
     <!-- Header -->
-    <div class="mb-4">
+    <div class="mb-3 lg:mb-4">
       <h3 class="text-base-100 mb-1 text-lg font-bold">
         {{ t('tonePalette.title') }} - {{ currentColorResult.originalColor }}
       </h3>
       <p class="text-base-100/70 text-xs">{{ t('tonePalette.instruction') }}</p>
     </div>
 
-    <!-- Base Color + Tones Grid -->
-    <div class="grid grid-cols-6 gap-2">
+    <!-- Base Color + Tones Grid (slightly denser than color grid) -->
+    <div class="grid grid-cols-6 gap-2 md:grid-cols-7 lg:grid-cols-8">
       <!-- Base Color (No Tone) -->
       <div
         @click="selectBase"
         :class="[
-          'bg-base-content/80 rounded-xl border-2 p-2 transition-all duration-200',
-          currentSelectedTone === null
-            ? 'border-primary ring-primary/20 shadow-lg ring-2'
-            : 'border-gray-200',
+          'bg-base-content/80 border-base-100/20 rounded-xl border p-0.5 transition-all duration-200',
+          currentSelectedTone === null ? 'border-primary ring-primary/20 shadow-lg ring-2' : '',
           isProcessing && currentSelectedTone === null
             ? 'cursor-wait'
             : 'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
         ]"
       >
-        <!-- Loading Spinner for base -->
         <div
-          v-if="isProcessing && currentSelectedTone === null"
-          class="bg-base-100 mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-lg"
+          class="bg-base-100 relative w-full overflow-hidden rounded-lg"
+          style="aspect-ratio: 9 / 16"
         >
-          <div class="border-accent h-6 w-6 animate-spin rounded-full border-t-4 border-b-4"></div>
+          <img :src="defaultPatternUrl" alt="Base pattern" class="h-full w-full object-cover" />
+          <!-- Loading overlay on base -->
+          <div
+            v-if="isProcessing && currentSelectedTone === null"
+            class="bg-base-content/30 absolute inset-0 flex items-center justify-center"
+          >
+            <div
+              class="border-accent h-7 w-7 animate-spin rounded-full border-t-4 border-b-4"
+            ></div>
+          </div>
+          <!-- Bottom label bar -->
+          <div class="bg-base-100/95 absolute right-0 bottom-0 left-0" style="height: 20%">
+            <div class="flex h-full w-full items-center justify-center">
+              <span
+                :class="[
+                  'text-xs font-semibold',
+                  currentSelectedTone === null ? 'text-primary' : 'text-base-content',
+                ]"
+                >Base</span
+              >
+            </div>
+          </div>
         </div>
-        <!-- Base Preview -->
-        <div
-          v-else
-          class="bg-base-100 mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-lg"
-        >
-          <span class="text-base-300 text-sm">🏠</span>
-        </div>
-        <!-- Base Label -->
-        <span
-          :class="[
-            'block text-center text-xs font-medium transition-colors duration-200',
-            currentSelectedTone === null ? 'text-primary' : 'text-base-300',
-            isProcessing && currentSelectedTone !== null ? 'opacity-50' : '',
-          ]"
-        >
-          Base
-        </span>
       </div>
 
       <!-- Tone Options -->
@@ -157,56 +163,45 @@ const selectBase = async () => {
         :key="tone.name"
         @click="selectTone(tone.name)"
         :class="[
-          'bg-base-content/80 rounded-xl border-2 p-2 transition-all duration-200',
+          'bg-base-content/80 border-base-100/20 rounded-xl border p-0.5 transition-all duration-200',
           currentSelectedTone === tone.name
             ? 'border-primary ring-primary/20 shadow-lg ring-2'
-            : 'border-gray-200',
+            : '',
           'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
         ]"
       >
-        <!-- Loading Spinner for selected tone -->
         <div
-          v-if="isProcessing && currentSelectedTone === tone.name"
-          class="bg-base-100 mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-lg"
+          class="bg-base-100 relative w-full overflow-hidden rounded-lg"
+          style="aspect-ratio: 9 / 16"
         >
-          <div class="border-accent h-4 w-4 animate-spin rounded-full border-t-2 border-b-2"></div>
-        </div>
-        <!-- Tone Preview -->
-        <div
-          v-else
-          class="bg-base-100 mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-lg"
-        >
-          <template
-            v-if="currentSelectedTone === tone.name && !currentColorResult?.tones[tone.name]"
+          <img
+            :src="defaultPatternUrl"
+            :alt="tone.displayName"
+            class="h-full w-full object-cover"
+          />
+          <!-- Loading overlay on selected tone -->
+          <div
+            v-if="isProcessing && currentSelectedTone === tone.name"
+            class="bg-base-content/30 absolute inset-0 flex items-center justify-center"
           >
             <div
-              class="border-accent h-4 w-4 animate-spin rounded-full border-t-2 border-b-2"
+              class="border-accent h-5 w-5 animate-spin rounded-full border-t-2 border-b-2"
             ></div>
-          </template>
-          <template v-else>
-            <span class="text-base-300 text-sm">✨</span>
-          </template>
+          </div>
+          <!-- Bottom label bar -->
+          <div class="bg-base-100/95 absolute right-0 bottom-0 left-0" style="height: 20%">
+            <div class="flex h-full w-full items-center justify-center">
+              <span
+                :class="[
+                  'text-xs font-semibold',
+                  currentSelectedTone === tone.name ? 'text-primary' : 'text-base-content',
+                ]"
+                >{{ tone.displayName }}</span
+              >
+            </div>
+          </div>
         </div>
-        <!-- Tone Name -->
-        <span
-          :class="[
-            'block text-center text-xs font-medium transition-colors duration-200',
-            currentSelectedTone === tone.name ? 'text-primary' : 'text-base-300',
-            isProcessing && currentSelectedTone !== tone.name ? 'opacity-50' : '',
-          ]"
-        >
-          {{ tone.displayName }}
-        </span>
       </div>
-    </div>
-
-    <!-- Selected Tone Description -->
-    <div v-if="currentSelectedTone" class="mt-3 text-center">
-      <p class="text-base-100/80 text-xs italic">
-        {{
-          availableTones.find((t) => t.name === currentSelectedTone)?.description || 'Base color'
-        }}
-      </p>
     </div>
   </div>
 </template>

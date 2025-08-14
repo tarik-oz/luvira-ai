@@ -40,9 +40,9 @@
   },
   "uploadSection": {
     "uploadImage": "Sürükle & bırak veya tıkla",
-    "tooltip": "JPG, PNG, Maks. 10MB",
-    "validationError": "Geçersiz dosya. Lütfen JPG/PNG formatında, maks. 10MB.",
-    "invalidType": "Desteklenmeyen dosya türü. Lütfen JPG veya PNG kullanın.",
+    "tooltip": "JPG/JPEG, PNG, Maks. 10MB",
+    "validationError": "Geçersiz dosya. Lütfen JPG/JPEG veya PNG (maks. 10MB).",
+    "invalidType": "Desteklenmeyen dosya türü. Lütfen JPG/JPEG veya PNG kullanın.",
     "maxSize": "Dosya çok büyük. Maksimum 10MB.",
     "tooSmall": "Görsel çok küçük. Minimum {min}x{min} px.",
     "decodeError": "Görsel dosyası okunamadı. Lütfen farklı bir dosya deneyin.",

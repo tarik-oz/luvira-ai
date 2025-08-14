@@ -70,16 +70,20 @@ function handleHomeClick() {
 
 <template>
   <header
-    class="bg-base-content fixed top-5 left-1/2 z-10 w-full max-w-7xl -translate-x-1/2 transform rounded-full"
+    class="bg-base-content fixed inset-x-0 top-0 z-40 rounded-none md:inset-x-5 md:top-5 md:rounded-full lg:right-auto lg:left-1/2 lg:w-full lg:max-w-7xl lg:-translate-x-1/2 lg:transform"
   >
-    <div class="flex items-center justify-between px-15 py-2">
+    <div class="flex items-center justify-between px-4 py-2 md:px-6 lg:px-8">
       <!-- Logo and Title -->
-      <RouterLink to="/" class="flex items-center gap-x-2" @click="handleHomeClick">
-        <img :src="logo" alt="LuviraAI Logo" class="h-12 w-12 object-contain" />
-        <h1 class="text-base-100 text-2xl font-bold">LuviraAI</h1>
+      <RouterLink to="/" class="flex items-center gap-2 md:gap-3" @click="handleHomeClick">
+        <img :src="logo" alt="LuviraAI Logo" class="h-10 w-10 object-contain md:h-12 md:w-12" />
+        <h1
+          class="text-base-100 relative top-[2px] text-[20px] leading-none font-semibold tracking-tight md:text-2xl"
+        >
+          LuviraAI
+        </h1>
       </RouterLink>
 
-      <div class="flex items-center gap-x-4 px-6">
+      <div class="flex items-center gap-2 px-2 md:gap-4 md:px-6">
         <!-- Theme Toggle -->
         <label class="swap swap-rotate">
           <input
@@ -89,8 +93,8 @@ function handleHomeClick() {
             :checked="theme === 'light'"
             @change="toggleTheme"
           />
-          <PhSun class="swap-on h-8 w-8 text-yellow-300" weight="bold" />
-          <PhMoon class="swap-off text-base-100 h-8 w-8" weight="bold" />
+          <PhSun class="swap-on h-8 w-8 text-yellow-300" />
+          <PhMoon class="swap-off text-base-100 h-8 w-8" />
         </label>
 
         <!-- Language Dropdown -->
@@ -100,8 +104,8 @@ function handleHomeClick() {
             class="flex cursor-pointer items-center rounded"
             @click="toggleLangDropdown"
           >
-            <PhGlobe class="text-base-100 h-8 w-8" weight="bold" />
-            <PhCaretDown class="text-base-100 h-5 w-3" weight="bold" />
+            <PhGlobe class="text-base-100 h-8 w-8" />
+            <PhCaretDown class="text-base-100 h-5 w-3" />
           </button>
           <ul
             v-if="langDropdownOpen"

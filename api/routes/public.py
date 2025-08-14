@@ -55,7 +55,7 @@ async def overlays_with_session(
 ):
     """
     Stream WEBP overlays (multipart/mixed) for base + all tones using cached session data.
-    Part names: base, then each tone name. Quality: WEBP q=90. Soft edges + alpha.
+    Part names: base, then each tone name. Quality: WEBP q=80. Soft edges + alpha.
     """
     try:
         boundary = "luvira"
@@ -63,7 +63,7 @@ async def overlays_with_session(
         def iter_multipart():
             try:
                 for name, webp_bytes in color_change_service.iter_overlays_with_session(
-                    session_id, color_name, webp_quality=90
+                    session_id, color_name, webp_quality=80
                 ):
                     yield f"--{boundary}\r\n".encode()
                     yield b"Content-Type: image/webp\r\n"

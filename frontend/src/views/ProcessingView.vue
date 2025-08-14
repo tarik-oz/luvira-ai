@@ -41,7 +41,7 @@ const confirmSessionExpired = () => {
 <template>
   <div class="container mx-auto px-4">
     <!-- Back Button -->
-    <div class="mb-8">
+    <div class="mb-6 lg:mb-8">
       <AppButton
         @click="goBack"
         class="bg-base-content hover:bg-base-content/80 active:bg-primary/60 max-w-60 px-4 py-2"
@@ -54,9 +54,11 @@ const confirmSessionExpired = () => {
     </div>
 
     <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 gap-8 md:grid-cols-2">
+    <div class="grid grid-cols-1 gap-8 md:grid-cols-2 md:items-start">
       <!-- Left column -->
-      <div class="flex flex-col items-center justify-center px-4 md:px-0">
+      <div
+        class="flex flex-col items-center justify-center px-4 md:items-start md:justify-start md:px-0"
+      >
         <!-- Image Display Container -->
         <div class="mx-auto w-full max-w-lg space-y-4">
           <!-- Image Display -->

@@ -35,6 +35,7 @@ const preferredFacing = ref<'user' | 'environment'>('user')
 const isPortraitVideo = ref(false)
 const useCroppingOverlay = ref(false)
 const hasMultipleCameras = ref(false)
+const MAX_CAPTURE_DIMENSION = 1600
 
 const updateOrientationFromVideo = () => {
   if (!videoRef.value) return
@@ -230,9 +231,15 @@ const takePhoto = async () => {
     const finalCropY = Math.floor(sourceY)
     // --- END: FINAL CROP DECISION ---
 
-    // Set canvas size to final cropped dimensions
-    canvas.width = finalCropWidth
-    canvas.height = finalCropHeight
+    // Clamp output to MAX_CAPTURE_DIMENSION while preserving AR
+    const maxDim = MAX_CAPTURE_DIMENSION
+    const scale = Math.min(1, maxDim / Math.max(finalCropWidth, finalCropHeight))
+    const outputWidth = Math.floor(finalCropWidth * scale)
+    const outputHeight = Math.floor(finalCropHeight * scale)
+
+    // Set canvas size to output dimensions
+    canvas.width = outputWidth
+    canvas.height = outputHeight
 
     // Draw only the calculated area
     ctx.drawImage(
@@ -243,8 +250,8 @@ const takePhoto = async () => {
       finalCropHeight,
       0,
       0,
-      finalCropWidth,
-      finalCropHeight,
+      outputWidth,
+      outputHeight,
     )
 
     capturedImage.value = canvas.toDataURL('image/jpeg', 0.8)
@@ -401,11 +408,11 @@ defineExpose({ open })
   <!-- Full Screen Modal -->
   <div
     v-if="showModal"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-[clamp(12px,5vw,24px)] backdrop-blur-xs"
     @click.self="close"
   >
     <div
-      class="bg-base-content/80 relative flex w-full flex-col items-center rounded-xl p-8 shadow-2xl"
+      class="bg-base-content/80 relative flex w-full flex-col items-center rounded-xl p-[clamp(12px,3vw,24px)] shadow-2xl"
       :class="[capturedImage ? 'max-w-md' : 'max-w-2xl']"
     >
       <button
@@ -420,7 +427,7 @@ defineExpose({ open })
       <!-- Camera Box with overlay -->
       <div
         class="relative mb-1 flex w-full items-center justify-center overflow-hidden rounded-lg transition-all duration-500 ease-in-out"
-        :class="[capturedImage ? 'h-96' : 'h-72', capturedImage ? '' : 'bg-base-200']"
+        :class="[isPortraitVideo ? 'h-96' : 'h-72', capturedImage ? '' : 'bg-base-200']"
       >
         <!-- Camera switch button (top-right, round) -->
         <button
@@ -448,7 +455,7 @@ defineExpose({ open })
         >
           <img
             :src="capturedImage"
-            class="h-full rounded-lg object-contain transition-all duration-500 ease-in-out"
+            class="h-full rounded-lg object-cover transition-all duration-500 ease-in-out"
             alt="Captured photo"
           />
         </div>
@@ -493,7 +500,10 @@ defineExpose({ open })
       <!-- Error Section -->
       <div v-if="errorMessage" class="my-4 flex items-center justify-center gap-2 text-center">
         <PhWarning class="h-5 w-5 shrink-0 text-red-600" />
-        <span class="text-sm font-medium text-red-600">{{ errorMessage }}</span>
+        <span
+          class="text-sm font-medium text-red-600 md:max-w-[420px] md:truncate md:whitespace-nowrap"
+          >{{ errorMessage }}</span
+        >
       </div>
 
       <!-- Buttons Row -->

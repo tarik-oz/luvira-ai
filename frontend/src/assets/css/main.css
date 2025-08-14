@@ -12,3 +12,8 @@
 body {
   font-family: 'Inter', sans-serif;
 }
+
+/* Utility: prevent iOS/Android long-press callout */
+.no-callout {
+  -webkit-touch-callout: none;
+}
