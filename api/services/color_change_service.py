@@ -4,10 +4,10 @@ Color change service for hair color modification
 
 import logging
 import cv2
-import signal
 import numpy as np
 import sys
 import os
+import concurrent.futures as _futures
 
 # Add color_changer module to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'color_changer'))
@@ -31,17 +31,23 @@ class TimeoutException(Exception):
     pass
 
 
-def timeout_handler(signum, frame):
-    """Signal handler for timeout"""
-    raise TimeoutException("Operation timed out")
-
-
 class ColorChangeService:
     """Service for handling hair color change operations"""
     
     def __init__(self, prediction_service):
         self.prediction_service = prediction_service
         self.color_transformer = ColorTransformer()
+    
+    def _run_with_timeout(self, func, timeout_seconds: int, *args, **kwargs):
+        """Run blocking function with a timeout in a worker thread (thread-safe)."""
+        if not timeout_seconds or timeout_seconds <= 0:
+            return func(*args, **kwargs)
+        with _futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(func, *args, **kwargs)
+            try:
+                return future.result(timeout=timeout_seconds)
+            except _futures.TimeoutError:
+                raise TimeoutException(f"Operation timed out after {timeout_seconds} seconds")
     
     @staticmethod
     def get_available_colors() -> list:
@@ -318,47 +324,36 @@ class ColorChangeService:
 
     
     def _apply_color_change(self, original_image: np.ndarray, mask_array: np.ndarray, color_name: str) -> np.ndarray:
-        """Apply color change by name with timeout"""
+        """Apply color change by name with timeout (thread-safe)."""
         timeout = MODEL_CONFIG.get("color_change_timeout", 30)
-        
-        # Set up timeout signal (Unix systems only)
-        if hasattr(signal, 'SIGALRM'):
-            old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(timeout)
-        
         try:
-            result_image = self.color_transformer.change_hair_color(original_image, mask_array, color_name)
-            return result_image
+            return self._run_with_timeout(
+                self.color_transformer.change_hair_color,
+                timeout,
+                original_image,
+                mask_array,
+                color_name,
+            )
         except TimeoutException:
             raise ImageProcessingException(f"Color change timed out after {timeout} seconds. Please try with a smaller image.")
         except Exception as e:
             logger.error(f"Color change processing failed: {str(e)}")
             raise ImageProcessingException(f"Color change processing failed: {str(e)}")
-        finally:
-            # Restore original signal handler
-            if hasattr(signal, 'SIGALRM'):
-                signal.alarm(0)  # Cancel the alarm
-                signal.signal(signal.SIGALRM, old_handler)
     
     def _apply_color_change_with_tone(self, original_image: np.ndarray, mask_array: np.ndarray, color_name: str, tone: str) -> np.ndarray:
-        """Apply color change with specific tone and timeout"""
+        """Apply color change with specific tone and timeout (thread-safe)."""
         timeout = MODEL_CONFIG.get("color_change_timeout", 30)
-        
-        # Set up timeout signal (Unix systems only)
-        if hasattr(signal, 'SIGALRM'):
-            old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(timeout)
-        
         try:
-            result_image = self.color_transformer.apply_color_with_tone(original_image, mask_array, color_name, tone)
-            return result_image
+            return self._run_with_timeout(
+                self.color_transformer.apply_color_with_tone,
+                timeout,
+                original_image,
+                mask_array,
+                color_name,
+                tone,
+            )
         except TimeoutException:
             raise ImageProcessingException(f"Color change timed out after {timeout} seconds. Please try with a smaller image.")
         except Exception as e:
             logger.error(f"Color change processing failed: {str(e)}")
             raise ImageProcessingException(f"Color change processing failed: {str(e)}")
-        finally:
-            # Restore original signal handler
-            if hasattr(signal, 'SIGALRM'):
-                signal.alarm(0)  # Cancel the alarm
-                signal.signal(signal.SIGALRM, old_handler) 

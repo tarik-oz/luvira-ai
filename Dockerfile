@@ -1,5 +1,5 @@
 # Multi-arch CPU base with PyTorch preinstalled
-FROM pytorch/pytorch:2.1.2-cpu-py3.10
+FROM python:3.10-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -7,12 +7,16 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# System deps (if needed by OpenCV etc.)
+# System deps (OpenCV, SSL)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglib2.0-0 libsm6 libxext6 libxrender1 ca-certificates && \
+    ca-certificates curl libglib2.0-0 libsm6 libxext6 libxrender1 libgl1 && \
     rm -rf /var/lib/apt/lists/*
 
-# Install python deps (torch provided by base image)
+# Install PyTorch CPU wheels first (pin to match project)
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu \
+    torch==2.1.2 torchvision==0.16.2
+
+# Install remaining python deps
 COPY requirements-api.txt ./
 RUN pip install --no-cache-dir -r requirements-api.txt
 

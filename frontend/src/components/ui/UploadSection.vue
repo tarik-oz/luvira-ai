@@ -170,7 +170,7 @@ const processFile = async (file: File) => {
 
   try {
     await hairService.uploadImage(processedFile)
-    router.push('/color-tone-changer')
+    router.push({ name: 'HairColorEditor' })
   } catch (error) {
     console.error('Upload failed:', error)
     const message = error instanceof Error ? error.message : String(error)

@@ -51,7 +51,7 @@ const handleImageSelect = async (index: number, imageUrl: string) => {
     // Close modal and navigate to processing page
     showModal.value = false
     selectedImageIndex.value = null
-    router.push('/color-tone-changer')
+    router.push({ name: 'HairColorEditor' })
   } catch (error) {
     console.error('Sample image upload failed:', error)
     const message = error instanceof Error ? error.message : String(error)

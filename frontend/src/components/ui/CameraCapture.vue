@@ -323,7 +323,7 @@ const submitPhoto = async () => {
 
     // Close modal and navigate
     close()
-    router.push('/color-tone-changer')
+    router.push({ name: 'HairColorEditor' })
   } catch (error) {
     console.error('Camera upload failed:', error)
     const message = error instanceof Error ? error.message : String(error)

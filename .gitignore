@@ -16,3 +16,4 @@ session_data/*
 __pycache__/
 *.pyc
 **/__pycache__/
+.vercel

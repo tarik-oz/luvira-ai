@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useAppState } from '../composables/useAppState'
 import { useRouter } from 'vue-router'
-import { onMounted, ref } from 'vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ImageDisplay from '../components/ui/ImageDisplay.vue'
 import AppButton from '../components/ui/AppButton.vue'
@@ -11,21 +11,12 @@ import { PhCaretLeft, PhWarning } from '@phosphor-icons/vue'
 import TonePalette from '@/components/ui/TonePalette.vue'
 import SessionExpiredModal from '@/components/ui/SessionExpiredModal.vue'
 
-const { uploadedImage, sessionId, resetState, sessionError, setSessionError, processingError } =
-  useAppState()
+const { resetState, sessionError, setSessionError, processingError } = useAppState()
 const router = useRouter()
 const { t } = useI18n()
 
 // Compare mode toggle
 const isCompareMode = ref(false)
-
-// Check if user has valid session on page load
-onMounted(() => {
-  if (!sessionId.value || !uploadedImage.value) {
-    // No session or image, redirect to upload page
-    router.push('/')
-  }
-})
 
 const goBack = () => {
   resetState()
