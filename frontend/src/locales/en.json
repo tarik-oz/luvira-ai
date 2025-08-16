@@ -1,10 +1,11 @@
 {
   "upload": {
-    "title": "Refresh Your Hair: Color & Tone",
-    "description": "Easily try a wide selection of hair colors and natural tones. Instantly preview different looks and find the style that suits you best. Fast, realistic, and free. Give it a try now!",
+    "title": "Hair Color Studio",
+    "description": "Try different hair colors instantly. Fast, realistic, and free.",
     "divider": "or",
-    "sampleButton": "Select a Sample Image",
-    "cameraButton": "Use Camera"
+    "sampleButton": "Use Model",
+    "cameraButton": "Use Camera",
+    "qualityNote": "Clear, high-resolution photos produce better results."
   },
   "colors": {
     "Black": "Black",
@@ -22,34 +23,34 @@
   },
   "camera": {
     "title": "Camera",
-    "preview": "Photo Preview",
+    "preview": "Preview",
     "takePhoto": "Take Photo",
-    "takingPhoto": "Taking Photo...",
-    "retake": "Retake Photo",
-    "guidance": "Please align your face within the center area.",
+    "takingPhoto": "Taking...",
+    "retake": "Retake",
+    "guidance": "Center your face in the frame.",
     "close": "Close",
-    "submit": "Submit",
+    "submit": "Use Photo",
     "uploading": "Uploading...",
-    "noPermission": "Camera access denied. Please allow camera permissions in your browser settings.",
-    "notFound": "No camera found. Please make sure a camera is connected and enabled.",
-    "genericError": "Could not access the camera. Please try again or check your device.",
+    "noPermission": "Camera access denied. Allow camera permissions in your browser settings.",
+    "notFound": "No camera found.",
+    "genericError": "Camera error. Try again.",
     "notSupported": "Camera is not supported on this device/browser.",
-    "httpsRequired": "Camera requires HTTPS. Please use a secure connection.",
-    "notReadable": "Camera is in use by another application or not readable.",
-    "overconstrained": "Camera constraints cannot be satisfied by available devices."
+    "httpsRequired": "HTTPS is required to use the camera.",
+    "notReadable": "Camera in use by another application.",
+    "overconstrained": "Camera settings not supported."
   },
   "uploadSection": {
-    "uploadImage": "Choose or drag image",
-    "tooltip": "JPG/JPEG, PNG, Max 10MB",
-    "validationError": "Invalid file. Please use JPG/JPEG or PNG (max 10MB).",
-    "invalidType": "Unsupported file type. Please use JPG/JPEG or PNG.",
-    "maxSize": "File is too large. Max 10MB.",
-    "tooSmall": "Image is too small. Minimum {min}x{min} px.",
-    "decodeError": "Could not read the image file. Please try a different file.",
-    "zeroSize": "File is empty. Please choose a valid image.",
-    "networkError": "Network error. Please check your connection and try again.",
-    "timeout": "Upload timed out. Please try again.",
-    "noHairDetected": "No hair area detected. Please upload a photo where hair is clearly visible."
+    "uploadImage": "Upload Photo",
+    "tooltip": "JPG, PNG, Max 10MB",
+    "validationError": "Invalid file. Use JPG/PNG (max 10MB).",
+    "invalidType": "Use JPG or PNG files only.",
+    "maxSize": "File too large. Max 10MB.",
+    "tooSmall": "Image too small. Min {min}x{min} px.",
+    "decodeError": "Cannot read image. Try another file.",
+    "zeroSize": "Empty file. Choose a valid image.",
+    "networkError": "Network error. Check your connection and try again.",
+    "timeout": "Upload timed out. Try again.",
+    "noHairDetected": "No hair area detected. Upload a photo where hair is clearly visible."
   },
   "footer": {
     "copyright": "© 2025 Tarık Öz. All rights reserved."
@@ -60,27 +61,33 @@
     "compareMode": "Compare",
     "before": "Before",
     "after": "After",
-    "sessionExpiredTitle": "Session expired",
-    "sessionExpiredMessage": "Your session has expired. Please upload your image again to continue.",
-    "sessionExpiredConfirm": "Okay",
-    "networkError": "Network error. Please check your connection and try again.",
-    "working": "Processing hair color..."
+    "sessionExpiredTitle": "Session Expired",
+    "sessionExpiredMessage": "Session expired. Upload your image again.",
+    "sessionExpiredConfirm": "OK",
+    "networkError": "Network error. Check your connection and try again.",
+    "working": "Processing..."
   },
   "sampleImages": {
-    "loadingSelected": "Selected image is uploading...",
-    "errorMessage": "Image upload failed. Please try again."
+    "loadingSelected": "Loading...",
+    "errorMessage": "Upload failed. Try again."
   },
   "colorPalette": {
     "title": "Color Palette",
-    "instruction": "Select a color to start your transformation",
-    "error": "Failed to apply color. Please try again."
+    "error": "Failed to apply color. Try again."
   },
   "tonePalette": {
-    "title": "Choose Tone",
-    "instruction": "Select a tone variation for your chosen color",
-    "error": "Failed to switch tone. Please try again."
+    "title": "Tone Palette",
+    "error": "Tone change failed. Try again."
   },
   "common": {
     "dismiss": "Dismiss"
+  },
+  "notFound": {
+    "title": "Page Not Found",
+    "description": "The page you're looking for doesn't exist or may have been moved.",
+    "goHome": "Go to Home",
+    "goBack": "Go Back",
+    "help": "Need help?",
+    "contact": "Contact us"
   }
 }

@@ -72,6 +72,7 @@ const selectTone = async (toneName: string) => {
   if (!toneUrl) {
     setIsProcessing(true)
     await hairService.ensureColorStream(colorName)
+    setIsProcessing(false)
   }
 
   console.log('Selected tone:', toneName, 'for color:', colorName)
@@ -112,7 +113,6 @@ const selectBase = async () => {
       <h3 class="text-base-100 mb-1 text-lg font-bold">
         {{ t('tonePalette.title') }} - {{ currentColorResult.originalColor }}
       </h3>
-      <p class="text-base-100/70 text-xs">{{ t('tonePalette.instruction') }}</p>
     </div>
 
     <!-- Base Color + Tones Grid (slightly denser than color grid) -->
@@ -193,7 +193,7 @@ const selectBase = async () => {
             <div class="flex h-full w-full items-center justify-center">
               <span
                 :class="[
-                  'text-xs font-semibold',
+                  'px-[0.1px] text-xs font-semibold',
                   currentSelectedTone === tone.name ? 'text-primary' : 'text-base-content',
                 ]"
                 >{{ tone.displayName }}</span

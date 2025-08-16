@@ -49,7 +49,6 @@ const selectColor = async (colorName: string) => {
     <!-- Header -->
     <div class="mb-4">
       <h3 class="text-base-100 mb-1 text-lg font-bold">{{ t('colorPalette.title') }}</h3>
-      <p class="text-base-100/70 text-xs">{{ t('colorPalette.instruction') }}</p>
     </div>
 
     <!-- Color Grid -->
@@ -91,11 +90,11 @@ const selectColor = async (colorName: string) => {
             <div class="flex h-full w-full items-center justify-center">
               <span
                 :class="[
-                  'text-xs font-semibold',
+                  'px-[0.1px] text-xs font-semibold',
                   selectedColor === color.name ? 'text-primary' : 'text-base-content',
                 ]"
-                >{{ t(`colors.${color.name}`) }}</span
-              >
+                >{{ t(`colors.${color.name}`) }}
+              </span>
             </div>
           </div>
         </div>

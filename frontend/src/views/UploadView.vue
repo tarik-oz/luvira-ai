@@ -38,7 +38,9 @@ const cameraCaptureModal = ref()
       <UploadSection class="w-full max-w-xl" />
 
       <!-- Divider -->
-      <div class="divider text-base-content/70 my-6 w-full max-w-xl font-semibold select-none">
+      <div
+        class="divider text-base-content/70 mx-auto my-6 w-full max-w-xl font-semibold select-none"
+      >
         {{ t('upload.divider') }}
       </div>
 

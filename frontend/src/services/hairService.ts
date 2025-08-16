@@ -5,7 +5,6 @@
 
 import apiService from './apiService'
 import { useAppState } from '../composables/useAppState'
-import type { ColorChangeResult } from '../composables/useAppState'
 
 class HairService {
   private activeController: AbortController | null = null
@@ -54,7 +53,6 @@ class HairService {
   async changeHairColorAllTones(colorName: string) {
     const {
       sessionId,
-      setIsProcessing,
       getCachedColorResult,
       setCurrentColorResult,
       setSessionError,

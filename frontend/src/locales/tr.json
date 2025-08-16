@@ -1,10 +1,11 @@
 {
   "upload": {
-    "title": "Saçını Yenile: Renk & Ton",
-    "description": "Farklı saç renklerini ve doğal tonları kolayca deneyin. Farklı görünümleri anında önizleyin ve size en çok yakışan stili bulun. Hızlı, gerçekçi ve ücretsiz. Hemen deneyin!",
+    "title": "Saç Rengi Stüdyosu",
+    "description": "Farklı saç renklerini anında deneyin. Hızlı, gerçekçi ve ücretsiz.",
     "divider": "veya",
-    "sampleButton": "Örnek Görsel Seç",
-    "cameraButton": "Kamerayı Kullan"
+    "sampleButton": "Model Kullan",
+    "cameraButton": "Kamerayı Kullan",
+    "qualityNote": "Yüksek çözünürlüklü, net fotoğraflar daha iyi sonuç verir."
   },
   "colors": {
     "Black": "Siyah",
@@ -22,34 +23,34 @@
   },
   "camera": {
     "title": "Kamera",
-    "preview": "Fotoğraf Önizleme",
+    "preview": "Önizleme",
     "takePhoto": "Fotoğraf Çek",
-    "takingPhoto": "Fotoğraf Çekiliyor...",
+    "takingPhoto": "Çekiliyor...",
     "retake": "Tekrar Çek",
-    "guidance": "Lütfen yüzünüzü ortadaki alana hizalayın.",
+    "guidance": "Yüzünüzü kadrajın ortasına hizalayın.",
     "close": "Kapat",
-    "submit": "Onayla",
+    "submit": "Fotoğrafı Kullan",
     "uploading": "Yükleniyor...",
-    "noPermission": "Kamera erişimi reddedildi. Lütfen tarayıcı ayarlarından kamera izinlerine izin verin.",
-    "notFound": "Kamera bulunamadı. Lütfen bir kameranın bağlı ve etkin olduğundan emin olun.",
-    "genericError": "Kameraya erişilemedi. Lütfen tekrar deneyin veya cihazınızı kontrol edin.",
-    "notSupported": "Bu cihaz/tarayıcı kamerayı desteklemiyor.",
-    "httpsRequired": "Kamera için HTTPS gereklidir. Lütfen güvenli bir bağlantı kullanın.",
-    "notReadable": "Kamera başka bir uygulama tarafından kullanılıyor veya okunamıyor.",
-    "overconstrained": "Kamera kısıtları mevcut cihazlarla karşılanamıyor."
+    "noPermission": "Kamera erişimi reddedildi. Tarayıcı ayarlarından izin verin.",
+    "notFound": "Kamera bulunamadı.",
+    "genericError": "Kamera hatası. Tekrar deneyin.",
+    "notSupported": "Bu cihaz/tarayıcıda kamera desteklenmiyor.",
+    "httpsRequired": "Kamera kullanımı için HTTPS gerekli.",
+    "notReadable": "Kamera başka bir uygulama tarafından kullanılıyor.",
+    "overconstrained": "Kamera ayarları desteklenmiyor."
   },
   "uploadSection": {
-    "uploadImage": "Sürükle & bırak veya tıkla",
-    "tooltip": "JPG/JPEG, PNG, Maks. 10MB",
-    "validationError": "Geçersiz dosya. Lütfen JPG/JPEG veya PNG (maks. 10MB).",
-    "invalidType": "Desteklenmeyen dosya türü. Lütfen JPG/JPEG veya PNG kullanın.",
-    "maxSize": "Dosya çok büyük. Maksimum 10MB.",
-    "tooSmall": "Görsel çok küçük. Minimum {min}x{min} px.",
-    "decodeError": "Görsel dosyası okunamadı. Lütfen farklı bir dosya deneyin.",
-    "zeroSize": "Dosya boş. Lütfen geçerli bir görsel seçin.",
-    "networkError": "Ağ hatası. Lütfen bağlantınızı kontrol edip tekrar deneyin.",
-    "timeout": "Yükleme zaman aşımına uğradı. Lütfen tekrar deneyin.",
-    "noHairDetected": "Saç alanı tespit edilemedi. Lütfen saçın net göründüğü bir fotoğraf yükleyin."
+    "uploadImage": "Fotoğraf Yükle",
+    "tooltip": "JPG, PNG, Maks 10MB",
+    "validationError": "Geçersiz dosya. JPG/PNG kullanın (maks. 10MB).",
+    "invalidType": "Yalnızca JPG veya PNG kullanın.",
+    "maxSize": "Dosya çok büyük. Maks 10MB.",
+    "tooSmall": "Görsel çok küçük. En az {min}x{min} px.",
+    "decodeError": "Görsel okunamıyor. Başka bir dosya deneyin.",
+    "zeroSize": "Boş dosya. Geçerli bir görsel seçin.",
+    "networkError": "Ağ hatası. Bağlantınızı kontrol edip tekrar deneyin.",
+    "timeout": "Yükleme zaman aşımına uğradı. Tekrar deneyin.",
+    "noHairDetected": "Saç alanı tespit edilemedi. Saçın net göründüğü bir fotoğraf yükleyin."
   },
   "footer": {
     "copyright": "© 2025 Tarık Öz. Tüm hakları saklıdır."
@@ -61,26 +62,32 @@
     "before": "Önce",
     "after": "Sonra",
     "sessionExpiredTitle": "Oturum süresi doldu",
-    "sessionExpiredMessage": "Oturumunuzun süresi doldu. Devam etmek için lütfen görseli tekrar yükleyin.",
+    "sessionExpiredMessage": "Oturum süresi doldu. Görselinizi yeniden yükleyin.",
     "sessionExpiredConfirm": "Tamam",
-    "networkError": "Ağ hatası. Lütfen bağlantınızı kontrol edip tekrar deneyin.",
-    "working": "Saç rengi işleniyor..."
+    "networkError": "Ağ hatası. Bağlantınızı kontrol edip tekrar deneyin.",
+    "working": "İşleniyor..."
   },
   "sampleImages": {
-    "loadingSelected": "Seçilen resim yükleniyor...",
-    "errorMessage": "Resim yüklenemedi. Lütfen tekrar deneyin."
+    "loadingSelected": "Yükleniyor...",
+    "errorMessage": "Yükleme başarısız. Tekrar deneyin."
   },
   "colorPalette": {
     "title": "Renk Paleti",
-    "instruction": "Dönüşüme başlamak için bir renk seçin",
-    "error": "Renk uygulanamadı. Lütfen tekrar deneyin."
+    "error": "Renk uygulanamadı. Tekrar deneyin."
   },
   "tonePalette": {
-    "title": "Ton Seçimi",
-    "instruction": "Seçtiğiniz rengin ton çeşidini belirleyin",
-    "error": "Ton değiştirilemedi. Lütfen tekrar deneyin."
+    "title": "Ton Paleti",
+    "error": "Ton değiştirilemedi. Tekrar deneyin."
   },
   "common": {
     "dismiss": "Kapat"
+  },
+  "notFound": {
+    "title": "Sayfa Bulunamadı",
+    "description": "Aradığınız sayfa mevcut değil veya taşınmış olabilir.",
+    "goHome": "Ana Sayfaya Dön",
+    "goBack": "Geri Dön",
+    "help": "Yardıma mı ihtiyacınız var?",
+    "contact": "Bizimle iletişime geçin"
   }
 }

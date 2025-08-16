@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useAppState } from '../composables/useAppState'
 import { useRouter } from 'vue-router'
-import { ref } from 'vue'
+import { ref, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ImageDisplay from '../components/ui/ImageDisplay.vue'
 import AppButton from '../components/ui/AppButton.vue'
@@ -19,7 +19,6 @@ const { t } = useI18n()
 const isCompareMode = ref(false)
 
 const goBack = () => {
-  resetState()
   router.push('/')
 }
 
@@ -27,6 +26,10 @@ const confirmSessionExpired = () => {
   setSessionError(null)
   goBack()
 }
+
+onBeforeUnmount(() => {
+  resetState()
+})
 </script>
 
 <template>

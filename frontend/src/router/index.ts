@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import UploadView from '@/views/UploadView.vue'
 import ProcessingView from '@/views/ProcessingView.vue'
+import NotFoundView from '@/views/NotFoundView.vue'
 import { useAppState } from '@/composables/useAppState'
 import type { NavigationGuardNext, RouteLocationNormalized } from 'vue-router'
 
@@ -37,6 +38,12 @@ const routes = [
       // Allow access
       next()
     },
+  },
+  // 404 catch-all route - must be last
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: NotFoundView,
   },
 ]
 

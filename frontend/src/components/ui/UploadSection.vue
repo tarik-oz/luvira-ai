@@ -321,6 +321,13 @@ const handleDragLeave = (event: DragEvent) => {
         </div>
       </div>
     </div>
+
+    <!-- Quality Note -->
+    <div class="mt-4 w-full max-w-xl text-center">
+      <p class="text-base-content/60 text-sm">
+        {{ t('upload.qualityNote') }}
+      </p>
+    </div>
     <!-- Error Section -->
     <div v-if="errorMessage" class="mt-4 flex items-center justify-center gap-2 text-center">
       <PhWarning class="h-5 w-5 shrink-0 text-red-600" />
