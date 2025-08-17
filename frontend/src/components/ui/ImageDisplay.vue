@@ -17,6 +17,8 @@ const { uploadedImage, processedImage, isProcessing, currentColorResult, selecte
 
 // Keep container aspect ratio equal to the image to avoid cropping tall/portrait photos
 const containerAspect = ref('1 / 1')
+const imageNaturalWidth = ref(1)
+const imageNaturalHeight = ref(1)
 const updateAspectFromImage = () => {
   if (!uploadedImage.value) {
     containerAspect.value = '1 / 1'
@@ -28,6 +30,8 @@ const updateAspectFromImage = () => {
     const h = img.naturalHeight || img.height
     if (w > 0 && h > 0) {
       containerAspect.value = `${w} / ${h}`
+      imageNaturalWidth.value = w
+      imageNaturalHeight.value = h
     }
   }
   img.src = uploadedImage.value
@@ -76,11 +80,11 @@ watch(
   () => props.compareMode,
   (newValue) => {
     if (newValue) {
-      // Compare mode açıldı - event listener'ları ekle
+      // Compare mode enabled - add event listeners
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
     } else {
-      // Compare mode kapandı - event listener'ları kaldır
+      // Compare mode disabled - remove event listeners
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
       isDragging.value = false
@@ -107,6 +111,9 @@ const labelText = computed(() => {
   }
   return colorLabel
 })
+
+const isPortrait = computed(() => imageNaturalHeight.value > imageNaturalWidth.value)
+const maxHeightVh = computed(() => (isPortrait.value ? '60vh' : '90vh'))
 </script>
 
 <template>
@@ -130,7 +137,7 @@ const labelText = computed(() => {
       <div
         ref="containerRef"
         class="bg-base-content relative w-full"
-        :style="{ aspectRatio: containerAspect, maxHeight: '75vh' }"
+        :style="{ aspectRatio: containerAspect, maxHeight: maxHeightVh }"
         :class="{ 'cursor-pointer select-none': compareMode }"
         @mousedown="handleMouseDown"
         @click="handleClick"
@@ -203,23 +210,35 @@ const labelText = computed(() => {
             </div>
           </div>
 
-          <!-- Vertical Divider Line -->
+          <!-- Vertical Divider Line + Modern Handle -->
           <div
-            class="pointer-events-none absolute top-0 bottom-0 z-10 w-0.5 bg-white shadow-lg transition-all duration-75 ease-out"
+            class="pointer-events-none absolute top-0 bottom-0 z-10 transition-all duration-150 ease-out"
             :style="{ left: `${sliderPosition}%` }"
           >
-            <!-- Slider Handle -->
+            <!-- Line -->
             <div
-              class="pointer-events-auto absolute top-1/2 left-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 transform cursor-grab rounded-full border-2 border-gray-300 bg-white shadow-lg transition-all duration-75 ease-out"
-              :class="{ 'cursor-grabbing': isDragging, 'scale-110': isDragging }"
+              class="absolute top-0 bottom-0 left-1/2 w-[2px] -translate-x-1/2 bg-white/80 shadow-[0_0_8px_rgba(0,0,0,0.25)]"
+            ></div>
+
+            <!-- Handle -->
+            <button
+              type="button"
+              class="focus:ring-accent/50 pointer-events-auto absolute top-1/2 left-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 transform cursor-grab items-center justify-center rounded-full bg-white/90 shadow-xl ring-1 ring-white/60 backdrop-blur-md transition-all duration-150 ease-out hover:scale-105 hover:bg-white focus:ring-2 focus:outline-none"
+              :class="{ 'scale-110 cursor-grabbing': isDragging }"
               @mousedown.stop="handleMouseDown"
+              aria-label="Compare slider"
             >
-              <!-- Drag indicator dots -->
-              <div class="flex h-full items-center justify-center">
-                <div class="mx-0.5 h-1 w-1 rounded-full bg-gray-400"></div>
-                <div class="mx-0.5 h-1 w-1 rounded-full bg-gray-400"></div>
-              </div>
-            </div>
+              <!-- Left chevron -->
+              <svg viewBox="0 0 24 24" class="h-4 w-4 text-gray-600">
+                <path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+              </svg>
+              <!-- Divider dot -->
+              <div class="mx-1 h-1 w-1 rounded-full bg-gray-400/80"></div>
+              <!-- Right chevron -->
+              <svg viewBox="0 0 24 24" class="h-4 w-4 text-gray-600">
+                <path fill="currentColor" d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z" />
+              </svg>
+            </button>
           </div>
         </template>
 

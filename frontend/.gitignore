@@ -29,5 +29,4 @@ coverage
 
 *.tsbuildinfo
 
-src/assets/samples/*
 .vercel

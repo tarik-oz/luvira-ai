@@ -8,7 +8,7 @@ const models = ref(showcaseModels)
 
 // --- Animation Timing ---
 const TIMINGS = {
-  HOLD_DURATION: 2000,
+  HOLD_DURATION: 1500,
   TEXT_FADE_DURATION: 1000,
   COLOR_TRANSITION: 2000,
   STEP_INTERVAL: 50,
@@ -147,7 +147,7 @@ const selectModel = (index: number) => {
 
     // Wait for fade in to COMPLETELY finish before starting animation cycle
     const startCycleTimeout = setTimeout(() => {
-      // Fade in tamamlandıktan sonra, ilk renk tam 2 saniye gözüksün
+      // hold the first color for 2 seconds when fade in is complete
       setTimeout(() => {
         runCycle()
       }, TIMINGS.HOLD_DURATION - TIMINGS.MODEL_FADE_DURATION)
@@ -200,7 +200,9 @@ const getTransitionStyle = () => ({
         :style="{ opacity: textOpacity }"
       >
         {{
-          animationProgress > 50 ? t('colors.' + nextColor.name) : t('colors.' + currentColor.name)
+          animationProgress > 50
+            ? `${t('colors.' + nextColor.colorName)} · ${nextColor.toneName}`
+            : `${t('colors.' + currentColor.colorName)} · ${currentColor.toneName}`
         }}
       </div>
     </div>

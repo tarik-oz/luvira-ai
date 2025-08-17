@@ -3,6 +3,8 @@ import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../composables/useAppState'
 import { TONE_DEFINITIONS } from '../../config/colorConfig'
+import { getBasePreview, getTonePreview } from '@/data/hairAssets'
+import { getToneSortOrder } from '@/data/colorMeta'
 import hairService from '../../services/hairService'
 
 const { t } = useI18n()
@@ -15,47 +17,50 @@ const {
   setIsProcessing,
 } = useAppState()
 
-// Temporary pattern: use a single default preview for all tones
-const defaultPatternUrl = new URL('../../assets/hair_patterns/default.webp', import.meta.url).href
+// Per-color base preview
+const basePreview = computed(() =>
+  currentColorResult.value ? getBasePreview(currentColorResult.value.originalColor) : '',
+)
 
-// Backend'deki CUSTOM_TONES ile eşleşen ton tanımları
+// Tone definitions matching CUSTOM_TONES in the backend
 const toneDefinitions = TONE_DEFINITIONS
 
-// Mevcut rengin tonları
+// Tones of the current color
 const availableTones = computed(() => {
   if (!currentColorResult.value) return []
 
   // Use originalColor instead of color (which contains cache key)
   const colorName = currentColorResult.value.originalColor
   const colorTones = toneDefinitions[colorName] || {}
-
-  return Object.keys(colorTones).map((toneName) => ({
+  const tones = Object.keys(colorTones).map((toneName) => ({
     name: toneName,
     displayName: toneName.charAt(0).toUpperCase() + toneName.slice(1),
     description: colorTones[toneName].description,
+    preview: getTonePreview(colorName, toneName),
   }))
+  return getToneSortOrder(colorName, tones)
 })
 
-// Şu anki rengin seçili tonu - per-color state
+// Currently selected tone for the color - per-color state
 const currentSelectedTone = computed(() => {
   if (!currentColorResult.value) return null
   // Use originalColor for tone state lookup
   return getColorToneState(currentColorResult.value.originalColor)
 })
 
-// Renk değiştiğinde: Eğer bu renk için daha önce ton seçilmemişse, base'i seç
+// When the color changes: If no tone has been selected for this color before, select base
 watch(
   currentColorResult,
   (newResult) => {
     if (newResult && getColorToneState(newResult.originalColor) === undefined) {
-      // İlk defa bu renk görünüyor, base'i seç
+      // This color appears for the first time, select base
       setColorToneState(newResult.originalColor, null)
     }
   },
   { immediate: true },
 )
 
-// Ton seçimi
+// Tone selection
 const selectTone = async (toneName: string) => {
   if (!currentColorResult.value) return
 
@@ -64,15 +69,27 @@ const selectTone = async (toneName: string) => {
 
   const colorName = currentColorResult.value.originalColor // Use originalColor
 
-  // State'i hemen güncelle ki loading seçilen ton üzerinde görünsün
+  // Update the state immediately so loading appears on the selected tone
   setColorToneState(colorName, toneName)
 
-  // Eğer tone henüz cache'te yoksa stream'i başlat (tek istek mantığı)
+  // If the tone is not in cache yet, start the stream (single request logic)
   const toneUrl = currentColorResult.value.tones[toneName]
   if (!toneUrl) {
-    setIsProcessing(true)
-    await hairService.ensureColorStream(colorName)
-    setIsProcessing(false)
+    try {
+      setIsProcessing(true)
+      await hairService.ensureColorStream(colorName)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (message === 'SESSION_EXPIRED') return
+      if (message === 'Failed to fetch' || /network/i.test(message)) {
+        setProcessingError(t('processing.networkError') as string)
+        return
+      }
+      setProcessingError(t('tonePalette.error') as string)
+      return
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   console.log('Selected tone:', toneName, 'for color:', colorName)
@@ -86,24 +103,24 @@ const selectTone = async (toneName: string) => {
   }
 }
 
-// Base rengi seç (ton yok)
+// Select base color (no tone)
 const selectBase = async () => {
   if (!currentColorResult.value) return
 
   const colorName = currentColorResult.value.originalColor // Use originalColor
 
-  // State'i güncelle
+  // Update the state
   setColorToneState(colorName, null)
 
   console.log('Selected base color:', colorName)
 
-  // Base rengini göstermek için local compose kullan
+  // Use local compose to show the base color
   await hairService.applyToneLocally(null)
 }
 </script>
 
 <template>
-  <!-- Sadece bir renk seçilmişse göster -->
+  <!-- Show only if a color is selected -->
   <div
     v-if="currentColorResult"
     class="bg-base-content/70 border-base-content/80 rounded-2xl border p-3 shadow-lg lg:p-4"
@@ -115,7 +132,7 @@ const selectBase = async () => {
       </h3>
     </div>
 
-    <!-- Base Color + Tones Grid (slightly denser than color grid) -->
+    <!-- Base Color + Tones Grid -->
     <div class="grid grid-cols-6 gap-2 md:grid-cols-7 lg:grid-cols-8">
       <!-- Base Color (No Tone) -->
       <div
@@ -123,8 +140,10 @@ const selectBase = async () => {
         :class="[
           'bg-base-content/80 border-base-100/20 rounded-xl border p-0.5 transition-all duration-200',
           currentSelectedTone === null ? 'border-primary ring-primary/20 shadow-lg ring-2' : '',
-          isProcessing && currentSelectedTone === null
-            ? 'cursor-wait'
+          isProcessing
+            ? currentSelectedTone === null
+              ? 'cursor-wait opacity-60'
+              : 'pointer-events-none cursor-not-allowed opacity-50'
             : 'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
         ]"
       >
@@ -132,7 +151,7 @@ const selectBase = async () => {
           class="bg-base-100 relative w-full overflow-hidden rounded-lg"
           style="aspect-ratio: 9 / 16"
         >
-          <img :src="defaultPatternUrl" alt="Base pattern" class="h-full w-full object-cover" />
+          <img :src="basePreview" alt="Base pattern" class="h-full w-full object-cover" />
           <!-- Loading overlay on base -->
           <div
             v-if="isProcessing && currentSelectedTone === null"
@@ -167,18 +186,18 @@ const selectBase = async () => {
           currentSelectedTone === tone.name
             ? 'border-primary ring-primary/20 shadow-lg ring-2'
             : '',
-          'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
+          isProcessing
+            ? currentSelectedTone === tone.name
+              ? 'cursor-wait opacity-60'
+              : 'pointer-events-none cursor-not-allowed opacity-50'
+            : 'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
         ]"
       >
         <div
           class="bg-base-100 relative w-full overflow-hidden rounded-lg"
           style="aspect-ratio: 9 / 16"
         >
-          <img
-            :src="defaultPatternUrl"
-            :alt="tone.displayName"
-            class="h-full w-full object-cover"
-          />
+          <img :src="tone.preview" :alt="tone.displayName" class="h-full w-full object-cover" />
           <!-- Loading overlay on selected tone -->
           <div
             v-if="isProcessing && currentSelectedTone === tone.name"

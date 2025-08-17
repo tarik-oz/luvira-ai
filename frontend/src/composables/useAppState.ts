@@ -3,14 +3,13 @@
  */
 
 import { ref, readonly } from 'vue'
-// apiService import removed - now handled by hairService
 
 export type ViewType = 'upload' | 'processing'
 
 export interface ColorChangeResult {
   color: string
-  originalColor: string // Ana renk adı (Purple, Black, vs)
-  selectedTone: string | null // Seçilen ton (plum, onyx, vs)
+  originalColor: string
+  selectedTone: string | null
   baseResult: string // Composed image URL (PNG/WebP)
   tones: { [tone: string]: string } // Mutable mapping for composed tone URLs
 }
@@ -83,9 +82,14 @@ export function useAppState() {
         keysToRemove.forEach((key) => delete cache[key])
       }
 
-      // Set processed image to base result
-      processedImage.value = result.baseResult
-      selectedTone.value = null
+      // Restore view according to per-color tone state if exists
+      const toneState = colorToneStates.value[result.originalColor]
+      selectedTone.value = toneState !== undefined ? toneState : null
+      if (selectedTone.value && result.tones[selectedTone.value]) {
+        processedImage.value = result.tones[selectedTone.value]
+      } else {
+        processedImage.value = result.baseResult
+      }
     } else {
       currentColorResult.value = null
       processedImage.value = null

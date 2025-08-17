@@ -10,7 +10,6 @@ const { t } = useI18n()
 const { isUploading } = useAppState()
 const router = useRouter()
 
-// Refs
 const fileInput = ref<HTMLInputElement>()
 const showTooltip = ref(false)
 let tooltipTimeout: number | null = null

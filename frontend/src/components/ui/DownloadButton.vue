@@ -4,8 +4,9 @@ import { useAppState } from '../../composables/useAppState'
 import AppButton from './AppButton.vue'
 import { PhDownloadSimple } from '@phosphor-icons/vue'
 
-const { t } = useI18n()
-const { processedImage, currentColorResult, uploadedImage, selectedTone } = useAppState()
+const { t, locale } = useI18n()
+const { processedImage, currentColorResult, uploadedImage, selectedTone, isProcessing } =
+  useAppState()
 
 const downloadImage = async () => {
   if (!processedImage.value) {
@@ -77,36 +78,9 @@ const generateFileName = (): string => {
   }
 
   const { originalColor } = currentColorResult.value
-  const currentLocale = t('colors.Black') === 'Siyah' ? 'tr' : 'en' // Detect locale
-
-  // Color names in both languages (only for colors, not tones)
-  const colorNames = {
-    en: {
-      Black: 'Black',
-      Blonde: 'Blonde',
-      Brown: 'Brown',
-      Auburn: 'Auburn',
-      Pink: 'Pink',
-      Blue: 'Blue',
-      Purple: 'Purple',
-      Gray: 'Gray',
-    },
-    tr: {
-      Black: 'Siyah',
-      Blonde: 'Sarışın',
-      Brown: 'Kahverengi',
-      Auburn: 'Kestane',
-      Pink: 'Pembe',
-      Blue: 'Mavi',
-      Purple: 'Mor',
-      Gray: 'Gri',
-    },
-  }
-
-  const locale: 'en' | 'tr' = t('colors.Black') === 'Siyah' ? 'tr' : 'en'
-  const mapping = colorNames[locale] as Record<string, string>
-  const colorName = mapping[originalColor] ?? originalColor
-  const hairWord = currentLocale === 'tr' ? 'Saç' : 'Hair'
+  const isTrLocale = (locale.value || '').toLowerCase().startsWith('tr')
+  const colorName = (t(`colors.${originalColor}`) as string) || originalColor
+  const hairWord = isTrLocale ? 'Saç' : 'Hair'
 
   // Build filename: LuviraAI_Color_Tone_Hair.png
   let fileName = 'LuviraAI'
@@ -127,9 +101,9 @@ const generateFileName = (): string => {
 <template>
   <AppButton
     @click="downloadImage"
-    :disabled="!processedImage"
+    :disabled="!processedImage || isProcessing"
     :class="
-      processedImage
+      processedImage && !isProcessing
         ? 'max-w-60 flex-1 px-4 py-2'
         : 'max-w-60 flex-1 cursor-not-allowed px-4 py-2 opacity-50'
     "

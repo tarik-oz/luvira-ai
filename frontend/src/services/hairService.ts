@@ -153,12 +153,15 @@ class HairService {
       )
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      // Swallow abort/cancel or stale request errors to avoid UI rollback
+      // Ignore stale/aborted
       if (requestId !== this.activeRequestId) return
       if (controller.signal.aborted) return
-      if (message === 'AbortError' || message === 'Failed to fetch') return
+      // Surface network issues to caller so UI can show error/revert selection
+      if (message === 'Failed to fetch' || /network/i.test(message)) {
+        throw new Error('Failed to fetch')
+      }
       // Propagate others (e.g., SESSION_EXPIRED)
-      throw error
+      throw error instanceof Error ? error : new Error(message)
     } finally {
       if (requestId === this.activeRequestId) {
         this.activeController = null

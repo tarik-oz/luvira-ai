@@ -3,16 +3,18 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../composables/useAppState'
 import { AVAILABLE_COLORS } from '../../config/colorConfig'
+import { getBasePreview } from '@/data/hairAssets'
+import { getPreferredColorOrder } from '@/data/colorMeta'
 import hairService from '../../services/hairService'
 
 const { t } = useI18n()
 const { isProcessing, setProcessingError } = useAppState()
 const selectedColor = ref<string | null>(null)
 
-const colors = AVAILABLE_COLORS.map((name) => ({ name }))
-
-// Default vertical pattern preview
-const defaultPatternUrl = new URL('../../assets/hair_patterns/default.webp', import.meta.url).href
+const colors = getPreferredColorOrder(AVAILABLE_COLORS).map((name: string) => ({
+  name,
+  preview: getBasePreview(name),
+}))
 
 const selectColor = async (colorName: string) => {
   if (isProcessing.value) return // Prevent multiple requests
@@ -35,6 +37,9 @@ const selectColor = async (colorName: string) => {
       return
     } else if (message === 'Failed to fetch' || /network/i.test(message)) {
       setProcessingError(t('processing.networkError') as string)
+      // Revert selection on network error
+      selectedColor.value = previous
+      return
     } else {
       setProcessingError(t('colorPalette.error') as string)
     }
@@ -72,7 +77,7 @@ const selectColor = async (colorName: string) => {
           style="aspect-ratio: 9 / 16"
         >
           <img
-            :src="defaultPatternUrl"
+            :src="color.preview"
             :alt="t(`colors.${color.name}`) as string"
             class="h-full w-full object-cover"
           />
