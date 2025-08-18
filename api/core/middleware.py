@@ -4,6 +4,7 @@ Middleware for Hair Segmentation API
 
 import time
 import logging
+import json
 from typing import Callable
 import uuid
 from fastapi import Request, Response
@@ -25,11 +26,14 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         
         # Correlate logs with a request id
         request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:12]
-        # Log request
-        logger.info(
-            f"[{request_id}] Request: {request.method} {request.url.path} - "
-            f"Client: {request.client.host if request.client else 'unknown'}"
-        )
+        # Log request (structured)
+        logger.info(json.dumps({
+            "event": "request",
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "client_ip": request.client.host if request.client else "unknown",
+        }))
         
         # Process request
         try:
@@ -38,12 +42,14 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             # Calculate duration
             duration = time.time() - start_time
             
-            # Log response
-            logger.info(
-                f"[{request_id}] Response: {response.status_code} - "
-                f"Duration: {duration:.3f}s - "
-                f"Path: {request.url.path}"
-            )
+            # Log response (structured)
+            logger.info(json.dumps({
+                "event": "response",
+                "request_id": request_id,
+                "status": int(response.status_code),
+                "duration_ms": int(duration * 1000),
+                "path": request.url.path,
+            }))
             
             return response
             
@@ -51,10 +57,12 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             # Calculate duration
             duration = time.time() - start_time
             
-            # Log error
-            logger.error(
-                f"[{request_id}] Error: {str(e)} - "
-                f"Duration: {duration:.3f}s - "
-                f"Path: {request.url.path}"
-            )
+            # Log error (structured)
+            logger.error(json.dumps({
+                "event": "error",
+                "request_id": request_id,
+                "error": str(e),
+                "duration_ms": int(duration * 1000),
+                "path": request.url.path,
+            }))
             raise 

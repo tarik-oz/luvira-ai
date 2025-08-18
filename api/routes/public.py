@@ -10,6 +10,9 @@ from ..core.exceptions import APIException
 from ..services import ColorChangeService
 
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -32,6 +35,11 @@ async def upload_and_prepare(
     """
     try:
         session_id = color_change_service.upload_and_prepare_image(file)
+        logger.info(json.dumps({
+            "event": "upload_and_prepare",
+            "session_id": session_id,
+            "filename": getattr(file, 'filename', None),
+        }))
         
         return {
             "session_id": session_id,
@@ -65,6 +73,14 @@ async def overlays_with_session(
                 for name, webp_bytes in color_change_service.iter_overlays_with_session(
                     session_id, color_name, webp_quality=80
                 ):
+                    # structured log for each yielded part
+                    logger.info(json.dumps({
+                        "event": "overlay_part",
+                        "session_id": session_id,
+                        "color": color_name,
+                        "part": name,
+                        "bytes": len(webp_bytes) if isinstance(webp_bytes, (bytes, bytearray)) else None,
+                    }))
                     yield f"--{boundary}\r\n".encode()
                     yield b"Content-Type: image/webp\r\n"
                     yield f"Content-Disposition: attachment; name=\"{name}\"; filename=\"{name}.webp\"\r\n\r\n".encode()
@@ -78,6 +94,11 @@ async def overlays_with_session(
                     "error_code": e.error_code,
                     "extra": getattr(e, "extra_data", {}),
                 }
+                logger.info(json.dumps({
+                    "event": "session_expired",
+                    "session_id": session_id,
+                    "color": color_name,
+                }))
                 yield f"--{boundary}\r\n".encode()
                 yield b"Content-Type: application/json\r\n\r\n"
                 yield json.dumps(payload).encode()

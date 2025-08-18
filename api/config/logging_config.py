@@ -2,7 +2,6 @@
 Logging configuration for Hair Segmentation API
 """
 
-import logging
 import sys
 from pathlib import Path
 from typing import Dict, Any

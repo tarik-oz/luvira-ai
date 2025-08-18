@@ -120,14 +120,18 @@ class ColorTransformer:
 
         tone_config = CUSTOM_TONES[color_name][tone_name]
 
-        # Generate toned color (support hue_offset and rgb_override if present)
-        toned_color = ColorUtils.create_custom_tone(
-            base_color_rgb,
-            saturation_factor=tone_config["saturation_factor"],
-            brightness_factor=tone_config["brightness_factor"],
-            intensity=tone_config.get("intensity", 1.0),
-            hue_offset_degrees=float(tone_config.get("hue_offset", 0.0)),
-        )
+        # Generate toned color
+        # If explicit RGB provided in tone config, use it as absolute target.
+        if "rgb" in tone_config and isinstance(tone_config["rgb"], (list, tuple)) and len(tone_config["rgb"]) == 3:
+            toned_color = [int(max(0, min(255, v))) for v in tone_config["rgb"]]
+        else:
+            toned_color = ColorUtils.create_custom_tone(
+                base_color_rgb,
+                saturation_factor=tone_config["saturation_factor"],
+                brightness_factor=tone_config["brightness_factor"],
+                intensity=tone_config.get("intensity", 1.0),
+                hue_offset_degrees=float(tone_config.get("hue_offset", 0.0)),
+            )
 
         # Preprocess inputs using the toned target to compute toned HSV and analysis
         image_rgb, image_float, mask_normalized, mask_3ch, target_rgb, target_hsv = \
@@ -236,13 +240,16 @@ class ColorTransformer:
         for tone_name, tone_config in CUSTOM_TONES[color_name].items():
             try:
                 # Generate toned color
-                toned_color = ColorUtils.create_custom_tone(
-                    base_color_rgb,
-                    saturation_factor=tone_config["saturation_factor"],
-                    brightness_factor=tone_config["brightness_factor"],
-                    intensity=tone_config.get("intensity", 1.0),
-                    hue_offset_degrees=float(tone_config.get("hue_offset", 0.0))
-                )
+                if "rgb" in tone_config and isinstance(tone_config["rgb"], (list, tuple)) and len(tone_config["rgb"]) == 3:
+                    toned_color = [int(max(0, min(255, v))) for v in tone_config["rgb"]]
+                else:
+                    toned_color = ColorUtils.create_custom_tone(
+                        base_color_rgb,
+                        saturation_factor=tone_config["saturation_factor"],
+                        brightness_factor=tone_config["brightness_factor"],
+                        intensity=tone_config.get("intensity", 1.0),
+                        hue_offset_degrees=float(tone_config.get("hue_offset", 0.0))
+                    )
                 
                 # Convert toned color to HSV
                 toned_hsv = cv2.cvtColor(np.uint8([[toned_color]]), cv2.COLOR_RGB2HSV)[0][0].astype(np.float32)

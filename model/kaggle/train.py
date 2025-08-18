@@ -5,7 +5,6 @@ This script handles the complete training pipeline.
 """
 
 import sys
-from pathlib import Path
 
 # Add working directory to path for absolute imports
 sys.path.insert(0, '/kaggle/working')

@@ -5,7 +5,7 @@ This module contains Pydantic models for request/response validation
 and API documentation.
 """
 
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, List
 from pydantic import BaseModel, Field
 from enum import Enum
 

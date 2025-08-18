@@ -136,7 +136,7 @@ def test_all_colors_and_tones(image_path, mask_path=None):
 
 def main():
     # Test configuration
-    test_image = "test_images/1.jpg"  # Change this to your test image
+    test_image = "test_images_2/woman_3.png"  # Change this to your test image
     test_mask = None  # Will auto-find mask
     
     print("=== Color & Tone Test Script ===")

@@ -2,6 +2,7 @@
 Visualization utilities for hair color change previews.
 """
 
+import os
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
@@ -69,7 +70,7 @@ class Visualizer:
         plt.show()
         
     @staticmethod
-    def visualize_preview_results(preview_results_data: List[Tuple[str, List[Tuple[str, str]]]]) -> None:
+    def visualize_preview_results(preview_results_data: List[Tuple[str, List[Tuple[str, str]]]], images_dir: str = "test_images") -> None:
         """
         Visualize the results of batch preview.
         
@@ -95,7 +96,7 @@ class Visualizer:
         comparison_data = []
         for image_file, color_results in preview_results_data:
             # Load original image
-            image_path = f"test_images/{image_file}"
+            image_path = os.path.join(images_dir, image_file)
             original_image = ImageUtils.load_image(image_path)
             
             if original_image is None:

@@ -3,7 +3,6 @@ Configuration file for Hair Segmentation U-Net project.
 Contains all configurable parameters and paths.
 """
 
-import os
 from pathlib import Path
 
 # Project root directory
@@ -22,7 +21,7 @@ PROCESSED_DATA_DIR = DATA_DIR / DATASET_DIR / "processed"
 TRAINED_MODELS_DIR = PROJECT_ROOT / "trained_models"
 
 # Default model path for inference
-DEFAULT_MODEL_PATH = TRAINED_MODELS_DIR / "2025-07-14_02-57-22_acc0.9708/best_model.pth"
+DEFAULT_MODEL_PATH = TRAINED_MODELS_DIR / "2025-08-15_01-54-07/best_model.pth"
 
 # Test paths
 TEST_IMAGES_DIR = PROJECT_ROOT / "test_images"

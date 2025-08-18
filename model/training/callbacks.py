@@ -25,8 +25,6 @@ class EarlyStopping:
         self.best_metric = BEST_LOSS_INIT if monitor.endswith('loss') else WORST_ACCURACY_INIT
         
     def __call__(self, metric_value: float) -> bool:
-        # For loss metrics: lower is better
-        # For accuracy/dice metrics: higher is better
         if self.monitor.endswith('loss'):
             is_better = metric_value < self.best_metric - self.min_delta
         else:

@@ -4,7 +4,6 @@ Model management service for Hair Segmentation API
 
 import json
 import logging
-import os
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 from ..core.exceptions import ModelNotLoadedException, ModelLoadException

@@ -4,18 +4,15 @@ Loads all data into memory at once.
 """
 
 import numpy as np
-import torch
-import cv2
 from torch.utils.data import Dataset
 from pathlib import Path
-from typing import Tuple, List
+from typing import Tuple
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 import logging
 
 from model.config import TRAINING_CONFIG, DATA_CONFIG
-from model.utils.data_timestamp import get_latest_timestamp, save_timestamps, load_timestamps, needs_processing
-from model.utils.augmentation import Augmentation
+from model.utils.data_timestamp import get_latest_timestamp, save_timestamps, needs_processing
 from model.data_loader.base_data_loader import BaseDataLoader
 from model.data_loader.traditional_dataset import TraditionalDataset
 

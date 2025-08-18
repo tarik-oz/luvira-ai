@@ -103,7 +103,7 @@ def main():
     # Visualize results if requested
     if not args.no_visualization and results:
         print("\nVisualizing results...")
-        Visualizer.visualize_preview_results(results)
+        Visualizer.visualize_preview_results(results, args.images_dir)
     
     print("\nDone!")
 

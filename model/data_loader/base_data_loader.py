@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 import glob
 from pathlib import Path
-from typing import Tuple, List, Optional
+from typing import Tuple, List
 from abc import ABC, abstractmethod
 import logging
 

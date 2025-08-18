@@ -29,6 +29,7 @@ async def root(model_service: ModelService = Depends(get_model_service)):
             "available_tones": "/available-tones/{color_name}",
             "upload_and_prepare": "/upload-and-prepare",
             "change_hair_color_with_session": "/change-hair-color-with-session/{session_id}",
+            "overlays_with_session": "/overlays-with-session/{session_id}",
             "session_stats": "/session-stats",
             "cleanup_session": "/cleanup-session/{session_id}",
             "cleanup_all_sessions": "/cleanup-all-sessions"

@@ -3,8 +3,6 @@ Lazy data loader for hair segmentation dataset.
 Only stores file paths and loads data on-demand.
 """
 
-import numpy as np
-from pathlib import Path
 from typing import Tuple
 from sklearn.model_selection import train_test_split
 import logging

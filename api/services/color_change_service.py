@@ -203,20 +203,11 @@ class ColorChangeService:
         mask_array = session_data['mask']
 
         def encode_webp_rgba(img_rgb: np.ndarray, alpha_mask: np.ndarray, q: int) -> bytes:
-            # Prepare BGRA and encode with soft edges and zeroed RGB for fully transparent
-            try:
-                alpha_f = cv2.GaussianBlur(alpha_mask.astype("float32") / 255.0, (0, 0), 0.7)
-                alpha_f = np.clip(alpha_f, 0.0, 1.0)
-                alpha = (alpha_f * 255.0).astype("uint8")
-            except Exception:
-                alpha = alpha_mask.astype("uint8")
-            bgra = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGRA)
-            bgra[:, :, 3] = alpha
-            fully_transparent = (alpha == 0)
-            if fully_transparent.any():
-                bgra[fully_transparent, :3] = 0
+            # Encode full composited RGB (opaque) to ensure exact visual parity with CLI previews
+            # This avoids double blending and color fringing at semi-transparent edges in the browser.
+            bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
             params = [cv2.IMWRITE_WEBP_QUALITY, int(q)]
-            ok, buf = cv2.imencode('.webp', bgra, params)
+            ok, buf = cv2.imencode('.webp', bgr, params)
             if not ok:
                 raise ImageProcessingException("WEBP encode failed")
             return buf.tobytes()

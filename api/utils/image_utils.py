@@ -4,7 +4,7 @@ Image utility functions for common operations across services
 
 import logging
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 import cv2
 import numpy as np
 

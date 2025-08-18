@@ -3,7 +3,6 @@ PyTorch Dataset for hair segmentation with traditional loading.
 Handles pre-loaded images and masks with optional augmentation.
 """
 
-import cv2
 import numpy as np
 import torch
 from torch.utils.data import Dataset

@@ -131,13 +131,17 @@ class SpecialColorHandler:
         # and enhance approach to target saturation for more visible tonal separation.
         if tone_label is not None:
             try:
-                # Relax hue band
+                # Relax hue band (config-driven) and center it around tone target for stronger separation
                 hue_band = corrections.get("hue_band")
+                target_center = float(target_hsv[0])
+                # Base width derived from existing band, else default
                 if isinstance(hue_band, (list, tuple)) and len(hue_band) == 2:
-                    center = 0.5 * (float(hue_band[0]) + float(hue_band[1]))
-                    width = max(6.0, float(hue_band[1]) - float(hue_band[0]))  # ensure minimum width
-                    new_width = width * 2.0  # widen band for tone
-                    corrections["hue_band"] = [center - new_width / 2.0, center + new_width / 2.0]
+                    base_width = max(6.0, float(hue_band[1]) - float(hue_band[0]))
+                else:
+                    base_width = 10.0
+                # Widen band for tone and center to target
+                tone_width = max(12.0, base_width * 2.0)
+                corrections["hue_band"] = [target_center - tone_width / 2.0, target_center + tone_width / 2.0]
 
                 # Reduce hue center weight
                 if "hue_center_weight" in corrections:
@@ -147,7 +151,7 @@ class SpecialColorHandler:
 
                 # Increase saturation approach slightly
                 sat_cfg = profile.setdefault("sat", {})
-                sat_cfg["approach_target_weight"] = float(sat_cfg.get("approach_target_weight", 0.35)) * 1.25
+                sat_cfg["approach_target_weight"] = min(0.60, float(sat_cfg.get("approach_target_weight", 0.35)) * 1.35)
 
                 # Enforce smoothing on tone for clean transitions
                 corrections["post_smooth"] = True

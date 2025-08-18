@@ -72,7 +72,7 @@ FILE_PATTERNS = {
     "validation_masks": "val_masks.npy"
 }
 
-print("Kaggle config.py loaded successfully - Optimized for 30K Hair Dataset")
+print("Kaggle config.py loaded successfully")
 print(f"Data will be read from: {DATA_DIR}")
 print(f"Models will be saved to: {TRAINED_MODELS_DIR}")
 print(f"Training config: {TRAINING_CONFIG['epochs']} epochs, batch_size={TRAINING_CONFIG['batch_size']}")

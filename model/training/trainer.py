@@ -7,9 +7,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple
+from typing import Dict, Any, Tuple
 import logging
 import json
 from tqdm import tqdm

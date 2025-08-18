@@ -4,7 +4,7 @@ File validation utilities for Hair Segmentation API
 
 import logging
 import numpy as np
-from typing import Optional, List
+from typing import Optional
 from fastapi import UploadFile
 from pathlib import Path
 
@@ -294,27 +294,3 @@ class ColorValidator:
             return tone_name
         except ImportError:
             return tone_name
-    
-    @staticmethod
-    def validate_rgb_color(color_list: List[int]) -> None:
-        """
-        Validate RGB color values (kept for backward compatibility)
-        
-        Args:
-            color_list: List of RGB color values [R, G, B]
-            
-        Raises:
-            FileValidationException: If color values are invalid
-        """
-        if not isinstance(color_list, list):
-            raise FileValidationException("Target color must be a list")
-        
-        if len(color_list) != 3:
-            raise FileValidationException("Target color must have exactly 3 values [R, G, B]")
-        
-        for i, color in enumerate(color_list):
-            if not isinstance(color, int):
-                raise FileValidationException(f"Color value at index {i} must be an integer")
-            
-            if color < 0 or color > 255:
-                raise FileValidationException(f"Color value at index {i} must be between 0 and 255") 
