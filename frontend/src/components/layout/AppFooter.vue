@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import { trackEvent } from '@/services/analytics'
 
 const { t } = useI18n()
 </script>
@@ -26,6 +27,7 @@ const { t } = useI18n()
           class="text-base-content/80 hover:text-primary active:text-primary focus-visible:ring-primary/50 rounded-sm transition-all focus-visible:ring-2 focus-visible:outline-none active:scale-95"
           title="GitHub"
           aria-label="GitHub"
+          @click="trackEvent('outbound_link', { target: 'github' })"
         >
           <svg
             class="h-5 w-5 md:h-[22px] md:w-[22px] lg:h-6 lg:w-6"
@@ -44,6 +46,7 @@ const { t } = useI18n()
           class="text-base-content/80 hover:text-primary active:text-primary focus-visible:ring-primary/50 rounded-sm transition-all focus-visible:ring-2 focus-visible:outline-none active:scale-95"
           title="LinkedIn"
           aria-label="LinkedIn"
+          @click="trackEvent('outbound_link', { target: 'linkedin' })"
         >
           <svg
             class="h-5 w-5 md:h-[22px] md:w-[22px] lg:h-6 lg:w-6"

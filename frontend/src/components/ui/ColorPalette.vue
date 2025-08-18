@@ -6,6 +6,7 @@ import { AVAILABLE_COLORS } from '../../config/colorConfig'
 import { getBasePreview } from '@/data/hairAssets'
 import { getPreferredColorOrder } from '@/data/colorMeta'
 import hairService from '../../services/hairService'
+import { trackEvent } from '../../services/analytics'
 
 const { t } = useI18n()
 const { isProcessing, setProcessingError } = useAppState()
@@ -27,6 +28,7 @@ const selectColor = async (colorName: string) => {
   console.log('Selected color:', colorName)
 
   try {
+    trackEvent('select_color', { color: colorName })
     await hairService.changeHairColorAllTones(colorName)
     console.log('Color change completed successfully')
   } catch (error) {

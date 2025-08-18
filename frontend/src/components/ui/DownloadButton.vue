@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../composables/useAppState'
 import AppButton from './AppButton.vue'
 import { PhDownloadSimple } from '@phosphor-icons/vue'
+import { trackEvent } from '@/services/analytics'
 
 const { t, locale } = useI18n()
 const { processedImage, currentColorResult, uploadedImage, selectedTone, isProcessing } =
@@ -39,6 +40,13 @@ const downloadImage = async () => {
     URL.revokeObjectURL(url)
 
     console.log('✅ Image downloaded:', fileName)
+
+    // Analytics
+    trackEvent('download_image', {
+      color: currentColorResult.value?.originalColor || null,
+      tone: selectedTone.value || null,
+      file_name: fileName,
+    })
   } catch (error) {
     console.error('❌ Download failed:', error)
   }

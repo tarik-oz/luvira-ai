@@ -23,6 +23,7 @@ const currentColorIndex = ref(0)
 const animationProgress = ref(0)
 const textOpacity = ref(1)
 const showcaseOpacity = ref(1) // For smooth model transitions
+const isModelSwitching = ref(false) // Guard transitions and prevent flicker
 
 // --- Computed Properties for Dynamic Data ---
 const activeModel = computed(() => models.value[activeModelIndex.value])
@@ -98,6 +99,7 @@ const completeTransition = () => {
 
 const switchToNextModel = () => {
   // Start fade out
+  isModelSwitching.value = true
   showcaseOpacity.value = 0
 
   // After fade out completes, switch model and start fade in
@@ -115,8 +117,9 @@ const switchToNextModel = () => {
 
     // Wait for fade in to COMPLETELY finish before starting animation cycle
     const startCycleTimeout = setTimeout(() => {
-      // Fade in tamamlandıktan sonra, ilk renk tam 2 saniye gözüksün
+      // Hold first color when fade in is complete, then start cycle
       setTimeout(() => {
+        isModelSwitching.value = false
         runCycle()
       }, TIMINGS.HOLD_DURATION - TIMINGS.MODEL_FADE_DURATION)
     }, TIMINGS.MODEL_FADE_DURATION) // Wait for fade in to complete
@@ -127,9 +130,11 @@ const switchToNextModel = () => {
 
 const selectModel = (index: number) => {
   if (activeModelIndex.value === index) return
+  if (isModelSwitching.value) return
   clearTimers() // Stop any ongoing animation immediately
 
   // Start fade out
+  isModelSwitching.value = true
   showcaseOpacity.value = 0
 
   // After fade out completes, switch model and start fade in
@@ -147,8 +152,9 @@ const selectModel = (index: number) => {
 
     // Wait for fade in to COMPLETELY finish before starting animation cycle
     const startCycleTimeout = setTimeout(() => {
-      // hold the first color for 2 seconds when fade in is complete
+      // Hold first color, then start cycle
       setTimeout(() => {
+        isModelSwitching.value = false
         runCycle()
       }, TIMINGS.HOLD_DURATION - TIMINGS.MODEL_FADE_DURATION)
     }, TIMINGS.MODEL_FADE_DURATION) // Wait for fade in to complete
@@ -189,6 +195,7 @@ const getTransitionStyle = () => ({
       />
       <!-- Overlay Image (Next Color) -->
       <img
+        v-show="!isModelSwitching"
         :src="nextColor.src"
         :alt="nextColor.alt"
         class="absolute inset-0 h-full w-full object-cover"

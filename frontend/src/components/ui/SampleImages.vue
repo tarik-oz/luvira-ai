@@ -8,6 +8,7 @@ import { useAppState } from '../../composables/useAppState'
 import { useRouter } from 'vue-router'
 import { PhWarning } from '@phosphor-icons/vue'
 import hairService from '../../services/hairService'
+import { trackEvent } from '../../services/analytics'
 
 const { t } = useI18n()
 const { isUploading } = useAppState()
@@ -42,6 +43,7 @@ const handleImageSelect = async (index: number, imageUrl: string) => {
     if (!navigator.onLine) {
       throw new TypeError('Network offline')
     }
+    trackEvent('sample_click', { index, url: imageUrl })
     const response = await fetch(imageUrl)
     const blob = await response.blob()
     const file = new File([blob], `sample-image-${index + 1}.jpg`, { type: 'image/jpeg' })

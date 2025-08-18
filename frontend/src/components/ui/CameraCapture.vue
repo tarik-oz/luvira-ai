@@ -13,6 +13,7 @@ import AppButton from './AppButton.vue'
 import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../composables/useAppState'
 import { useRouter } from 'vue-router'
+import { trackEvent } from '../../services/analytics'
 
 const { t } = useI18n()
 const { isUploading } = useAppState()
@@ -97,6 +98,7 @@ const open = async () => {
 
   // Reset states
   showModal.value = true
+  trackEvent('camera_open')
   isLoading.value = true
   isStreamReady.value = false
   capturedImage.value = null
@@ -255,6 +257,7 @@ const takePhoto = async () => {
     )
 
     capturedImage.value = canvas.toDataURL('image/jpeg', 0.8)
+    trackEvent('camera_capture')
 
     // Stop camera stream after photo is taken
     if (stream.value) {
@@ -320,6 +323,7 @@ const submitPhoto = async () => {
     const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' })
 
     await hairService.uploadImage(file, capturedImage.value)
+    trackEvent('camera_submit')
 
     // Close modal and navigate
     close()

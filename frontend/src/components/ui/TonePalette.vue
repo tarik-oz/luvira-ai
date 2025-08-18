@@ -6,6 +6,7 @@ import { TONE_DEFINITIONS } from '../../config/colorConfig'
 import { getBasePreview, getTonePreview } from '@/data/hairAssets'
 import { getToneSortOrder } from '@/data/colorMeta'
 import hairService from '../../services/hairService'
+import { trackEvent } from '../../services/analytics'
 
 const { t } = useI18n()
 const {
@@ -95,6 +96,7 @@ const selectTone = async (toneName: string) => {
   console.log('Selected tone:', toneName, 'for color:', colorName)
 
   try {
+    trackEvent('select_tone', { color: colorName, tone: toneName })
     await hairService.applyToneLocally(toneName)
     console.log('Tone switch completed locally')
   } catch (error) {
@@ -115,6 +117,7 @@ const selectBase = async () => {
   console.log('Selected base color:', colorName)
 
   // Use local compose to show the base color
+  trackEvent('select_tone_base', { color: colorName })
   await hairService.applyToneLocally(null)
 }
 </script>

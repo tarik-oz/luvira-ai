@@ -3,6 +3,11 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import i18n from './i18n'
 import router from './router'
+import { initAnalytics } from './services/analytics'
+
+// --- Google Analytics (optional) ---
+const GA_ID = import.meta.env.VITE_GA_ID
+if (GA_ID) initAnalytics(GA_ID, router)
 
 // --- Theme Preference ---
 const savedTheme = localStorage.getItem('theme')

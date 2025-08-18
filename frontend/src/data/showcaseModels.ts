@@ -37,16 +37,16 @@ export const showcaseModels: ShowcaseModel[] = [
     mask: showcase_1_prob_mask,
     colors: [
       {
-        colorName: 'Blonde',
-        toneName: 'Honey',
-        src: showcase_1_blonde_honey,
-        alt: 'Blonde Honey hair color',
-      },
-      {
         colorName: 'Pink',
         toneName: 'Fuchsia',
         src: showcase_1_pink_fuchsia,
         alt: 'Pink Fuchsia hair color',
+      },
+      {
+        colorName: 'Blonde',
+        toneName: 'Honey',
+        src: showcase_1_blonde_honey,
+        alt: 'Blonde Honey hair color',
       },
       {
         colorName: 'Red',
