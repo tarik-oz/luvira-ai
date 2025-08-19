@@ -88,7 +88,6 @@ async def overlays_with_session(
                 yield f"--{boundary}--\r\n".encode()
             except SessionExpiredException as e:
                 # Encode JSON error as single-part JSON for consistency
-                import json
                 payload = {
                     "detail": e.detail,
                     "error_code": e.error_code,
@@ -115,7 +114,6 @@ async def overlays_with_session(
             },
         )
     except SessionExpiredException as e:
-        import json
         payload = {
             "detail": e.detail,
             "error_code": e.error_code,

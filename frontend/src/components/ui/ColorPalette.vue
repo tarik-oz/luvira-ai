@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../composables/useAppState'
 import { AVAILABLE_COLORS } from '../../config/colorConfig'
@@ -16,6 +16,12 @@ const colors = getPreferredColorOrder(AVAILABLE_COLORS).map((name: string) => ({
   name,
   preview: getBasePreview(name),
 }))
+const imageLoaded: Record<string, boolean> = reactive(
+  Object.fromEntries(colors.map((c) => [c.name, false])),
+)
+const onImageLoad = (name: string) => {
+  imageLoaded[name] = true
+}
 
 const selectColor = async (colorName: string) => {
   if (isProcessing.value) return // Prevent multiple requests
@@ -82,7 +88,10 @@ const selectColor = async (colorName: string) => {
             :src="color.preview"
             :alt="t(`colors.${color.name}`) as string"
             class="h-full w-full object-cover"
+            loading="lazy"
+            @load="onImageLoad(color.name)"
           />
+          <div v-if="!imageLoaded[color.name]" class="skeleton absolute inset-0"></div>
           <!-- Loading overlay on selected color -->
           <div
             v-if="isProcessing && selectedColor === color.name"

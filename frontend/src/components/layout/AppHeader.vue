@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { PhSun, PhMoon, PhGlobe, PhCaretDown, PhCheck } from '@phosphor-icons/vue'
-import logo from '@/assets/logo/logo.png'
+import logo from '@/assets/logo/logo.webp'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { useAppState } from '@/composables/useAppState'
@@ -85,13 +85,14 @@ function handleHomeClick() {
 
       <div class="flex items-center gap-2 px-2 md:gap-4 md:px-6">
         <!-- Theme Toggle -->
-        <label class="swap swap-rotate">
+        <label class="swap swap-rotate" aria-label="Toggle theme">
           <input
             type="checkbox"
             class="theme-controller"
             value="light"
             :checked="theme === 'light'"
             @change="toggleTheme"
+            aria-label="Theme toggle"
           />
           <PhSun class="swap-on h-8 w-8 text-yellow-300" />
           <PhMoon class="swap-off text-base-100 h-8 w-8" />
@@ -103,6 +104,7 @@ function handleHomeClick() {
             type="button"
             class="flex cursor-pointer items-center rounded"
             @click="toggleLangDropdown"
+            aria-label="Language menu"
           >
             <PhGlobe class="text-base-100 h-8 w-8" />
             <PhCaretDown class="text-base-100 h-5 w-3" />

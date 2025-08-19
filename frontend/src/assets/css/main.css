@@ -17,3 +17,13 @@ body {
 .no-callout {
   -webkit-touch-callout: none;
 }
+
+/* Crossfade for showcase models */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 300ms ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}

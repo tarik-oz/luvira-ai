@@ -276,7 +276,7 @@ const handleDragLeave = (event: DragEvent) => {
 
       <!-- Upload text -->
       <div class="mb-1 select-none">
-        <h3
+        <h2
           :class="[
             'text-xl font-semibold transition-colors duration-300',
             isDragOver ? 'text-accent' : 'text-base-100/80',
@@ -284,7 +284,7 @@ const handleDragLeave = (event: DragEvent) => {
           ]"
         >
           {{ t('uploadSection.uploadImage') }}
-        </h3>
+        </h2>
       </div>
 
       <!-- Hidden file input -->
@@ -295,6 +295,7 @@ const handleDragLeave = (event: DragEvent) => {
         class="hidden"
         @change="handleFileSelect"
         :disabled="isUploading"
+        aria-labelledby="upload-image-label"
       />
 
       <!-- Info icon and tooltip -->

@@ -9,6 +9,18 @@ import { initAnalytics } from './services/analytics'
 const GA_ID = import.meta.env.VITE_GA_ID
 if (GA_ID) initAnalytics(GA_ID, router)
 
+// --- Silence logs in production ---
+if (import.meta.env.PROD) {
+  const noop = () => {}
+  // silence log/debug/info/trace/warn/error
+  console.log = noop
+  console.debug = noop
+  console.info = noop
+  console.trace = noop
+  console.warn = noop
+  console.error = noop
+}
+
 // --- Theme Preference ---
 const savedTheme = localStorage.getItem('theme')
 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches

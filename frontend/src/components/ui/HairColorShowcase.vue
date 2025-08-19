@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { showcaseModels } from '@/data/showcaseModels'
 const { t } = useI18n()
@@ -12,7 +12,7 @@ const TIMINGS = {
   TEXT_FADE_DURATION: 1000,
   COLOR_TRANSITION: 2000,
   STEP_INTERVAL: 50,
-  MODEL_FADE_DURATION: 300, // Faster model transition - 300ms instead of 500ms
+  MODEL_FADE_DURATION: 300,
 } as const
 
 const COLOR_STEP_SIZE = 100 / (TIMINGS.COLOR_TRANSITION / TIMINGS.STEP_INTERVAL)
@@ -22,8 +22,8 @@ const activeModelIndex = ref(0)
 const currentColorIndex = ref(0)
 const animationProgress = ref(0)
 const textOpacity = ref(1)
-const showcaseOpacity = ref(1) // For smooth model transitions
-const isModelSwitching = ref(false) // Guard transitions and prevent flicker
+const isTransitioning = ref(false)
+const pendingModelIndex = ref<number | null>(null)
 
 // --- Computed Properties for Dynamic Data ---
 const activeModel = computed(() => models.value[activeModelIndex.value])
@@ -98,69 +98,42 @@ const completeTransition = () => {
 }
 
 const switchToNextModel = () => {
-  // Start fade out
-  isModelSwitching.value = true
-  showcaseOpacity.value = 0
-
-  // After fade out completes, switch model and start fade in
-  const switchTimeout = setTimeout(() => {
-    // Update model data
-    activeModelIndex.value = (activeModelIndex.value + 1) % models.value.length
-    currentColorIndex.value = 0
-
-    // Reset animation state for new model
-    animationProgress.value = 0
-    textOpacity.value = 1
-
-    // Start fade in immediately
-    showcaseOpacity.value = 1
-
-    // Wait for fade in to COMPLETELY finish before starting animation cycle
-    const startCycleTimeout = setTimeout(() => {
-      // Hold first color when fade in is complete, then start cycle
-      setTimeout(() => {
-        isModelSwitching.value = false
-        runCycle()
-      }, TIMINGS.HOLD_DURATION - TIMINGS.MODEL_FADE_DURATION)
-    }, TIMINGS.MODEL_FADE_DURATION) // Wait for fade in to complete
-    timeouts.push(startCycleTimeout)
-  }, TIMINGS.MODEL_FADE_DURATION) // Wait for fade out to complete
-  timeouts.push(switchTimeout)
+  if (isTransitioning.value) return
+  // Switch model index; Transition handles crossfade
+  isTransitioning.value = true
+  activeModelIndex.value = (activeModelIndex.value + 1) % models.value.length
+  currentColorIndex.value = 0
+  animationProgress.value = 0
+  textOpacity.value = 1
 }
 
 const selectModel = (index: number) => {
   if (activeModelIndex.value === index) return
-  if (isModelSwitching.value) return
+  if (isTransitioning.value) {
+    pendingModelIndex.value = index
+    return
+  }
   clearTimers() // Stop any ongoing animation immediately
+  isTransitioning.value = true
+  // Update model; Transition will crossfade
+  activeModelIndex.value = index
+  currentColorIndex.value = 0
+  animationProgress.value = 0
+  textOpacity.value = 1
+}
 
-  // Start fade out
-  isModelSwitching.value = true
-  showcaseOpacity.value = 0
-
-  // After fade out completes, switch model and start fade in
-  const switchTimeout = setTimeout(() => {
-    // Update model data
-    activeModelIndex.value = index
-    currentColorIndex.value = 0
-
-    // Reset animation state for new model
-    animationProgress.value = 0
-    textOpacity.value = 1
-
-    // Start fade in immediately
-    showcaseOpacity.value = 1
-
-    // Wait for fade in to COMPLETELY finish before starting animation cycle
-    const startCycleTimeout = setTimeout(() => {
-      // Hold first color, then start cycle
-      setTimeout(() => {
-        isModelSwitching.value = false
-        runCycle()
-      }, TIMINGS.HOLD_DURATION - TIMINGS.MODEL_FADE_DURATION)
-    }, TIMINGS.MODEL_FADE_DURATION) // Wait for fade in to complete
-    timeouts.push(startCycleTimeout)
-  }, TIMINGS.MODEL_FADE_DURATION) // Wait for fade out to complete
-  timeouts.push(switchTimeout)
+function onAfterEnter() {
+  // Crossfade completed
+  isTransitioning.value = false
+  runCycle()
+  if (pendingModelIndex.value !== null && pendingModelIndex.value !== activeModelIndex.value) {
+    const nextIndex = pendingModelIndex.value
+    pendingModelIndex.value = null
+    // defer to next tick to avoid interrupting current cycle start
+    nextTick(() => selectModel(nextIndex))
+  } else {
+    pendingModelIndex.value = null
+  }
 }
 
 onMounted(runCycle)
@@ -183,53 +156,58 @@ const getTransitionStyle = () => ({
 <template>
   <div class="flex h-full flex-col items-center justify-center gap-4">
     <!-- Main Showcase -->
-    <div
-      class="relative aspect-[3/4] w-full max-w-[22rem] overflow-hidden rounded-xl transition-opacity duration-300 sm:max-w-[24rem] md:aspect-auto md:h-[31rem] md:w-[29rem] md:max-w-none lg:h-[28rem] lg:w-96"
-      :style="{ opacity: showcaseOpacity }"
-    >
-      <!-- Base Image (Current Color) -->
-      <img
-        :src="currentColor.src"
-        :alt="currentColor.alt"
-        class="absolute inset-0 h-full w-full object-cover"
-      />
-      <!-- Overlay Image (Next Color) -->
-      <img
-        v-show="!isModelSwitching"
-        :src="nextColor.src"
-        :alt="nextColor.alt"
-        class="absolute inset-0 h-full w-full object-cover"
-        :style="getTransitionStyle()"
-      />
-      <!-- Color Label -->
+    <Transition name="fade" mode="out-in" @after-enter="onAfterEnter">
       <div
-        class="bg-base-100 text-base-content absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full px-4 py-2 text-base font-semibold transition-opacity duration-1000"
-        :style="{ opacity: textOpacity }"
+        :key="activeModelIndex"
+        class="relative mb-4 aspect-[3/4] w-full max-w-[22rem] overflow-hidden rounded-xl sm:max-w-[24rem] md:aspect-auto md:h-[31rem] md:w-[29rem] md:max-w-none lg:h-[28rem] lg:w-[24rem]"
+        role="img"
+        aria-label="Hair color showcase"
       >
-        {{
-          animationProgress > 50
-            ? `${t('colors.' + nextColor.colorName)} · ${nextColor.toneName}`
-            : `${t('colors.' + currentColor.colorName)} · ${currentColor.toneName}`
-        }}
+        <!-- Base Image (Current Color) -->
+        <img
+          :src="currentColor.src"
+          :alt="currentColor.alt"
+          class="absolute inset-0 h-full w-full object-cover"
+        />
+        <!-- Overlay Image (Next Color) -->
+        <img
+          :src="nextColor.src"
+          :alt="nextColor.alt"
+          class="absolute inset-0 h-full w-full object-cover"
+          :style="getTransitionStyle()"
+          width="480"
+          height="640"
+        />
+        <!-- Color Label -->
+        <div
+          class="bg-base-100 text-base-content absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full px-4 py-2 text-base font-semibold transition-opacity duration-1000"
+          :style="{ opacity: textOpacity }"
+        >
+          {{
+            animationProgress > 50
+              ? `${t('colors.' + nextColor.colorName)} · ${nextColor.toneName}`
+              : `${t('colors.' + currentColor.colorName)} · ${currentColor.toneName}`
+          }}
+        </div>
       </div>
-    </div>
+    </Transition>
+  </div>
 
-    <!-- Model Selection Thumbnails -->
+  <!-- Model Selection Thumbnails -->
+  <div
+    class="mx-auto flex w-full max-w-[22rem] justify-center gap-3 sm:max-w-[24rem] md:w-[29rem] md:max-w-none md:gap-4 lg:w-96"
+  >
     <div
-      class="mx-auto flex w-full max-w-[22rem] justify-center gap-3 sm:max-w-[24rem] md:w-[29rem] md:max-w-none md:gap-4 lg:w-96"
+      v-for="(model, index) in models"
+      :key="model.id"
+      @click="selectModel(index)"
+      class="h-20 w-20 cursor-pointer overflow-hidden rounded-lg transition-all duration-500 sm:h-24 sm:w-24"
+      :class="{
+        'border-primary scale-110 border-2 shadow-lg': activeModelIndex === index,
+        'hover:border-base-content/50 border-2 border-transparent': activeModelIndex !== index,
+      }"
     >
-      <div
-        v-for="(model, index) in models"
-        :key="model.id"
-        @click="selectModel(index)"
-        class="h-20 w-20 cursor-pointer overflow-hidden rounded-lg transition-all duration-500 sm:h-24 sm:w-24"
-        :class="{
-          'border-primary scale-110 border-2 shadow-lg': activeModelIndex === index,
-          'hover:border-base-content/50 border-2 border-transparent': activeModelIndex !== index,
-        }"
-      >
-        <img :src="model.thumbnail" :alt="`Model ${model.id}`" class="h-full w-full object-cover" />
-      </div>
+      <img :src="model.thumbnail" :alt="`Model ${model.id}`" class="h-full w-full object-cover" />
     </div>
   </div>
 </template>

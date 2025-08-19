@@ -80,7 +80,7 @@ class HairService {
         else upsertColorTone(cacheKey, name, url)
       })
     } catch (error: unknown) {
-      console.error('❌ All-tones change failed:', error)
+      console.error('All-tones change failed:', error)
       const message = error instanceof Error ? error.message : String(error)
       if (message === 'SESSION_EXPIRED') {
         setSessionError('SESSION_EXPIRED')

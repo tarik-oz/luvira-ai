@@ -39,7 +39,7 @@ const downloadImage = async () => {
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
 
-    console.log('✅ Image downloaded:', fileName)
+    console.log('Image downloaded:', fileName)
 
     // Analytics
     trackEvent('download_image', {
@@ -48,7 +48,7 @@ const downloadImage = async () => {
       file_name: fileName,
     })
   } catch (error) {
-    console.error('❌ Download failed:', error)
+    console.error('Download failed:', error)
   }
 }
 

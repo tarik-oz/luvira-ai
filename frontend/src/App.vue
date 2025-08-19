@@ -9,7 +9,7 @@ import Footer from './components/layout/AppFooter.vue'
 
     <!-- Main Content -->
     <main class="bg-base-100 flex-1 overflow-y-auto py-6">
-      <div class="mx-auto mt-10 mb-4 max-w-7xl px-4 pt-4 md:mt-16 md:pt-10">
+      <div class="mx-auto mt-10 mb-4 max-w-7xl px-4 pt-4 md:mt-12 md:pt-10">
         <router-view />
       </div>
     </main>

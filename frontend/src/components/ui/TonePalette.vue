@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, watch, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../composables/useAppState'
 import { TONE_DEFINITIONS } from '../../config/colorConfig'
@@ -42,6 +42,22 @@ const availableTones = computed(() => {
   return getToneSortOrder(colorName, tones)
 })
 
+// Track per-tone image load state to show skeletons until loaded
+const toneLoaded: Record<string, boolean> = reactive({})
+watch(
+  () => currentColorResult.value?.originalColor,
+  () => {
+    // Reset tone loaded flags for new color
+    Object.keys(toneLoaded).forEach((k) => delete toneLoaded[k])
+  },
+)
+const onToneLoad = (toneName: string) => {
+  toneLoaded[toneName] = true
+}
+
+// Local loading state for a tone that hasn't arrived via stream yet
+const loadingToneName = ref<string | null>(null)
+
 // Currently selected tone for the color - per-color state
 const currentSelectedTone = computed(() => {
   if (!currentColorResult.value) return null
@@ -73,22 +89,44 @@ const selectTone = async (toneName: string) => {
   // Update the state immediately so loading appears on the selected tone
   setColorToneState(colorName, toneName)
 
-  // If the tone is not in cache yet, start the stream (single request logic)
+  // If the tone is not in cache yet, start stream and wait only until this tone arrives
   const toneUrl = currentColorResult.value.tones[toneName]
   if (!toneUrl) {
+    loadingToneName.value = toneName
+    setIsProcessing(true)
     try {
-      setIsProcessing(true)
-      await hairService.ensureColorStream(colorName)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      if (message === 'SESSION_EXPIRED') return
-      if (message === 'Failed to fetch' || /network/i.test(message)) {
-        setProcessingError(t('processing.networkError') as string)
-        return
-      }
-      setProcessingError(t('tonePalette.error') as string)
-      return
+      // Start/ensure stream, then wait until this tone becomes available or timeout
+      hairService.ensureColorStream(colorName).catch((error) => {
+        const message = error instanceof Error ? error.message : String(error)
+        if (message === 'SESSION_EXPIRED') return
+        if (message === 'Failed to fetch' || /network/i.test(message)) {
+          setProcessingError(t('processing.networkError') as string)
+        } else {
+          setProcessingError(t('tonePalette.error') as string)
+        }
+      })
+
+      await new Promise<void>((resolve) => {
+        const TIMEOUT_MS = 10000
+        const stop = watch(
+          () => currentColorResult.value?.tones[toneName],
+          (val) => {
+            if (val) {
+              stop()
+              resolve()
+            }
+          },
+          { immediate: false },
+        )
+        setTimeout(() => {
+          try {
+            stop()
+          } catch {}
+          resolve()
+        }, TIMEOUT_MS)
+      })
     } finally {
+      loadingToneName.value = null
       setIsProcessing(false)
     }
   }
@@ -131,7 +169,7 @@ const selectBase = async () => {
     <!-- Header -->
     <div class="mb-3 lg:mb-4">
       <h3 class="text-base-100 mb-1 text-lg font-bold">
-        {{ t('tonePalette.title') }} - {{ currentColorResult.originalColor }}
+        {{ t('tonePalette.title') }} - {{ t('colors.' + currentColorResult.originalColor) }}
       </h3>
     </div>
 
@@ -161,7 +199,7 @@ const selectBase = async () => {
             class="bg-base-content/30 absolute inset-0 flex items-center justify-center"
           >
             <div
-              class="border-accent h-7 w-7 animate-spin rounded-full border-t-4 border-b-4"
+              class="border-accent h-5 w-5 animate-spin rounded-full border-t-2 border-b-2"
             ></div>
           </div>
           <!-- Bottom label bar -->
@@ -189,21 +227,32 @@ const selectBase = async () => {
           currentSelectedTone === tone.name
             ? 'border-primary ring-primary/20 shadow-lg ring-2'
             : '',
-          isProcessing
-            ? currentSelectedTone === tone.name
-              ? 'cursor-wait opacity-60'
-              : 'pointer-events-none cursor-not-allowed opacity-50'
-            : 'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
+          loadingToneName === tone.name
+            ? 'cursor-wait opacity-60'
+            : isProcessing
+              ? currentSelectedTone === tone.name
+                ? 'cursor-wait opacity-60'
+                : 'pointer-events-none cursor-not-allowed opacity-50'
+              : 'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
         ]"
       >
         <div
           class="bg-base-100 relative w-full overflow-hidden rounded-lg"
           style="aspect-ratio: 9 / 16"
         >
-          <img :src="tone.preview" :alt="tone.displayName" class="h-full w-full object-cover" />
-          <!-- Loading overlay on selected tone -->
+          <div v-if="!toneLoaded[tone.name]" class="skeleton absolute inset-0"></div>
+          <img
+            :src="tone.preview"
+            :alt="tone.displayName"
+            class="h-full w-full object-cover"
+            loading="lazy"
+            @load="onToneLoad(tone.name)"
+          />
+          <!-- Loading overlay on selected tone or when waiting this tone to arrive -->
           <div
-            v-if="isProcessing && currentSelectedTone === tone.name"
+            v-if="
+              (isProcessing && currentSelectedTone === tone.name) || loadingToneName === tone.name
+            "
             class="bg-base-content/30 absolute inset-0 flex items-center justify-center"
           >
             <div
