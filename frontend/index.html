@@ -1,36 +1,46 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LuviraAI - Hair Color Editor</title>
+    <!-- Preload LCP image (first showcase image) -->
+    <link
+      fetchpriority="high"
+      rel="preload"
+      as="image"
+      href="/src/assets/showcase/showcase_1_pink_fuchsia.webp"
+    />
+    <meta
+      name="description"
+      content="Upload your photo and try realistic AI hair color changes instantly. Explore colors and tones and download the result."
+    />
+    <link rel="canonical" href="https://www.luviraai.app/" />
+    <meta property="og:title" content="LuviraAI - Hair Color Editor" />
+    <meta
+      property="og:description"
+      content="Upload your photo and try realistic hair color changes instantly."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/favicon.png" />
+    <meta property="og:url" content="https://www.luviraai.app/" />
+    <meta name="robots" content="index,follow" />
+    <!-- Inter Google Font -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      const savedTheme = localStorage.getItem('theme')
+      const theme = savedTheme || (prefersDark ? 'dark' : 'cupcake')
+      document.documentElement.setAttribute('data-theme', theme)
+    </script>
+  </head>
 
-<head>
-  <meta charset="UTF-8">
-  <link rel="icon" href="/favicon.png" type="image/png">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LuviraAI - Hair Color Editor</title>
-  <!-- Preload LCP image (first showcase image) -->
-  <link rel="preload" as="image" href="/src/assets/showcase/showcase_1_pink_fuchsia.webp" />
-  <meta name="description" content="Upload your photo and try realistic AI hair color changes instantly. Explore colors and tones and download the result." />
-  <link rel="canonical" href="https://www.luviraai.app/" />
-  <meta property="og:title" content="LuviraAI - Hair Color Editor" />
-  <meta property="og:description" content="Upload your photo and try realistic hair color changes instantly." />
-  <meta property="og:type" content="website" />
-  <meta property="og:image" content="/favicon.png" />
-  <meta property="og:url" content="https://www.luviraai.app/" />
-  <meta name="robots" content="index,follow" />
-  <!-- Inter Google Font -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script>
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const savedTheme = localStorage.getItem('theme');
-    const theme = savedTheme || (prefersDark ? 'dark' : 'cupcake');
-    document.documentElement.setAttribute('data-theme', theme);
-  </script>
-</head>
-
-<body>
-  <div id="app"></div>
-  <script type="module" src="/src/main.ts"></script>
-</body>
-
-</html>
-
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
 </html>

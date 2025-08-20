@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onUnmounted, computed } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useAppState } from '../../composables/useAppState'
 import { useI18n } from 'vue-i18n'
 
@@ -41,63 +41,77 @@ watch(uploadedImage, () => updateAspectFromImage(), { immediate: true })
 
 // Compare mode functionality
 const containerRef = ref<HTMLElement>()
-const sliderPosition = ref(50) // Percentage
+const leftPaneRef = ref<HTMLElement>()
+const rightPaneRef = ref<HTMLElement>()
+const dividerRef = ref<HTMLElement>()
+const sliderPosition = ref(50) // Percentage (source of truth only)
 const isDragging = ref(false)
+let activePointerId: number | null = null
+let rafId: number | null = null
+let pendingPercent = sliderPosition.value
 
-const handleMouseDown = (event: MouseEvent) => {
+function scheduleApply(percent: number) {
+  pendingPercent = percent
+  if (rafId == null) {
+    rafId = requestAnimationFrame(() => {
+      rafId = null
+      const p = Math.max(0, Math.min(100, pendingPercent))
+      const lp = leftPaneRef.value
+      const rp = rightPaneRef.value
+      const dv = dividerRef.value
+      if (lp) lp.style.clipPath = `polygon(0 0, ${p}% 0, ${p}% 100%, 0 100%)`
+      if (rp) rp.style.clipPath = `polygon(${p}% 0, 100% 0, 100% 100%, ${p}% 100%)`
+      if (dv) dv.style.left = p + '%'
+      sliderPosition.value = p
+    })
+  }
+}
+
+function updateFromClientX(clientX: number) {
+  if (!containerRef.value) return
+  const rect = containerRef.value.getBoundingClientRect()
+  const x = clientX - rect.left
+  const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100))
+  scheduleApply(percentage)
+}
+
+function handlePointerDown(event: PointerEvent) {
   if (!props.compareMode || !containerRef.value) return
-
   isDragging.value = true
-  updateSliderPosition(event)
+  activePointerId = event.pointerId
+  try {
+    containerRef.value.setPointerCapture(event.pointerId)
+  } catch {}
+  updateFromClientX(event.clientX)
   event.preventDefault()
 }
 
-const handleMouseMove = (event: MouseEvent) => {
-  if (!isDragging.value || !containerRef.value) return
-  updateSliderPosition(event)
+function handlePointerMove(event: PointerEvent) {
+  if (!isDragging.value || activePointerId == null) return
+  updateFromClientX(event.clientX)
 }
 
-const handleMouseUp = () => {
+function handlePointerUp() {
+  if (activePointerId !== null) {
+    try {
+      containerRef.value?.releasePointerCapture(activePointerId)
+    } catch {}
+  }
+  activePointerId = null
   isDragging.value = false
 }
 
-const handleClick = (event: MouseEvent) => {
-  if (!props.compareMode || !containerRef.value) return
-  updateSliderPosition(event)
+function handleClick(event: MouseEvent) {
+  if (!props.compareMode) return
+  updateFromClientX(event.clientX)
 }
 
-const updateSliderPosition = (event: MouseEvent) => {
-  if (!containerRef.value) return
-
-  const rect = containerRef.value.getBoundingClientRect()
-  const x = event.clientX - rect.left
-  const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100))
-  sliderPosition.value = percentage
-}
-
-// Watch compareMode prop to add/remove event listeners
+// Ensure styles are applied once elements are ready or when compare toggles
 watch(
-  () => props.compareMode,
-  (newValue) => {
-    if (newValue) {
-      // Compare mode enabled - add event listeners
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-    } else {
-      // Compare mode disabled - remove event listeners
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-      isDragging.value = false
-    }
-  },
+  () => [containerRef.value, props.compareMode],
+  () => scheduleApply(sliderPosition.value),
   { immediate: true },
 )
-
-onUnmounted(() => {
-  // Component unmount olurken tüm listener'ları temizle
-  document.removeEventListener('mousemove', handleMouseMove)
-  document.removeEventListener('mouseup', handleMouseUp)
-})
 
 // Label text for active color/tone
 const labelText = computed(() => {
@@ -113,7 +127,15 @@ const labelText = computed(() => {
 })
 
 const isPortrait = computed(() => imageNaturalHeight.value > imageNaturalWidth.value)
-const maxHeightVh = computed(() => (isPortrait.value ? '60vh' : '90vh'))
+// Larger on phones: allow taller viewport height when not lg
+const maxHeightVh = computed(() => {
+  // Heuristic using window width; Vue SSR safe guard
+  const w = typeof window !== 'undefined' ? window.innerWidth : 1024
+  const isLg = w >= 1024
+  if (isLg) return isPortrait.value ? '60vh' : '90vh'
+  // phone/tablet: give more height so square images feel bigger
+  return isPortrait.value ? '72vh' : '92vh'
+})
 </script>
 
 <template>
@@ -136,10 +158,13 @@ const maxHeightVh = computed(() => (isPortrait.value ? '60vh' : '90vh'))
       <!-- Image Display Area -->
       <div
         ref="containerRef"
-        class="bg-base-content relative w-full"
+        class="bg-base-content relative w-full touch-none"
         :style="{ aspectRatio: containerAspect, maxHeight: maxHeightVh }"
         :class="{ 'cursor-pointer select-none': compareMode }"
-        @mousedown="handleMouseDown"
+        @pointerdown="handlePointerDown"
+        @pointermove="handlePointerMove"
+        @pointerup="handlePointerUp"
+        @pointercancel="handlePointerUp"
         @click="handleClick"
       >
         <!-- Normal Mode: layer original (bottom) + overlay (top) -->
@@ -164,7 +189,8 @@ const maxHeightVh = computed(() => (isPortrait.value ? '60vh' : '90vh'))
         <template v-else>
           <!-- Original Image (Left Side) -->
           <div
-            class="absolute inset-0 h-full w-full overflow-hidden"
+            ref="leftPaneRef"
+            class="absolute inset-0 h-full w-full overflow-hidden will-change-[clip-path]"
             :style="{
               clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)`,
             }"
@@ -185,7 +211,8 @@ const maxHeightVh = computed(() => (isPortrait.value ? '60vh' : '90vh'))
 
           <!-- Processed Image (Right Side): original + overlay layered -->
           <div
-            class="absolute inset-0 h-full w-full overflow-hidden"
+            ref="rightPaneRef"
+            class="absolute inset-0 h-full w-full overflow-hidden will-change-[clip-path]"
             :style="{
               clipPath: `polygon(${sliderPosition}% 0, 100% 0, 100% 100%, ${sliderPosition}% 100%)`,
             }"
@@ -212,7 +239,8 @@ const maxHeightVh = computed(() => (isPortrait.value ? '60vh' : '90vh'))
 
           <!-- Vertical Divider Line + Modern Handle -->
           <div
-            class="pointer-events-none absolute top-0 bottom-0 z-10 transition-all duration-150 ease-out"
+            ref="dividerRef"
+            class="will-change-left pointer-events-none absolute top-0 bottom-0 z-10"
             :style="{ left: `${sliderPosition}%` }"
           >
             <!-- Line -->
@@ -220,23 +248,20 @@ const maxHeightVh = computed(() => (isPortrait.value ? '60vh' : '90vh'))
               class="absolute top-0 bottom-0 left-1/2 w-[2px] -translate-x-1/2 bg-white/80 shadow-[0_0_8px_rgba(0,0,0,0.25)]"
             ></div>
 
-            <!-- Handle -->
+            <!-- Handle: minimal, translucent, off-center to avoid face overlap -->
             <button
               type="button"
-              class="focus:ring-accent/50 pointer-events-auto absolute top-1/2 left-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 transform cursor-grab items-center justify-center rounded-full bg-white/90 shadow-xl ring-1 ring-white/60 backdrop-blur-md transition-all duration-150 ease-out hover:scale-105 hover:bg-white focus:ring-2 focus:outline-none"
-              :class="{ 'scale-110 cursor-grabbing': isDragging }"
-              @mousedown.stop="handleMouseDown"
+              class="focus:ring-accent/50 pointer-events-auto absolute top-[50%] left-1/2 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 transform cursor-grab items-center justify-center rounded-full bg-white/40 shadow ring-1 ring-white/50 backdrop-blur-sm transition-all duration-150 ease-out hover:scale-105 hover:bg-white/50 focus:ring-2 focus:outline-none"
+              :class="{ 'scale-105 cursor-grabbing': isDragging }"
+              @pointerdown.stop="handlePointerDown"
               aria-label="Compare slider"
             >
-              <!-- Left chevron -->
-              <svg viewBox="0 0 24 24" class="h-4 w-4 text-gray-600">
-                <path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 text-white/90">
+                <path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
               </svg>
-              <!-- Divider dot -->
-              <div class="mx-1 h-1 w-1 rounded-full bg-gray-400/80"></div>
-              <!-- Right chevron -->
-              <svg viewBox="0 0 24 24" class="h-4 w-4 text-gray-600">
-                <path fill="currentColor" d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z" />
+              <div class="mx-[3px] h-0.5 w-0.5 rounded-full bg-white/80"></div>
+              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 text-white/90">
+                <path fill="currentColor" d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z" />
               </svg>
             </button>
           </div>
@@ -245,7 +270,8 @@ const maxHeightVh = computed(() => (isPortrait.value ? '60vh' : '90vh'))
         <!-- Bottom centered color/tone label (only in normal mode) -->
         <div
           v-if="!compareMode && labelText"
-          class="bg-base-100 text-base-content absolute bottom-4 left-1/2 z-30 -translate-x-1/2 transform rounded-full px-4 py-2 text-sm font-semibold shadow-md transition duration-200 ease-out"
+          class="bg-base-100 text-base-content absolute bottom-4 left-1/2 z-30 w-fit max-w-[min(24ch,calc(100%-2rem))] -translate-x-1/2 transform rounded-full px-3 py-2 text-center text-sm leading-snug font-semibold break-words shadow-md transition duration-200 ease-out"
+          style="text-wrap: balance"
           :class="[isProcessing ? 'opacity-75' : 'opacity-100', 'translate-y-0']"
         >
           {{ labelText }}

@@ -5,6 +5,8 @@ import AppButton from './AppButton.vue'
 import { PhDownloadSimple } from '@phosphor-icons/vue'
 import { trackEvent } from '@/services/analytics'
 
+const { iconOnly } = defineProps<{ iconOnly?: boolean }>()
+
 const { t, locale } = useI18n()
 const { processedImage, currentColorResult, uploadedImage, selectedTone, isProcessing } =
   useAppState()
@@ -108,6 +110,7 @@ const generateFileName = (): string => {
 
 <template>
   <AppButton
+    v-if="!iconOnly"
     @click="downloadImage"
     :disabled="!processedImage || isProcessing"
     :class="
@@ -115,10 +118,25 @@ const generateFileName = (): string => {
         ? 'max-w-60 flex-1 px-4 py-2'
         : 'max-w-60 flex-1 cursor-not-allowed px-4 py-2 opacity-50'
     "
+    :aria-label="t('processing.downloadButton') as string"
+    :title="t('processing.downloadButton') as string"
   >
     <template #icon>
       <PhDownloadSimple class="h-4 w-4" />
     </template>
     {{ t('processing.downloadButton') }}
+  </AppButton>
+  <AppButton
+    v-else
+    :fullWidth="false"
+    @click="downloadImage"
+    :disabled="!processedImage || isProcessing"
+    :class="'h-9 w-auto rounded-xl px-3 py-0'"
+    :aria-label="t('processing.downloadButton') as string"
+    :title="t('processing.downloadButton') as string"
+  >
+    <template #icon>
+      <PhDownloadSimple class="text-base-100 h-4 w-4" />
+    </template>
   </AppButton>
 </template>

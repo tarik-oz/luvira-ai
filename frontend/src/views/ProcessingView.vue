@@ -7,11 +7,13 @@ import ImageDisplay from '../components/ui/ImageDisplay.vue'
 import AppButton from '../components/ui/AppButton.vue'
 import ColorPalette from '../components/ui/ColorPalette.vue'
 import DownloadButton from '../components/ui/DownloadButton.vue'
-import { PhCaretLeft, PhWarning } from '@phosphor-icons/vue'
+import { PhCaretLeft, PhWarning, PhArrowsLeftRight } from '@phosphor-icons/vue'
 import TonePalette from '@/components/ui/TonePalette.vue'
+import MobileColorToneBar from '@/components/ui/MobileColorToneBar.vue'
 import SessionExpiredModal from '@/components/ui/SessionExpiredModal.vue'
 
-const { resetState, sessionError, setSessionError, processingError } = useAppState()
+const { resetState, sessionError, setSessionError, processingError, showMobileToneBar } =
+  useAppState()
 const router = useRouter()
 const { t } = useI18n()
 
@@ -33,9 +35,47 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="container mx-auto px-4">
+  <div class="container mx-auto lg:px-4">
+    <!-- Mobile/Tablet Top Actions Bar -->
+    <div class="-mx-4 mb-4 flex items-center justify-between px-4 py-2 lg:hidden">
+      <div class="flex items-center gap-2">
+        <!-- Back (AppButton circular, base variant) -->
+        <AppButton
+          :fullWidth="false"
+          variant="base"
+          @click="goBack"
+          class="h-9 w-9 rounded-full p-0"
+          :aria-label="t('processing.backButton') as string"
+          :title="t('processing.backButton') as string"
+        >
+          <template #icon>
+            <PhCaretLeft class="text-base-100 h-4 w-4" />
+          </template>
+        </AppButton>
+      </div>
+      <div class="flex items-center gap-2">
+        <!-- Compare toggle (AppButton rounded, primary when active) -->
+        <AppButton
+          :fullWidth="false"
+          :variant="isCompareMode ? 'primary' : 'accent'"
+          @click="isCompareMode = !isCompareMode"
+          :aria-pressed="isCompareMode ? 'true' : 'false'"
+          class="h-9 w-auto rounded-xl px-3 py-0"
+          :aria-label="t('processing.compareMode') as string"
+          :title="t('processing.compareMode') as string"
+        >
+          <template #icon>
+            <PhArrowsLeftRight class="text-base-100 h-4 w-4" />
+          </template>
+        </AppButton>
+
+        <!-- Download (icon-only rounded rect using AppButton inside component) -->
+        <DownloadButton :icon-only="true" />
+      </div>
+    </div>
+
     <!-- Back Button -->
-    <div class="mb-6 lg:mb-8">
+    <div class="mb-6 hidden lg:mb-8 lg:block">
       <AppButton
         @click="goBack"
         class="bg-base-content hover:bg-base-content/80 active:bg-primary/60 max-w-60 px-4 py-2"
@@ -48,10 +88,10 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 gap-8 md:grid-cols-2 md:items-start">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
       <!-- Left column -->
       <div
-        class="flex flex-col items-center justify-center px-4 md:items-start md:justify-start md:px-0"
+        class="flex flex-col items-center justify-center px-0 lg:items-start lg:justify-start lg:px-0"
       >
         <!-- Image Display Container -->
         <div class="mx-auto w-full max-w-lg space-y-4">
@@ -71,11 +111,11 @@ onBeforeUnmount(() => {
           />
 
           <!-- Image Controls -->
-          <div class="flex items-center justify-between gap-4">
-            <!-- Download Button -->
+          <div class="hidden items-center justify-between gap-4 lg:flex">
+            <!-- Download Button (desktop) -->
             <DownloadButton />
 
-            <!-- Compare Mode Toggle -->
+            <!-- Compare Mode Toggle (desktop) -->
             <div class="flex items-center gap-2">
               <span class="text-base-content text-sm font-medium">{{
                 t('processing.compareMode')
@@ -87,9 +127,17 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- Right column -->
-      <div class="flex flex-col gap-5 px-4 md:px-0">
-        <ColorPalette />
-        <TonePalette />
+      <div class="flex flex-col gap-4 px-4 lg:gap-5 lg:px-0">
+        <!-- ColorPalette: Always show on desktop, conditionally on mobile -->
+        <ColorPalette
+          :class="{ 'lg:block': true, hidden: showMobileToneBar, block: !showMobileToneBar }"
+        />
+
+        <!-- TonePalette: Show on desktop only -->
+        <TonePalette class="hidden lg:block" />
+
+        <!-- MobileColorToneBar: Show on mobile only when showMobileToneBar is true -->
+        <MobileColorToneBar v-show="showMobileToneBar" />
       </div>
     </div>
   </div>

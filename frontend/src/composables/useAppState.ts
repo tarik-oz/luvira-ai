@@ -30,6 +30,7 @@ const colorCache = ref<ColorCache>({})
 const sessionError = ref<string | null>(null)
 const processingError = ref<string | null>(null)
 const colorToneStates = ref<Record<string, string | null>>({}) // Per-color tone selection state
+const showMobileToneBar = ref(false) // Controls mobile view: ColorPalette vs MobileColorToneBar
 
 export function useAppState() {
   const setSessionId = (id: string | null) => {
@@ -187,6 +188,10 @@ export function useAppState() {
     colorToneStates.value = {}
   }
 
+  const setShowMobileToneBar = (show: boolean) => {
+    showMobileToneBar.value = show
+  }
+
   const resetState = () => {
     // Cleanup image URL
     if (uploadedImage.value) {
@@ -205,6 +210,7 @@ export function useAppState() {
     clearColorToneStates()
     sessionError.value = null
     processingError.value = null
+    showMobileToneBar.value = false
   }
 
   const createImageUrl = (file: File): string => {
@@ -225,6 +231,7 @@ export function useAppState() {
     colorCache: readonly(colorCache),
     sessionError: readonly(sessionError),
     processingError: readonly(processingError),
+    showMobileToneBar: readonly(showMobileToneBar),
 
     // Actions
     setSessionId,
@@ -246,5 +253,8 @@ export function useAppState() {
     getColorToneState,
     setColorToneState,
     clearColorToneStates,
+
+    // Mobile view state
+    setShowMobileToneBar,
   }
 }

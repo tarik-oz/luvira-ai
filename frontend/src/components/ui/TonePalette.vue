@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, reactive, ref } from 'vue'
+import { computed, watch, reactive, ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../composables/useAppState'
 import { TONE_DEFINITIONS } from '../../config/colorConfig'
@@ -158,6 +158,46 @@ const selectBase = async () => {
   trackEvent('select_tone_base', { color: colorName })
   await hairService.applyToneLocally(null)
 }
+// Horizontal scroll indicator (mobile) for tones
+const scrollerRef = ref<HTMLElement | null>(null)
+const thumbWidthPct = ref(0)
+const thumbLeftPct = ref(0)
+function updateScrollIndicator() {
+  const el = scrollerRef.value
+  if (!el) return
+  const { scrollWidth, clientWidth, scrollLeft } = el
+  if (scrollWidth <= clientWidth) {
+    thumbWidthPct.value = 100
+    thumbLeftPct.value = 0
+    return
+  }
+  const widthPct = Math.max(15, Math.min(100, (clientWidth / scrollWidth) * 100))
+  const maxLeftPct = 100 - widthPct
+  const leftPct = (scrollLeft / (scrollWidth - clientWidth)) * maxLeftPct
+  thumbWidthPct.value = widthPct
+  thumbLeftPct.value = leftPct
+}
+onMounted(() => {
+  updateScrollIndicator()
+  window.addEventListener('resize', updateScrollIndicator)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', updateScrollIndicator)
+})
+
+// Ensure the indicator initializes when tones first render
+watch(
+  [
+    () => currentColorResult.value && currentColorResult.value.originalColor,
+    () => availableTones.value.length,
+    () => scrollerRef.value,
+  ],
+  async () => {
+    await nextTick()
+    updateScrollIndicator()
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -167,14 +207,18 @@ const selectBase = async () => {
     class="bg-base-content/70 border-base-content/80 rounded-2xl border p-3 shadow-lg lg:p-4"
   >
     <!-- Header -->
-    <div class="mb-3 lg:mb-4">
+    <div class="mb-3 hidden lg:mb-4 lg:block">
       <h3 class="text-base-100 mb-1 text-lg font-bold">
         {{ t('tonePalette.title') }} - {{ t('colors.' + currentColorResult.originalColor) }}
       </h3>
     </div>
 
-    <!-- Base Color + Tones Grid -->
-    <div class="grid grid-cols-6 gap-2 md:grid-cols-7 lg:grid-cols-8">
+    <!-- Base Color + Tones Grid / Horizontal scroller on mobile -->
+    <div
+      class="scrollbar-none grid auto-cols-[minmax(84px,1fr)] grid-flow-col gap-2 overflow-x-auto md:auto-cols-[minmax(96px,1fr)] lg:auto-cols-auto lg:grid-flow-row lg:grid-cols-8 lg:overflow-visible"
+      ref="scrollerRef"
+      @scroll.passive="updateScrollIndicator()"
+    >
       <!-- Base Color (No Tone) -->
       <div
         @click="selectBase"
@@ -189,8 +233,7 @@ const selectBase = async () => {
         ]"
       >
         <div
-          class="bg-base-100 relative w-full overflow-hidden rounded-lg"
-          style="aspect-ratio: 9 / 16"
+          class="bg-base-100 relative aspect-[3/4] w-full overflow-hidden rounded-lg lg:aspect-[9/16]"
         >
           <img :src="basePreview" alt="Base pattern" class="h-full w-full object-cover" />
           <!-- Loading overlay on base -->
@@ -237,8 +280,7 @@ const selectBase = async () => {
         ]"
       >
         <div
-          class="bg-base-100 relative w-full overflow-hidden rounded-lg"
-          style="aspect-ratio: 9 / 16"
+          class="bg-base-100 relative aspect-[3/4] w-full overflow-hidden rounded-lg lg:aspect-[9/16]"
         >
           <div v-if="!toneLoaded[tone.name]" class="skeleton absolute inset-0"></div>
           <img
@@ -273,6 +315,13 @@ const selectBase = async () => {
           </div>
         </div>
       </div>
+    </div>
+    <!-- Scroll indicator (mobile) -->
+    <div class="relative mt-1 h-1 lg:hidden">
+      <div
+        class="bg-base-100/40 absolute top-0 bottom-0 rounded-full shadow-sm"
+        :style="{ width: thumbWidthPct + '%', left: thumbLeftPct + '%' }"
+      ></div>
     </div>
   </div>
 </template>

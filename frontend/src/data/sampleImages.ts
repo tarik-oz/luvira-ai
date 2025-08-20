@@ -1,10 +1,10 @@
 // Import sample images
-import woman_1 from '../assets/samples/woman_1.png'
-import woman_2 from '../assets/samples/woman_2.png'
-import woman_3 from '../assets/samples/woman_3.png'
-import woman_4 from '../assets/samples/woman_4.png'
-import guy_1 from '../assets/samples/guy_1.png'
-import guy_2 from '../assets/samples/guy_2.png'
+import woman_1 from '../assets/samples/woman_1.webp'
+import woman_2 from '../assets/samples/woman_2.webp'
+import woman_3 from '../assets/samples/woman_3.webp'
+import woman_4 from '../assets/samples/woman_4.webp'
+import guy_1 from '../assets/samples/guy_1.webp'
+import guy_2 from '../assets/samples/guy_2.webp'
 
 export interface StaticSampleImage {
   id: string

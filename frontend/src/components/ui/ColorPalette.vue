@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../composables/useAppState'
 import { AVAILABLE_COLORS } from '../../config/colorConfig'
@@ -9,7 +9,7 @@ import hairService from '../../services/hairService'
 import { trackEvent } from '../../services/analytics'
 
 const { t } = useI18n()
-const { isProcessing, setProcessingError } = useAppState()
+const { isProcessing, setProcessingError, setShowMobileToneBar } = useAppState()
 const selectedColor = ref<string | null>(null)
 
 const colors = getPreferredColorOrder(AVAILABLE_COLORS).map((name: string) => ({
@@ -33,6 +33,9 @@ const selectColor = async (colorName: string) => {
   selectedColor.value = colorName
   console.log('Selected color:', colorName)
 
+  // Show mobile tone bar immediately on mobile (don't wait for color change)
+  setShowMobileToneBar(true)
+
   try {
     trackEvent('select_color', { color: colorName })
     await hairService.changeHairColorAllTones(colorName)
@@ -47,25 +50,63 @@ const selectColor = async (colorName: string) => {
       setProcessingError(t('processing.networkError') as string)
       // Revert selection on network error
       selectedColor.value = previous
+      setShowMobileToneBar(false)
       return
     } else {
       setProcessingError(t('colorPalette.error') as string)
     }
     // Revert selection to previous on failure
     selectedColor.value = previous
+    setShowMobileToneBar(false)
   }
 }
+
+// Horizontal scroll indicator for mobile
+const scrollerRef = ref<HTMLElement | null>(null)
+const thumbWidthPct = ref(0)
+const thumbLeftPct = ref(0)
+function updateScrollIndicator() {
+  const el = scrollerRef.value
+  if (!el) return
+  const { scrollWidth, clientWidth, scrollLeft } = el
+  if (scrollWidth <= clientWidth) {
+    thumbWidthPct.value = 100
+    thumbLeftPct.value = 0
+    return
+  }
+  const widthPct = Math.max(15, Math.min(100, (clientWidth / scrollWidth) * 100))
+  const maxLeftPct = 100 - widthPct
+  const leftPct = (scrollLeft / (scrollWidth - clientWidth)) * maxLeftPct
+  thumbWidthPct.value = widthPct
+  thumbLeftPct.value = leftPct
+}
+onMounted(() => {
+  updateScrollIndicator()
+  const el = scrollerRef.value
+  el?.addEventListener('scroll', updateScrollIndicator, {
+    passive: true,
+  } as AddEventListenerOptions)
+  window.addEventListener('resize', updateScrollIndicator)
+})
+onUnmounted(() => {
+  const el = scrollerRef.value
+  el?.removeEventListener('scroll', updateScrollIndicator)
+  window.removeEventListener('resize', updateScrollIndicator)
+})
 </script>
 
 <template>
-  <div class="bg-base-content/70 border-base-content/80 rounded-2xl border p-4 shadow-lg">
+  <div class="bg-base-content/70 border-base-content/80 rounded-2xl border p-3 shadow-lg lg:p-4">
     <!-- Header -->
-    <div class="mb-4">
+    <div class="mb-3 hidden lg:mb-4 lg:block">
       <h3 class="text-base-100 mb-1 text-lg font-bold">{{ t('colorPalette.title') }}</h3>
     </div>
 
-    <!-- Color Grid -->
-    <div class="grid grid-cols-6 gap-2 md:grid-cols-6 lg:grid-cols-7">
+    <!-- Color Grid / Horizontal scroller on mobile -->
+    <div
+      ref="scrollerRef"
+      class="scrollbar-none grid auto-cols-[minmax(84px,1fr)] grid-flow-col gap-2 overflow-x-auto lg:auto-cols-auto lg:grid-flow-row lg:grid-cols-7 lg:overflow-visible"
+    >
       <div
         v-for="color in colors"
         :key="color.name"
@@ -81,8 +122,7 @@ const selectColor = async (colorName: string) => {
         ]"
       >
         <div
-          class="bg-base-100 relative w-full overflow-hidden rounded-lg"
-          style="aspect-ratio: 9 / 16"
+          class="bg-base-100 relative aspect-[3/4] w-full overflow-hidden rounded-lg lg:aspect-[9/16]"
         >
           <img
             :src="color.preview"
@@ -115,6 +155,13 @@ const selectColor = async (colorName: string) => {
           </div>
         </div>
       </div>
+    </div>
+    <!-- Scroll indicator (mobile) -->
+    <div class="relative mt-1 h-1 lg:hidden">
+      <div
+        class="bg-base-100/40 absolute top-0 bottom-0 rounded-full shadow-sm"
+        :style="{ width: thumbWidthPct + '%', left: thumbLeftPct + '%' }"
+      ></div>
     </div>
   </div>
 </template>

@@ -18,7 +18,7 @@ const onConfirm = () => emit('confirm')
   <div v-if="props.visible" class="fixed inset-0 z-50 flex items-center justify-center">
     <div class="absolute inset-0 bg-black/60"></div>
     <div
-      class="bg-base-100 text-base-content relative z-10 mx-auto w-full max-w-md rounded-2xl p-6 shadow-2xl"
+      class="bg-base-300 text-base-content relative z-10 mx-auto mr-2 ml-2 w-full max-w-md rounded-2xl p-6 shadow-2xl"
     >
       <h3 class="mb-2 text-lg font-bold">{{ t('processing.sessionExpiredTitle') }}</h3>
       <p class="mb-6 text-sm opacity-80">{{ t('processing.sessionExpiredMessage') }}</p>

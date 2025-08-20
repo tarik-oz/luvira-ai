@@ -21,9 +21,18 @@ body {
 /* Crossfade for showcase models */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 300ms ease;
+  transition: opacity 650ms ease;
 }
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* Hide native scrollbars (cross-browser) */
+.scrollbar-none {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
 }

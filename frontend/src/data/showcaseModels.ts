@@ -1,20 +1,20 @@
 import showcase_1_blonde_honey from '../assets/showcase/showcase_1_blonde_honey.webp'
 import showcase_1_pink_fuchsia from '../assets/showcase/showcase_1_pink_fuchsia.webp'
 import showcase_1_red_cherry from '../assets/showcase/showcase_1_red_cherry.webp'
-import showcase_1_prob_mask from '../assets/showcase/showcase_1_prob_mask.png'
-import showcase_1_thumb from '../assets/showcase/showcase_1_thumb.jpg'
+import showcase_1_prob_mask from '../assets/showcase/showcase_1_prob_mask.webp'
+import showcase_1_thumb from '../assets/showcase/showcase_1_thumb.webp'
 
 import showcase_2_gray_silver from '../assets/showcase/showcase_2_gray_silver.webp'
 import showcase_2_purple_plum from '../assets/showcase/showcase_2_purple_plum.webp'
 import showcase_2_teal_pastel from '../assets/showcase/showcase_2_teal_pastel.webp'
-import showcase_2_prob_mask from '../assets/showcase/showcase_2_prob_mask.png'
-import showcase_2_thumb from '../assets/showcase/showcase_2_thumb.jpg'
+import showcase_2_prob_mask from '../assets/showcase/showcase_2_prob_mask.webp'
+import showcase_2_thumb from '../assets/showcase/showcase_2_thumb.webp'
 
 import showcase_3_green_mint from '../assets/showcase/showcase_3_green_mint.webp'
 import showcase_3_blue_ice from '../assets/showcase/showcase_3_blue_ice.webp'
 import showcase_3_copper_bright from '../assets/showcase/showcase_3_copper_bright.webp'
-import showcase_3_prob_mask from '../assets/showcase/showcase_3_prob_mask.png'
-import showcase_3_thumb from '../assets/showcase/showcase_3_thumb.jpg'
+import showcase_3_prob_mask from '../assets/showcase/showcase_3_prob_mask.webp'
+import showcase_3_thumb from '../assets/showcase/showcase_3_thumb.webp'
 
 export interface ShowcaseColor {
   colorName: string
