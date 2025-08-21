@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, watch, reactive, ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useAppState } from '../../composables/useAppState'
-import { TONE_DEFINITIONS } from '../../config/colorConfig'
+import { useAppState } from '../../../composables/useAppState'
+import { TONE_DEFINITIONS } from '../../../config/colorConfig'
 import { getBasePreview, getTonePreview } from '@/data/hairAssets'
 import { getToneSortOrder } from '@/data/colorMeta'
-import hairService from '../../services/hairService'
-import { trackEvent } from '../../services/analytics'
+import hairService from '../../../services/hairService'
+import { trackEvent } from '../../../services/analytics'
 import { PhCaretLeft } from '@phosphor-icons/vue'
 
 const { t } = useI18n()

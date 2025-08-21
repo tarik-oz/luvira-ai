@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { useAppState } from '../../composables/useAppState'
-import AppButton from './AppButton.vue'
+import { useAppState } from '../../../composables/useAppState'
+import AppButton from '../base/AppButton.vue'
 import { PhDownloadSimple } from '@phosphor-icons/vue'
 import { trackEvent } from '@/services/analytics'
 

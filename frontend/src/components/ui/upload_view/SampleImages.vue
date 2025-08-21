@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { sampleImages } from '../../data/sampleImages'
+import { sampleImages } from '../../../data/sampleImages'
 import { defineExpose } from 'vue'
 import { PhX } from '@phosphor-icons/vue'
 import { useI18n } from 'vue-i18n'
-import { useAppState } from '../../composables/useAppState'
+import { useAppState } from '../../../composables/useAppState'
 import { useRouter } from 'vue-router'
 import { PhWarning } from '@phosphor-icons/vue'
-import hairService from '../../services/hairService'
-import { trackEvent } from '../../services/analytics'
+import hairService from '../../../services/hairService'
+import { trackEvent } from '../../../services/analytics'
 
 const { t } = useI18n()
 const { isUploading } = useAppState()
@@ -43,7 +43,10 @@ const handleImageSelect = async (index: number, imageUrl: string) => {
     if (!navigator.onLine) {
       throw new TypeError('Network offline')
     }
-    trackEvent('sample_click', { index, url: imageUrl })
+    // Send only the image name to analytics (e.g., guy_1)
+    const nameMatch = imageUrl.match(/([a-zA-Z0-9_-]+)\.[a-zA-Z0-9]+$/)
+    const imageName = nameMatch ? nameMatch[1] : `sample_${index + 1}`
+    trackEvent('sample_click', { index, image: imageName })
     const response = await fetch(imageUrl)
     const blob = await response.blob()
     const file = new File([blob], `sample-image-${index + 1}.jpg`, { type: 'image/jpeg' })

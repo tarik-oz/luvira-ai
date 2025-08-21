@@ -9,18 +9,18 @@ import {
   PhWarning,
   PhCameraRotate,
 } from '@phosphor-icons/vue'
-import AppButton from './AppButton.vue'
+import AppButton from '../base/AppButton.vue'
 import { useI18n } from 'vue-i18n'
-import { useAppState } from '../../composables/useAppState'
+import { useAppState } from '../../../composables/useAppState'
 import { useRouter } from 'vue-router'
-import { trackEvent } from '../../services/analytics'
+import { trackEvent } from '../../../services/analytics'
 
 const { t } = useI18n()
 const { isUploading } = useAppState()
 const router = useRouter()
 
 // Import hairService for upload
-import hairService from '../../services/hairService'
+import hairService from '../../../services/hairService'
 
 const showModal = ref(false)
 const videoRef = ref<HTMLVideoElement | null>(null)

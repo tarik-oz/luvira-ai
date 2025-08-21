@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import AppButton from './AppButton.vue'
+import AppButton from '../base/AppButton.vue'
 
 interface Props {
   visible: boolean

@@ -2,9 +2,9 @@
 import { ref, onUnmounted } from 'vue'
 import { PhUploadSimple, PhInfo, PhWarning } from '@phosphor-icons/vue'
 import { useI18n } from 'vue-i18n'
-import { useAppState } from '../../composables/useAppState'
+import { useAppState } from '../../../composables/useAppState'
 import { useRouter } from 'vue-router'
-import hairService from '../../services/hairService'
+import hairService from '../../../services/hairService'
 
 const { t } = useI18n()
 const { isUploading } = useAppState()

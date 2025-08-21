@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import AppButton from '@/components/ui/AppButton.vue'
+import AppButton from '@/components/ui/base/AppButton.vue'
 import { PhHouse, PhWarning, PhArrowLeft } from '@phosphor-icons/vue'
 
 const router = useRouter()

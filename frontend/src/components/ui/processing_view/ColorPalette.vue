@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useAppState } from '../../composables/useAppState'
-import { AVAILABLE_COLORS } from '../../config/colorConfig'
+import { useAppState } from '../../../composables/useAppState'
+import { AVAILABLE_COLORS } from '../../../config/colorConfig'
 import { getBasePreview } from '@/data/hairAssets'
 import { getPreferredColorOrder } from '@/data/colorMeta'
-import hairService from '../../services/hairService'
-import { trackEvent } from '../../services/analytics'
+import hairService from '../../../services/hairService'
+import { trackEvent } from '../../../services/analytics'
 
 const { t } = useI18n()
 const { isProcessing, setProcessingError, setShowMobileToneBar } = useAppState()

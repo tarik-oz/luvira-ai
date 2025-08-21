@@ -21,7 +21,9 @@ function pushGtag(...args: unknown[]): void {
 }
 
 export function initAnalytics(gaId: string, router: Router): void {
-  // Inject GA script
+  if (typeof window === 'undefined') return
+
+  // Inject GA script (gtag.js)
   const existing = document.querySelector(`script[src*="googletagmanager.com/gtag/js?id=${gaId}"]`)
   if (!existing) {
     const s = document.createElement('script')
@@ -30,25 +32,54 @@ export function initAnalytics(gaId: string, router: Router): void {
     document.head.appendChild(s)
   }
 
-  // Initialize dataLayer and gtag
+  // Initialize dataLayer and official gtag shim
   window.dataLayer = window.dataLayer || []
-  window.gtag = (...gtagArgs: unknown[]) => {
-    window.dataLayer.push(gtagArgs)
+  // Use function form to mirror Google's snippet precisely
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(window as any).gtag = function gtag() {
+    // eslint-disable-next-line prefer-rest-params, @typescript-eslint/no-explicit-any
+    ;(window.dataLayer as any[]).push(arguments as any)
   }
 
-  pushGtag('js', new Date())
-  pushGtag('config', gaId)
+  // Default Consent (adjust as needed)
+  // Grant analytics_storage so measurement works in regions requiring Consent Mode v2
+  pushGtag('consent', 'default', {
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+    analytics_storage: 'granted',
+  })
 
-  // Track SPA route changes as page views
-  router.afterEach((to) => {
-    pushGtag('event', 'page_view', {
+  const isDebug = !!sessionStorage.getItem('GA_DEBUG')
+
+  // Initialize GA and avoid auto page_view; we'll send page views via config on route changes
+  pushGtag('js', new Date())
+  pushGtag('config', gaId, { send_page_view: false, debug_mode: isDebug } as AnalyticsParams)
+
+  // Helper to send SPA page views via config (recommended for SPAs)
+  const sendPageView = () => {
+    pushGtag('config', gaId, {
       page_title: document.title,
       page_location: window.location.href,
-      page_path: to.fullPath,
+      page_path: window.location.pathname + window.location.search,
     } as AnalyticsParams)
-  })
+  }
+
+  // First view and subsequent navigations
+  try {
+    router.isReady().then(() => sendPageView())
+  } catch {
+    // Fallback if isReady is not available for any reason
+    sendPageView()
+  }
+
+  router.afterEach(() => sendPageView())
 }
 
 export function trackEvent(action: string, params?: AnalyticsParams): void {
-  pushGtag('event', action, params || {})
+  const isDebug = !!sessionStorage.getItem('GA_DEBUG')
+  pushGtag('event', action, {
+    ...(params || {}),
+    debug_mode: isDebug,
+  } as AnalyticsParams)
 }
