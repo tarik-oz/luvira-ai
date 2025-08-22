@@ -13,6 +13,7 @@ from .exceptions import (
 )
 from .dependencies import get_model_service, get_prediction_service, get_color_change_service
 from .middleware import LoggingMiddleware
+from .exception_handlers import register_exception_handlers
 
 __all__ = [
     "APIException",
@@ -25,5 +26,6 @@ __all__ = [
     "get_model_service",
     "get_prediction_service",
     "get_color_change_service",
-    "LoggingMiddleware"
+    "LoggingMiddleware",
+    "register_exception_handlers"
 ]

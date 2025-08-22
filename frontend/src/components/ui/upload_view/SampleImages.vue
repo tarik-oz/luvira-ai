@@ -51,7 +51,7 @@ const handleImageSelect = async (index: number, imageUrl: string) => {
     const blob = await response.blob()
     const file = new File([blob], `sample-image-${index + 1}.jpg`, { type: 'image/jpeg' })
 
-    await hairService.uploadImage(file, imageUrl)
+    await hairService.uploadImage(file, 'sample_images', imageUrl)
 
     // Close modal and navigate to processing page
     showModal.value = false

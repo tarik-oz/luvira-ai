@@ -11,6 +11,7 @@ import { PhCaretLeft, PhWarning, PhArrowsLeftRight } from '@phosphor-icons/vue'
 import TonePalette from '@/components/ui/processing_view/TonePalette.vue'
 import MobileColorToneBar from '@/components/ui/processing_view/MobileColorToneBar.vue'
 import SessionExpiredModal from '@/components/ui/processing_view/SessionExpiredModal.vue'
+import { trackEvent } from '@/services/analytics'
 
 const { resetState, sessionError, setSessionError, processingError, showMobileToneBar } =
   useAppState()
@@ -19,6 +20,19 @@ const { t } = useI18n()
 
 // Compare mode toggle
 const isCompareMode = ref(false)
+
+const toggleCompareMode = () => {
+  const newValue = !isCompareMode.value
+  isCompareMode.value = newValue
+
+  // Track when compare mode is enabled
+  if (newValue) {
+    trackEvent('compare_mode_enabled', {
+      action: 'toggle_compare_mode',
+      value: true,
+    })
+  }
+}
 
 const goBack = () => {
   router.push('/')
@@ -58,7 +72,7 @@ onBeforeUnmount(() => {
         <AppButton
           :fullWidth="false"
           :variant="isCompareMode ? 'primary' : 'accent'"
-          @click="isCompareMode = !isCompareMode"
+          @click="toggleCompareMode"
           :aria-pressed="isCompareMode ? 'true' : 'false'"
           class="h-9 w-auto rounded-xl px-3 py-0"
           :aria-label="t('processing.compareMode') as string"
@@ -120,7 +134,12 @@ onBeforeUnmount(() => {
               <span class="text-base-content text-sm font-medium">{{
                 t('processing.compareMode')
               }}</span>
-              <input type="checkbox" v-model="isCompareMode" class="toggle" />
+              <input
+                type="checkbox"
+                :checked="isCompareMode"
+                @change="toggleCompareMode"
+                class="toggle"
+              />
             </div>
           </div>
         </div>

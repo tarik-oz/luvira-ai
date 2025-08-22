@@ -25,9 +25,10 @@ class ApiService {
   /**
    * Upload image and prepare for processing
    */
-  async uploadAndPrepare(file: File): Promise<UploadResponse> {
+  async uploadAndPrepare(file: File, source: string): Promise<UploadResponse> {
     const formData = new FormData()
     formData.append('file', file)
+    formData.append('source', source)
 
     // Create AbortController for timeout
     const controller = new AbortController()

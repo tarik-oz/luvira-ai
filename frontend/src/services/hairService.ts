@@ -14,7 +14,7 @@ class HairService {
   /**
    * Upload image and prepare session
    */
-  async uploadImage(file: File, originalImageUrl?: string) {
+  async uploadImage(file: File, source: string, originalImageUrl?: string) {
     const { setIsUploading, setUploadedImage, setSessionId, createImageUrl } = useAppState()
 
     setIsUploading(true)
@@ -27,7 +27,7 @@ class HairService {
       }
 
       // Call API
-      const response = await apiService.uploadAndPrepare(file)
+      const response = await apiService.uploadAndPrepare(file, source)
       setSessionId(response.session_id)
 
       return response.session_id

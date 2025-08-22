@@ -322,7 +322,7 @@ const submitPhoto = async () => {
     const blob = await response.blob()
     const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' })
 
-    await hairService.uploadImage(file, capturedImage.value)
+    await hairService.uploadImage(file, 'camera', capturedImage.value)
     trackEvent('camera_submit')
 
     // Close modal and navigate

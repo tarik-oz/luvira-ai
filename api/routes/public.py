@@ -19,6 +19,7 @@ router = APIRouter()
 @router.post("/upload-and-prepare")
 async def upload_and_prepare(
     file: UploadFile = File(...),
+    source: str = Form(..., description="Upload source: 'upload_section', 'camera', or 'sample_images'"),
     color_change_service: ColorChangeService = Depends(get_color_change_service)
 ):
     """
@@ -39,6 +40,7 @@ async def upload_and_prepare(
             "event": "upload_and_prepare",
             "session_id": session_id,
             "filename": getattr(file, 'filename', None),
+            "source": source,
         }))
         
         return {

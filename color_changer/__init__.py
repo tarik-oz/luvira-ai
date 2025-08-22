@@ -6,12 +6,16 @@ Implements HSV-based color transformation and natural blending to achieve realis
 Designed to work with segmentation masks and user-specified RGB colors.
 Suitable for research, prototyping, and integration into larger pipelines.
 
-NEW: Now includes advanced toning functionality for creating natural color variations!
+v3.0.0 updates:
+- Per-color special handlers and config for nuanced rendering
+- Tone configurations extended for natural variations
 """
 
-__version__ = "2.1.0"
+__version__ = "3.0.0"
 __author__ = "Tarik"
-__description__ = "Advanced hair color change utilities with toning functionality for image segmentation tasks."
+__description__ = (
+    "Advanced hair color change utilities with per-color handlers and tone configs."
+)
 
 from .core.color_transformer import ColorTransformer
 from .config.color_config import COLORS

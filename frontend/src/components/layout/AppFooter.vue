@@ -3,6 +3,12 @@ import { useI18n } from 'vue-i18n'
 import { trackEvent } from '@/services/analytics'
 
 const { t } = useI18n()
+
+function handleOutboundLink(event: MouseEvent, target: string) {
+  const method =
+    event.type === 'auxclick' ? 'middle' : event.ctrlKey || event.metaKey ? 'new_tab' : 'left'
+  trackEvent('outbound_link', { target, method })
+}
 </script>
 
 <template>
@@ -27,7 +33,8 @@ const { t } = useI18n()
           class="text-base-content/80 hover:text-primary active:text-primary focus-visible:ring-primary/50 rounded-sm transition-all focus-visible:ring-2 focus-visible:outline-none active:scale-95"
           title="GitHub"
           aria-label="GitHub"
-          @click="trackEvent('outbound_link', { target: 'github' })"
+          @click="(e) => handleOutboundLink(e, 'github')"
+          @auxclick="(e) => handleOutboundLink(e, 'github')"
         >
           <svg
             class="h-5 w-5 md:h-[22px] md:w-[22px] lg:h-6 lg:w-6"
@@ -46,7 +53,8 @@ const { t } = useI18n()
           class="text-base-content/80 hover:text-primary active:text-primary focus-visible:ring-primary/50 rounded-sm transition-all focus-visible:ring-2 focus-visible:outline-none active:scale-95"
           title="LinkedIn"
           aria-label="LinkedIn"
-          @click="trackEvent('outbound_link', { target: 'linkedin' })"
+          @click="(e) => handleOutboundLink(e, 'linkedin')"
+          @auxclick="(e) => handleOutboundLink(e, 'linkedin')"
         >
           <svg
             class="h-5 w-5 md:h-[22px] md:w-[22px] lg:h-6 lg:w-6"

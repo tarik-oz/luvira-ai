@@ -12,15 +12,22 @@ Highlights:
 - Attention U-Net variant with GroupNorm and Dropout
 - Windows GPU support and optimized performance
 - Supports both grayscale and binary masks
+
+v3.0.0 updates:
+- Checkpoint/resume system for robust training and recovery
+- Dedicated Kaggle training setup and configs
+- Extended data augmentation utilities
 """
 
 try:
     from .. import __version__, __author__, __description__
 except ImportError:
     # Fallback for when running as top-level module
-    __version__ = "2.0.0"
+    __version__ = "3.0.0"
     __author__ = "Tarik"
-    __description__ = "Flexible and modular U-Net implementation for hair segmentation tasks using PyTorch."
+    __description__ = (
+        "Flexible PyTorch U-Net for hair segmentation with checkpoints, Kaggle setup, and augmentations."
+    )
 
 from .models.unet_model import UNetModel, create_unet_model
 from .models.attention_unet_model import AttentionUNetModel, create_attention_unet_model

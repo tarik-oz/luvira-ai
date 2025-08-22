@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .routes import health_router, model_router, prediction_router, public_router, session_router
-from .core import get_model_service, LoggingMiddleware
+from .core import get_model_service, LoggingMiddleware, register_exception_handlers
 from .config import API_CONFIG
 from .config.logging_config import setup_logging
 from . import __version__
@@ -36,6 +36,9 @@ app.include_router(model_router, tags=["Model"])
 app.include_router(prediction_router, tags=["Prediction"])
 app.include_router(public_router, tags=["Public"])
 app.include_router(session_router, tags=["Session"])
+
+# Register global exception handlers
+register_exception_handlers(app)
 
 @app.on_event("startup")
 async def startup_event():
