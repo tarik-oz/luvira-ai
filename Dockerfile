@@ -1,5 +1,7 @@
-# Multi-arch CPU base with PyTorch preinstalled
-FROM python:3.10-slim
+# Multi-stage Dockerfile for Hair Segmentation API
+
+# Base stage: Common dependencies for all environments
+FROM python:3.10-slim AS base
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -7,28 +9,33 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# System deps (OpenCV, SSL)
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl libglib2.0-0 libsm6 libxext6 libxrender1 libgl1 && \
     rm -rf /var/lib/apt/lists/*
 
-# Install PyTorch CPU wheels first (pin to match project)
+# Install PyTorch CPU (large, rarely changes)
 RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu \
     torch==2.1.2 torchvision==0.16.2
 
-# Install remaining python deps
-COPY requirements-api.txt ./
-RUN pip install --no-cache-dir -r requirements-api.txt
+# Install Python dependencies
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project
+# Development stage: Auto-reload for development
+FROM base AS development
+
 COPY . .
 
-# Expose API port
 EXPOSE 8000
 
-# Default envs (override in runtime)
-ENV HOST=0.0.0.0 PORT=8000 RELOAD=false LOG_LEVEL=info DEVICE_PREFERENCE=cpu
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
-# Start API
+# Production stage: Stable deployment
+FROM base AS production
+
+COPY . .
+
+EXPOSE 8000
+
 CMD ["python", "-m", "api.run_api"]
-

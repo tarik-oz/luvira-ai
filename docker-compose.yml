@@ -1,0 +1,47 @@
+# Docker Compose for Hair Segmentation Project
+services:
+  # Backend API Service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source code for hot reload
+      - ./api:/app/api
+      - ./model:/app/model
+      - ./color_changer:/app/color_changer
+    environment:
+      - PYTHONUNBUFFERED=1
+      - HOST=0.0.0.0
+      - PORT=8000
+      - RELOAD=true
+      - DEVICE_PREFERENCE=auto
+    networks:
+      - luviraai-network
+
+  # Frontend Development Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      # Mount source code for hot reload
+      - ./frontend:/app
+      # Preserve container's node_modules
+      - /app/node_modules
+    environment:
+      # API connection within Docker network
+      - VITE_API_BASE_URL=http://localhost:8000
+    networks:
+      - luviraai-network
+    depends_on:
+      - api
+
+networks:
+  luviraai-network:
+    driver: bridge
