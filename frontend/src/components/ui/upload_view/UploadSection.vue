@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../../composables/useAppState'
 import { useRouter } from 'vue-router'
 import hairService from '../../../services/hairService'
+import { validateAndResizeImage, MIN_DIMENSION } from '../../../utils/imageValidation'
 
 const { t } = useI18n()
 const { isUploading } = useAppState()
@@ -36,85 +37,6 @@ onUnmounted(() => {
 const isDragOver = ref(false)
 const errorMessage = ref<string | null>(null)
 
-// Constants for validation
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
-const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/jpg']
-const MAX_DIMENSION = 1600 // Maximum width or height
-const MIN_DIMENSION = 400 // Minimum width and height
-
-const resizeImage = (file: File): Promise<File> => {
-  return new Promise((resolve, reject) => {
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')!
-    const img = new Image()
-    const objectUrl = URL.createObjectURL(file)
-
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl)
-      const { width, height } = img
-
-      // Minimum dimension validation
-      if (width < MIN_DIMENSION || height < MIN_DIMENSION) {
-        reject(new Error('TOO_SMALL'))
-        return
-      }
-
-      // Check if resizing is needed
-      if (width <= MAX_DIMENSION && height <= MAX_DIMENSION) {
-        resolve(file) // No resizing needed
-        return
-      }
-
-      // Calculate new dimensions while maintaining aspect ratio
-      let newWidth = width
-      let newHeight = height
-
-      if (width > height) {
-        if (width > MAX_DIMENSION) {
-          newWidth = MAX_DIMENSION
-          newHeight = (height * MAX_DIMENSION) / width
-        }
-      } else {
-        if (height > MAX_DIMENSION) {
-          newHeight = MAX_DIMENSION
-          newWidth = (width * MAX_DIMENSION) / height
-        }
-      }
-
-      // Set canvas dimensions
-      canvas.width = newWidth
-      canvas.height = newHeight
-
-      // Draw resized image
-      ctx.drawImage(img, 0, 0, newWidth, newHeight)
-
-      // Convert to blob and create new file
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            const resizedFile = new File([blob], file.name, {
-              type: file.type,
-              lastModified: Date.now(),
-            })
-            resolve(resizedFile)
-          } else {
-            resolve(file) // Fallback to original file
-          }
-        },
-        file.type,
-        0.9,
-      ) // 90% quality
-    }
-
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl)
-      reject(new Error('DECODE_ERROR'))
-    }
-
-    img.src = objectUrl
-  })
-}
-
 const processFile = async (file: File) => {
   if (isUploading.value) return
   errorMessage.value = null
@@ -127,33 +49,31 @@ const processFile = async (file: File) => {
     sizeInMB: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
   })
 
-  // Validate zero-byte file
-  if (file.size === 0) {
-    errorMessage.value = t('uploadSection.zeroSize')
-    return
-  }
-
-  // Validate file type
-  if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-    errorMessage.value = t('uploadSection.invalidType')
-    return
-  }
-
-  // Validate file size
-  if (file.size > MAX_FILE_SIZE) {
-    errorMessage.value = t('uploadSection.maxSize')
-    return
-  }
-
-  // Resize image if necessary
+  // Validate and resize via shared util
   let processedFile: File
   try {
-    processedFile = await resizeImage(file)
+    processedFile = await validateAndResizeImage(file)
   } catch (error) {
-    if (error instanceof Error && error.message === 'TOO_SMALL') {
-      errorMessage.value = t('uploadSection.tooSmall', { min: MIN_DIMENSION })
-    } else if (error instanceof Error && error.message === 'DECODE_ERROR') {
-      errorMessage.value = t('uploadSection.decodeError')
+    if (error instanceof Error) {
+      switch (error.message) {
+        case 'ZERO_SIZE':
+          errorMessage.value = t('uploadSection.zeroSize')
+          break
+        case 'INVALID_TYPE':
+          errorMessage.value = t('uploadSection.invalidType')
+          break
+        case 'MAX_SIZE':
+          errorMessage.value = t('uploadSection.maxSize')
+          break
+        case 'TOO_SMALL':
+          errorMessage.value = t('uploadSection.tooSmall', { min: MIN_DIMENSION })
+          break
+        case 'DECODE_ERROR':
+          errorMessage.value = t('uploadSection.decodeError')
+          break
+        default:
+          errorMessage.value = t('sampleImages.errorMessage')
+      }
     } else {
       errorMessage.value = t('sampleImages.errorMessage')
     }

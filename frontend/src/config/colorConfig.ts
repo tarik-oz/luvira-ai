@@ -77,7 +77,6 @@ export const TONE_DEFINITIONS: Record<string, Record<string, ToneInfo>> = {
     steel: { description: 'Cool steel gray' },
   },
   Red: {
-    burgundy: { description: 'Deep burgundy red' },
     cherry: { description: 'Deep cherry red' },
     rose: { description: 'Soft rose red' },
     crimson: { description: 'Vivid crimson red' },

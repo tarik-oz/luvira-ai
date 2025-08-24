@@ -91,7 +91,6 @@ export const TONE_RGB: Record<string, Record<string, [number, number, number]>> 
     steel: [121, 122, 122],
   },
   Red: {
-    burgundy: [134, 25, 41],
     cherry: [139, 0, 38],
     rose: [222, 49, 99],
     crimson: [209, 29, 21],

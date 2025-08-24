@@ -14,6 +14,7 @@ import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../../composables/useAppState'
 import { useRouter } from 'vue-router'
 import { trackEvent } from '../../../services/analytics'
+import { validateAndResizeImage } from '../../../utils/imageValidation'
 
 const { t } = useI18n()
 const { isUploading } = useAppState()
@@ -37,6 +38,7 @@ const isPortraitVideo = ref(false)
 const useCroppingOverlay = ref(false)
 const hasMultipleCameras = ref(false)
 const MAX_CAPTURE_DIMENSION = 1600
+const CAMERA_MIN_DIMENSION = 250
 
 const updateOrientationFromVideo = () => {
   if (!videoRef.value) return
@@ -317,12 +319,14 @@ const submitPhoto = async () => {
   errorMessage.value = null
 
   try {
-    // Convert base64 to File
+    // Convert base64 to Blob
     const response = await fetch(capturedImage.value)
     const blob = await response.blob()
-    const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' })
 
-    await hairService.uploadImage(file, 'camera', capturedImage.value)
+    // Validate and resize using shared util
+    const validatedFile = await validateAndResizeImage(blob, { minDimension: CAMERA_MIN_DIMENSION })
+
+    await hairService.uploadImage(validatedFile, 'camera', capturedImage.value)
     trackEvent('camera_submit')
 
     // Close modal and navigate
@@ -336,7 +340,31 @@ const submitPhoto = async () => {
       error && typeof error === 'object' && 'error_code' in errorWithCode
         ? errorWithCode.error_code
         : undefined
-    if (!navigator.onLine || message === 'Failed to fetch' || /network/i.test(message)) {
+    if (
+      message === 'ZERO_SIZE' ||
+      message === 'INVALID_TYPE' ||
+      message === 'MAX_SIZE' ||
+      message === 'TOO_SMALL' ||
+      message === 'DECODE_ERROR'
+    ) {
+      switch (message) {
+        case 'ZERO_SIZE':
+          errorMessage.value = t('uploadSection.zeroSize')
+          break
+        case 'INVALID_TYPE':
+          errorMessage.value = t('uploadSection.invalidType')
+          break
+        case 'MAX_SIZE':
+          errorMessage.value = t('uploadSection.maxSize')
+          break
+        case 'TOO_SMALL':
+          errorMessage.value = t('uploadSection.tooSmall', { min: CAMERA_MIN_DIMENSION })
+          break
+        case 'DECODE_ERROR':
+          errorMessage.value = t('uploadSection.decodeError')
+          break
+      }
+    } else if (!navigator.onLine || message === 'Failed to fetch' || /network/i.test(message)) {
       errorMessage.value = t('processing.networkError')
     } else if (message === 'TIMEOUT') {
       errorMessage.value = t('camera.uploading')

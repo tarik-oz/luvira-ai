@@ -96,7 +96,6 @@ CUSTOM_TONES = {
         "steel": {"rgb": [121, 122, 122], "saturation_factor": 0.22, "brightness_factor": 1.00, "intensity": 0.95, "hue_offset": -2, "description": "Cool steel gray"}
     },
     "Red": {
-        "burgundy": {"rgb": [134, 25, 41], "saturation_factor": 1.30, "brightness_factor": 0.90, "intensity": 0.95, "hue_offset": -8, "description": "Deep burgundy red"},
         "cherry": {"rgb": [139, 0, 38], "saturation_factor": 1.35, "brightness_factor": 0.90, "intensity": 0.95, "hue_offset": -8, "description": "Deep cherry red"},
         "rose": {"rgb": [222, 49, 99], "saturation_factor": 1.50, "brightness_factor": 1.15, "intensity": 1.10, "hue_offset": +15, "description": "Soft rose red"},
         "crimson": {"rgb": [209, 29, 21], "saturation_factor": 1.55, "brightness_factor": 1.05, "intensity": 1.05, "hue_offset": +6, "description": "Vivid crimson red"},

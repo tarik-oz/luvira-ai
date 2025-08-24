@@ -46,7 +46,7 @@ const downloadImage = async () => {
     // Analytics
     trackEvent('download_image', {
       color: currentColorResult.value?.originalColor || null,
-      tone: selectedTone.value || null,
+      tone: selectedTone.value || 'base',
       file_name: fileName,
     })
   } catch (error) {
