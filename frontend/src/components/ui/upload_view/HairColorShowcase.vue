@@ -206,7 +206,7 @@ const getTransitionStyle = () => ({
         'hover:border-base-content/50 border-2 border-transparent': activeModelIndex !== index,
       }"
     >
-      <img :src="model.thumbnail" :alt="`Model ${model.id}`" class="h-full w-full object-cover" />
+      <img :src="model.thumbnail" :alt="model.thumbnailAlt" class="h-full w-full object-cover" />
     </div>
   </div>
 </template>

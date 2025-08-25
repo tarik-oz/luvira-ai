@@ -1,7 +1,7 @@
 // Utility for accessing hair color preview assets
-// Loads all images under assets/hair_pattern_colors and provides helpers
+// Loads all images under assets/hair-color-swatches and provides helpers
 
-const imageModules = import.meta.glob('../assets/hair_pattern_colors/*/*.webp', {
+const imageModules = import.meta.glob('../assets/hair-color-swatches/*/*.webp', {
   import: 'default',
   eager: true,
 }) as Record<string, string>
@@ -14,14 +14,14 @@ const resolvePath = (relativePath: string): string | undefined => {
 
 export const getBasePreview = (colorName: string): string => {
   const slug = toSlug(colorName)
-  const path = `../assets/hair_pattern_colors/${slug}/${slug}_base.webp`
+  const path = `../assets/hair-color-swatches/${slug}/${slug}-base-hair-swatch.webp`
   return resolvePath(path) || ''
 }
 
 export const getTonePreview = (colorName: string, toneName: string): string => {
   const color = toSlug(colorName)
   const tone = toSlug(toneName)
-  const path = `../assets/hair_pattern_colors/${color}/${color}_${tone}.webp`
+  const path = `../assets/hair-color-swatches/${color}/${color}-${tone}-hair-swatch.webp`
   return resolvePath(path) || ''
 }
 

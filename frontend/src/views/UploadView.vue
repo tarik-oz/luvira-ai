@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import UploadSection from '../components/ui/upload_view/UploadSection.vue'
 import AppButton from '../components/ui/base/AppButton.vue'
-import SampleImages from '../components/ui/upload_view/SampleImages.vue'
+import ModelImages from '../components/ui/upload_view/ModelImages.vue'
 import CameraCapture from '../components/ui/upload_view/CameraCapture.vue'
 import HairColorShowcase from '../components/ui/upload_view/HairColorShowcase.vue'
 import { PhImage, PhCamera } from '@phosphor-icons/vue'
@@ -12,7 +12,7 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 const { isUploading } = useAppState()
 
-const sampleImagesModal = ref()
+const modelImagesModal = ref()
 const cameraCaptureModal = ref()
 </script>
 
@@ -46,16 +46,16 @@ const cameraCaptureModal = ref()
 
       <!-- Buttons -->
       <div class="mb-5 flex w-full max-w-xl flex-col gap-3 md:flex-row md:gap-4">
-        <!-- Sample Images Button -->
+        <!-- Model Images Button -->
         <AppButton
           class="w-full md:flex-1"
           :disabled="isUploading"
-          @click="sampleImagesModal.open()"
+          @click="modelImagesModal.open()"
         >
           <template #icon>
             <PhImage class="h-5 w-5" />
           </template>
-          {{ t('upload.sampleButton') }}
+          {{ t('upload.modelButton') }}
         </AppButton>
 
         <!-- Camera Button -->
@@ -71,8 +71,8 @@ const cameraCaptureModal = ref()
         </AppButton>
       </div>
 
-      <!-- SampleImages Modal -->
-      <SampleImages ref="sampleImagesModal" />
+      <!-- ModelImages Modal -->
+      <ModelImages ref="modelImagesModal" />
 
       <!-- CameraCapture Modal -->
       <CameraCapture ref="cameraCaptureModal" />

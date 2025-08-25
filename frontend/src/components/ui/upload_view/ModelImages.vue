@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { sampleImages } from '../../../data/sampleImages'
+import { modelImages } from '../../../data/modelImages'
 import { defineExpose } from 'vue'
 import { PhX } from '@phosphor-icons/vue'
 import { useI18n } from 'vue-i18n'
@@ -45,25 +45,25 @@ const handleImageSelect = async (index: number, imageUrl: string) => {
     }
     // Send only the image name to analytics (e.g., guy_1)
     const nameMatch = imageUrl.match(/([a-zA-Z0-9_-]+)\.[a-zA-Z0-9]+$/)
-    const imageName = nameMatch ? nameMatch[1] : `sample_${index + 1}`
-    trackEvent('sample_click', { index, image: imageName })
+    const imageName = nameMatch ? nameMatch[1] : `model_${index + 1}`
+    trackEvent('model_click', { index, image: imageName })
     const response = await fetch(imageUrl)
     const blob = await response.blob()
-    const file = new File([blob], `sample-image-${index + 1}.jpg`, { type: 'image/jpeg' })
+    const file = new File([blob], `model-image-${index + 1}.jpg`, { type: 'image/jpeg' })
 
-    await hairService.uploadImage(file, 'sample_images', imageUrl)
+    await hairService.uploadImage(file, 'model_images', imageUrl)
 
     // Close modal and navigate to processing page
     showModal.value = false
     selectedImageIndex.value = null
     router.push({ name: 'HairColorEditor' })
   } catch (error) {
-    console.error('Sample image upload failed:', error)
+    console.error('Model image upload failed:', error)
     const message = error instanceof Error ? error.message : String(error)
     if (!navigator.onLine || message === 'Failed to fetch' || /network/i.test(message)) {
       errorMessage.value = t('processing.networkError')
     } else {
-      errorMessage.value = t('sampleImages.errorMessage')
+      errorMessage.value = t('modelImages.errorMessage')
     }
     selectedImageIndex.value = null
   }
@@ -91,7 +91,7 @@ defineExpose({ open })
       </button>
 
       <div class="text-base-100 mb-4 text-center text-2xl font-bold">
-        {{ t('upload.sampleButton') }}
+        {{ t('upload.modelButton') }}
       </div>
 
       <!-- Image Grid -->
@@ -99,7 +99,7 @@ defineExpose({ open })
         class="mb-4 grid grid-cols-2 place-items-center gap-x-2 gap-y-3 sm:grid-cols-3 md:grid-cols-3 md:gap-x-1"
       >
         <div
-          v-for="(img, index) in sampleImages"
+          v-for="(img, index) in modelImages"
           :key="img.id"
           @click="handleImageSelect(index, img.url)"
           :class="[
@@ -122,7 +122,7 @@ defineExpose({ open })
           <div class="bg-primary h-2 animate-pulse rounded-full" style="width: 100%"></div>
         </div>
         <p class="text-base-100 text-sm font-medium">
-          {{ t('sampleImages.loadingSelected') }}
+          {{ t('modelImages.loadingSelected') }}
         </p>
       </div>
 

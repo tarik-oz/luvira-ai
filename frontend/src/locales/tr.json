@@ -1,9 +1,27 @@
 {
+  "meta": {
+    "siteName": "LuviraAI",
+    "home": {
+      "title": "LuviraAI - Saç Rengi Düzenleyici",
+      "description": "Fotoğrafını yükle ve gerçekçi yapay zeka ile saç rengini anında değiştir. Renk ve tonları keşfet, sonucu indir."
+    },
+    "editor": {
+      "title": "Editör - LuviraAI Saç Rengi",
+      "description": "Saç rengini ve tonlarını gerçek zamanlı değiştir, sonucu indir."
+    },
+    "notFound": {
+      "title": "Sayfa bulunamadı - LuviraAI",
+      "description": "Aradığınız sayfa bulunamadı."
+    }
+  },
+  "a11y": {
+    "skipToContent": "İçeriğe atla"
+  },
   "upload": {
     "title": "Saç Rengi Düzenleyici",
     "description": "Farklı saç renklerini anında deneyin. Hızlı, gerçekçi ve ücretsiz.",
     "divider": "veya",
-    "sampleButton": "Model Kullan",
+    "modelButton": "Model Kullan",
     "cameraButton": "Kamerayı Kullan",
     "qualityNote": "En iyi sonuçları, net ve yüksek çözünürlüklü portre fotoğrafları verir."
   },
@@ -67,7 +85,7 @@
     "networkError": "Ağ hatası. Bağlantınızı kontrol edip tekrar deneyin.",
     "working": "İşleniyor..."
   },
-  "sampleImages": {
+  "modelImages": {
     "loadingSelected": "Yükleniyor...",
     "errorMessage": "Yükleme başarısız. Tekrar deneyin."
   },

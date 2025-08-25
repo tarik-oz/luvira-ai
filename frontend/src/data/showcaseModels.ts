@@ -1,20 +1,20 @@
-import showcase_1_blonde_honey from '../assets/showcase/showcase_1_blonde_honey.webp'
-import showcase_1_pink_fuchsia from '../assets/showcase/showcase_1_pink_fuchsia.webp'
-import showcase_1_red_cherry from '../assets/showcase/showcase_1_red_cherry.webp'
-import showcase_1_prob_mask from '../assets/showcase/showcase_1_prob_mask.webp'
-import showcase_1_thumb from '../assets/showcase/showcase_1_thumb.webp'
+import woman_off_shoulder_blonde_honey_hair from '../assets/hair-color-transformations/woman-off-shoulder-blonde-honey-hair.webp'
+import woman_off_shoulder_pink_fuchsia_hair from '../assets/hair-color-transformations/woman-off-shoulder-pink-fuchsia-hair.webp'
+import woman_off_shoulder_red_cherry_hair from '../assets/hair-color-transformations/woman-off-shoulder-red-cherry-hair.webp'
+import woman_off_shoulder_prob_mask from '../assets/hair-color-transformations/woman-off-shoulder-prob-mask.webp'
+import woman_off_shoulder_original_brown_hair_thumb from '../assets/hair-color-transformations/woman-off-shoulder-original-brown-hair-thumb.webp'
 
-import showcase_2_gray_silver from '../assets/showcase/showcase_2_gray_silver.webp'
-import showcase_2_purple_plum from '../assets/showcase/showcase_2_purple_plum.webp'
-import showcase_2_teal_pastel from '../assets/showcase/showcase_2_teal_pastel.webp'
-import showcase_2_prob_mask from '../assets/showcase/showcase_2_prob_mask.webp'
-import showcase_2_thumb from '../assets/showcase/showcase_2_thumb.webp'
+import woman_closeup_gray_silver_hair from '../assets/hair-color-transformations/woman-closeup-gray-silver-hair.webp'
+import woman_closeup_purple_plum_hair from '../assets/hair-color-transformations/woman-closeup-purple-plum-hair.webp'
+import woman_closeup_teal_pastel_hair from '../assets/hair-color-transformations/woman-closeup-teal-pastel-hair.webp'
+import woman_closeup_prob_mask from '../assets/hair-color-transformations/woman-closeup-prob-mask.webp'
+import woman_closeup_original_ash_hair_thumb from '../assets/hair-color-transformations/woman-closeup-original-ash-hair-thumb.webp'
 
-import showcase_3_green_mint from '../assets/showcase/showcase_3_green_mint.webp'
-import showcase_3_blue_ice from '../assets/showcase/showcase_3_blue_ice.webp'
-import showcase_3_copper_bright from '../assets/showcase/showcase_3_copper_bright.webp'
-import showcase_3_prob_mask from '../assets/showcase/showcase_3_prob_mask.webp'
-import showcase_3_thumb from '../assets/showcase/showcase_3_thumb.webp'
+import woman_hair_bun_bangs_green_mint_color from '../assets/hair-color-transformations/woman-hair-bun-bangs-green-mint-color.webp'
+import woman_hair_bun_bangs_blue_ice_color from '../assets/hair-color-transformations/woman-hair-bun-bangs-blue-ice-color.webp'
+import woman_hair_bun_bangs_copper_bright_color from '../assets/hair-color-transformations/woman-hair-bun-bangs-copper-bright-color.webp'
+import woman_hair_bun_bangs_prob_mask from '../assets/hair-color-transformations/woman-hair-bun-bangs-prob-mask.webp'
+import woman_hair_bun_bangs_original_dark_hair_thumb from '../assets/hair-color-transformations/woman-hair-bun-bangs-original-dark-hair-thumb.webp'
 
 export interface ShowcaseColor {
   colorName: string
@@ -26,6 +26,7 @@ export interface ShowcaseColor {
 export interface ShowcaseModel {
   id: number
   thumbnail: string
+  thumbnailAlt: string
   mask: string
   colors: ShowcaseColor[]
 }
@@ -33,76 +34,82 @@ export interface ShowcaseModel {
 export const showcaseModels: ShowcaseModel[] = [
   {
     id: 1,
-    thumbnail: showcase_1_thumb,
-    mask: showcase_1_prob_mask,
+    thumbnail: woman_off_shoulder_original_brown_hair_thumb,
+    thumbnailAlt:
+      'Thumbnail showing the original brown hair color of a woman before digital editing.',
+    mask: woman_off_shoulder_prob_mask,
     colors: [
       {
         colorName: 'Pink',
         toneName: 'Fuchsia',
-        src: showcase_1_pink_fuchsia,
-        alt: 'Pink Fuchsia hair color',
+        src: woman_off_shoulder_pink_fuchsia_hair,
+        alt: "A woman's portrait showcasing a vibrant 'Pink Fuchsia' hair color transformation.",
       },
       {
         colorName: 'Blonde',
         toneName: 'Honey',
-        src: showcase_1_blonde_honey,
-        alt: 'Blonde Honey hair color',
+        src: woman_off_shoulder_blonde_honey_hair,
+        alt: "Portrait of a woman with her hair digitally colored to a 'Blonde Honey' shade.",
       },
       {
         colorName: 'Red',
         toneName: 'Cherry',
-        src: showcase_1_red_cherry,
-        alt: 'Red Cherry hair color',
+        src: woman_off_shoulder_red_cherry_hair,
+        alt: "Example of a 'Red Cherry' hair color applied to a woman's portrait.",
       },
     ],
   },
   {
     id: 2,
-    thumbnail: showcase_2_thumb,
-    mask: showcase_2_prob_mask,
+    thumbnail: woman_closeup_original_ash_hair_thumb,
+    thumbnailAlt:
+      'Thumbnail of a woman with her natural hair color, used for hair color simulation.',
+    mask: woman_closeup_prob_mask,
     colors: [
       {
         colorName: 'Gray',
         toneName: 'Silver',
-        src: showcase_2_gray_silver,
-        alt: 'Gray Silver hair color',
+        src: woman_closeup_gray_silver_hair,
+        alt: "Close-up of a woman with a cool-toned 'Gray Silver' hair color edit.",
       },
       {
         colorName: 'Purple',
         toneName: 'Plum',
-        src: showcase_2_purple_plum,
-        alt: 'Purple Plum hair color',
+        src: woman_closeup_purple_plum_hair,
+        alt: "A woman's hair digitally changed to a deep 'Purple Plum' color.",
       },
       {
         colorName: 'Teal',
         toneName: 'Pastel',
-        src: showcase_2_teal_pastel,
-        alt: 'Teal Pastel hair color',
+        src: woman_closeup_teal_pastel_hair,
+        alt: "Example of a bright 'Teal Pastel' hair color applied to a woman's portrait.",
       },
     ],
   },
   {
     id: 3,
-    thumbnail: showcase_3_thumb,
-    mask: showcase_3_prob_mask,
+    thumbnail: woman_hair_bun_bangs_original_dark_hair_thumb,
+    thumbnailAlt:
+      "Thumbnail portrait of a woman with dark hair in a bun, representing the 'before' image.",
+    mask: woman_hair_bun_bangs_prob_mask,
     colors: [
       {
         colorName: 'Green',
         toneName: 'Mint',
-        src: showcase_3_green_mint,
-        alt: 'Green Mint hair color',
+        src: woman_hair_bun_bangs_green_mint_color,
+        alt: "Portrait of a woman with a vivid 'Green Mint' hair color transformation on her bun and bangs.",
       },
       {
         colorName: 'Blue',
         toneName: 'Ice',
-        src: showcase_3_blue_ice,
-        alt: 'Blue Ice hair color',
+        src: woman_hair_bun_bangs_blue_ice_color,
+        alt: "A woman with her hair bun and bangs colored in a striking 'Blue Ice' shade.",
       },
       {
         colorName: 'Copper',
         toneName: 'Bright',
-        src: showcase_3_copper_bright,
-        alt: 'Copper Bright hair color',
+        src: woman_hair_bun_bangs_copper_bright_color,
+        alt: "Hair color simulation showing a woman with a warm 'Copper Bright' hair tone.",
       },
     ],
   },

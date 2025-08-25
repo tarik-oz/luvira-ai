@@ -33,6 +33,15 @@ const colorToneStates = ref<Record<string, string | null>>({}) // Per-color tone
 const showMobileToneBar = ref(false) // Controls mobile view: ColorPalette vs MobileColorToneBar
 
 export function useAppState() {
+  const isBlobUrl = (url: string | null | undefined): boolean => !!url && url.startsWith('blob:')
+  const revokeIfBlob = (url: string | null | undefined) => {
+    if (isBlobUrl(url)) {
+      try {
+        URL.revokeObjectURL(url as string)
+      } catch {}
+    }
+  }
+
   const setSessionId = (id: string | null) => {
     sessionId.value = id
     // Clear tone states when new session starts (new image)
@@ -92,6 +101,8 @@ export function useAppState() {
         processedImage.value = result.baseResult
       }
     } else {
+      // Revoke current processed image if it is a blob URL
+      revokeIfBlob(processedImage.value)
       currentColorResult.value = null
       processedImage.value = null
       selectedTone.value = null
@@ -103,6 +114,10 @@ export function useAppState() {
     // Ensure cache entry
     const cache = colorCache.value
     const existing = cache[colorName]
+    // Revoke old base blob if replaced
+    if (existing && existing.baseResult && existing.baseResult !== baseUrl) {
+      revokeIfBlob(existing.baseResult)
+    }
     const colorResult: ColorChangeResult = existing
       ? { ...existing, baseResult: baseUrl || existing.baseResult }
       : {
@@ -142,6 +157,9 @@ export function useAppState() {
     const cache = colorCache.value
     const existing = cache[colorName]
     if (!existing) return
+    // Revoke previous tone URL if replaced
+    const prev = existing.tones[toneName]
+    if (prev && prev !== toneUrl) revokeIfBlob(prev)
     existing.tones[toneName] = toneUrl
     // If this color is active and selected tone matches, update view
     if (
@@ -149,6 +167,10 @@ export function useAppState() {
       currentColorResult.value.color === colorName &&
       selectedTone.value === toneName
     ) {
+      // Revoke previously displayed image if it was a blob and will be replaced
+      if (processedImage.value && processedImage.value !== toneUrl) {
+        revokeIfBlob(processedImage.value)
+      }
       processedImage.value = toneUrl
     }
   }
@@ -172,6 +194,15 @@ export function useAppState() {
   }
 
   const clearCache = () => {
+    // Revoke any blob URLs stored in cache
+    const cache = colorCache.value
+    for (const key of Object.keys(cache)) {
+      const entry = cache[key]
+      revokeIfBlob(entry.baseResult)
+      for (const toneKey of Object.keys(entry.tones)) {
+        revokeIfBlob(entry.tones[toneKey])
+      }
+    }
     colorCache.value = {}
   }
 
@@ -204,6 +235,7 @@ export function useAppState() {
     isUploading.value = false
     isProcessing.value = false
     currentColorResult.value = null
+    revokeIfBlob(processedImage.value)
     processedImage.value = null
     selectedTone.value = null
     clearCache()

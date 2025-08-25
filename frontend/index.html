@@ -1,38 +1,76 @@
 <!doctype html>
 <html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0a0a" />
+    <title>LuviraAI - Hair Color Editor</title>
+    <!-- Preload LCP image (first showcase image) -->
+    <link
+      fetchpriority="high"
+      rel="preload"
+      as="image"
+      href="/src/assets/showcase/showcase_1_pink_fuchsia.webp"
+    />
+    <meta
+      name="description"
+      content="Upload your photo and try realistic AI hair color changes instantly. Explore colors and tones and download the result."
+    />
+    <link rel="canonical" href="https://www.luviraai.app/" />
+    <meta property="og:title" content="LuviraAI - Hair Color Editor" />
+    <meta
+      property="og:description"
+      content="Upload your photo and try realistic hair color changes instantly."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/android-chrome-512x512.png" />
+    <meta property="og:url" content="https://www.luviraai.app/" />
+    <meta property="og:site_name" content="LuviraAI" />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="LuviraAI - Hair Color Editor" />
+    <meta
+      name="twitter:description"
+      content="Upload your photo and try realistic hair color changes instantly."
+    />
+    <meta name="twitter:image" content="https://www.luviraai.app/android-chrome-512x512.png" />
+    <meta name="robots" content="index,follow" />
+    <!-- Inter Google Font -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      const savedTheme = localStorage.getItem('theme')
+      const theme = savedTheme || (prefersDark ? 'dark' : 'cupcake')
+      document.documentElement.setAttribute('data-theme', theme)
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "LuviraAI - Hair Color Editor",
+        "url": "https://www.luviraai.app/",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "Web",
+        "description": "Upload your photo and try realistic AI hair color changes instantly.",
+        "image": "https://www.luviraai.app/android-chrome-512x512.png",
+        "offers": { "@type": "Offer", "priceCurrency": "USD", "price": "0" }
+      }
+    </script>
+  </head>
 
-<head>
-  <meta charset="UTF-8" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-  <link rel="manifest" href="/site.webmanifest">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LuviraAI - Hair Color Editor</title>
-  <!-- Preload LCP image (first showcase image) -->
-  <link fetchpriority="high" rel="preload" as="image" href="/src/assets/showcase/showcase_1_pink_fuchsia.webp" />
-  <meta name="description"
-    content="Upload your photo and try realistic AI hair color changes instantly. Explore colors and tones and download the result." />
-  <link rel="canonical" href="https://www.luviraai.app/" />
-  <meta property="og:title" content="LuviraAI - Hair Color Editor" />
-  <meta property="og:description" content="Upload your photo and try realistic hair color changes instantly." />
-  <meta property="og:type" content="website" />
-  <meta property="og:image" content="/favicon.png" />
-  <meta property="og:url" content="https://www.luviraai.app/" />
-  <meta name="robots" content="index,follow" />
-  <!-- Inter Google Font -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script>
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    const savedTheme = localStorage.getItem('theme')
-    const theme = savedTheme || (prefersDark ? 'dark' : 'cupcake')
-    document.documentElement.setAttribute('data-theme', theme)
-  </script>
-</head>
-
-<body>
-  <div id="app"></div>
-  <script type="module" src="/src/main.ts"></script>
-</body>
-
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
 </html>

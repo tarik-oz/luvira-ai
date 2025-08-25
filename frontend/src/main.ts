@@ -9,24 +9,14 @@ import { initAnalytics } from './services/analytics'
 const GA_ID = import.meta.env.VITE_GA_ID
 if (GA_ID) initAnalytics(GA_ID, router)
 
-// --- Silence logs in production ---
+// --- Tidy console output in production (keep warnings/errors) ---
 if (import.meta.env.PROD) {
   const noop = () => {}
-  // silence log/debug/info/trace/warn/error
   console.log = noop
   console.debug = noop
   console.info = noop
   console.trace = noop
-  console.warn = noop
-  console.error = noop
 }
-
-// --- Theme Preference ---
-const savedTheme = localStorage.getItem('theme')
-const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-const theme = savedTheme || (prefersDark ? 'dark' : 'light')
-document.documentElement.classList.remove('dark', 'light')
-document.documentElement.classList.add(theme)
 
 // --- Language Preference ---
 const savedLocale = localStorage.getItem('locale')
@@ -35,6 +25,7 @@ const locale =
   savedLocale === 'tr' || savedLocale === 'en' ? savedLocale : browserLocale === 'tr' ? 'tr' : 'en'
 
 i18n.global.locale.value = locale
+document.documentElement.setAttribute('lang', locale)
 
 const app = createApp(App)
 app.use(i18n)

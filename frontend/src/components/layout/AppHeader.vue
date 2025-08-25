@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { PhSun, PhMoon, PhGlobe, PhCaretDown, PhCheck } from '@phosphor-icons/vue'
-import logo from '@/assets/logo/logo.webp'
+import logo from '@/assets/logo/luviraai-logo.webp'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
 import { useAppState } from '@/composables/useAppState'

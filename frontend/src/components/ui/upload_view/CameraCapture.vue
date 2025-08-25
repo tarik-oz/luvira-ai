@@ -371,7 +371,7 @@ const submitPhoto = async () => {
     } else if (errorCode === 'NO_HAIR_DETECTED') {
       errorMessage.value = t('uploadSection.noHairDetected')
     } else {
-      errorMessage.value = t('sampleImages.errorMessage')
+      errorMessage.value = t('modelImages.errorMessage')
     }
   }
 }

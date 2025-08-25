@@ -72,10 +72,10 @@ const processFile = async (file: File) => {
           errorMessage.value = t('uploadSection.decodeError')
           break
         default:
-          errorMessage.value = t('sampleImages.errorMessage')
+          errorMessage.value = t('modelImages.errorMessage')
       }
     } else {
-      errorMessage.value = t('sampleImages.errorMessage')
+      errorMessage.value = t('modelImages.errorMessage')
     }
     return
   }
@@ -105,7 +105,7 @@ const processFile = async (file: File) => {
     } else if (errorCode === 'NO_HAIR_DETECTED') {
       errorMessage.value = t('uploadSection.noHairDetected')
     } else {
-      errorMessage.value = t('sampleImages.errorMessage')
+      errorMessage.value = t('modelImages.errorMessage')
     }
   }
 }

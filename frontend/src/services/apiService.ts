@@ -3,6 +3,22 @@
  */
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+const DEFAULT_TIMEOUT_MS = 30000
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await fetch(input, { ...(init || {}), signal: controller.signal })
+    return response
+  } finally {
+    clearTimeout(timer)
+  }
+}
 
 export interface UploadResponse {
   session_id: string
@@ -30,18 +46,11 @@ class ApiService {
     formData.append('file', file)
     formData.append('source', source)
 
-    // Create AbortController for timeout
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
-
     try {
-      const response = await fetch(`${this.baseUrl}/upload-and-prepare`, {
+      const response = await fetchWithTimeout(`${this.baseUrl}/upload-and-prepare`, {
         method: 'POST',
         body: formData,
-        signal: controller.signal, // Cancel request if it takes too long
       })
-
-      clearTimeout(timeoutId)
 
       if (!response.ok) {
         const errorData: ApiErrorPayload = await response
@@ -56,7 +65,6 @@ class ApiService {
 
       return await response.json()
     } catch (error) {
-      clearTimeout(timeoutId)
       console.error('Upload API error:', error)
       // Propagate original error (TypeError => network, DOMException AbortError => timeout)
       throw error

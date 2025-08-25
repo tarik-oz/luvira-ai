@@ -1,9 +1,27 @@
 {
+  "meta": {
+    "siteName": "LuviraAI",
+    "home": {
+      "title": "LuviraAI - Hair Color Editor",
+      "description": "Upload your photo and try realistic AI hair color changes instantly. Explore colors and tones and download the result."
+    },
+    "editor": {
+      "title": "Editor - LuviraAI Hair Color",
+      "description": "Change hair color and tones in real-time and download the result."
+    },
+    "notFound": {
+      "title": "Page not found - LuviraAI",
+      "description": "The page you’re looking for could not be found."
+    }
+  },
+  "a11y": {
+    "skipToContent": "Skip to content"
+  },
   "upload": {
     "title": "Hair Color Editor",
     "description": "Try different hair colors instantly. Fast, realistic, and free.",
     "divider": "or",
-    "sampleButton": "Use Model",
+    "modelButton": "Use Model",
     "cameraButton": "Use Camera",
     "qualityNote": "For best results, use clear, high-resolution portrait photos."
   },
@@ -67,7 +85,7 @@
     "networkError": "Network error. Check your connection and try again.",
     "working": "Processing..."
   },
-  "sampleImages": {
+  "modelImages": {
     "loadingSelected": "Loading...",
     "errorMessage": "Upload failed. Try again."
   },
