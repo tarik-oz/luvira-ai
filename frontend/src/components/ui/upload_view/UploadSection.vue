@@ -159,11 +159,17 @@ const handleDragLeave = (event: DragEvent) => {
             ? 'border-accent bg-accent/10'
             : 'border-base-content/20 bg-base-content md:hover:bg-primary cursor-pointer',
       ]"
+      role="button"
+      tabindex="0"
+      :aria-disabled="isUploading ? 'true' : 'false'"
+      :aria-label="t('uploadSection.uploadImage') as string"
       @click="openFileDialog"
       @drop="handleDrop"
       @dragover="handleDragOver"
       @dragleave="handleDragLeave"
       @dragend="handleDragLeave"
+      @keydown.enter.prevent="openFileDialog"
+      @keydown.space.prevent="openFileDialog"
     >
       <!-- Loading Spinner -->
       <div
@@ -215,7 +221,7 @@ const handleDragLeave = (event: DragEvent) => {
         class="hidden"
         @change="handleFileSelect"
         :disabled="isUploading"
-        aria-labelledby="upload-image-label"
+        :aria-label="t('uploadSection.uploadImage') as string"
       />
 
       <!-- Info icon and tooltip -->
@@ -245,11 +251,19 @@ const handleDragLeave = (event: DragEvent) => {
     <!-- Quality Note -->
     <div class="mt-4 w-full max-w-xl text-center">
       <p class="text-base-content/60 text-sm">
-        {{ t('upload.qualityNote') }}
+        <i18n-t keypath="upload.qualityNoteRich">
+          <template #default>
+            <strong>{{ t('upload.portraitWord') }}</strong>
+          </template>
+        </i18n-t>
       </p>
     </div>
     <!-- Error Section -->
-    <div v-if="errorMessage" class="mt-4 flex items-center justify-center gap-2 text-center">
+    <div
+      v-if="errorMessage"
+      class="mt-4 flex items-center justify-center gap-2 text-center"
+      aria-live="polite"
+    >
       <PhWarning class="h-5 w-5 shrink-0 text-red-600" />
       <span class="text-sm font-medium text-red-600">{{ errorMessage }}</span>
     </div>

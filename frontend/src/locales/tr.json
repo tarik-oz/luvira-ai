@@ -14,6 +14,38 @@
       "description": "Aradığınız sayfa bulunamadı."
     }
   },
+  "media": {
+    "models": {
+      "1": "Koyu kahverengi saçlarını üst topuz yapmış gülümseyen genç bir kadın.",
+      "2": "Kısa, dalgalı kahverengi saçlı gülümseyen genç bir kadın.",
+      "3": "Çilleri olan, kızıl-kahverengi kıvırcık saçlı gülümseyen bir kadın.",
+      "4": "Gözlüklü, uzun ve düz sarı saçlı gülümseyen genç bir kadın.",
+      "5": "Kısa, koyu kahverengi saçlı, kameraya bakan genç bir erkek.",
+      "6": "Açık kahverengi dalgalı saçlı ve küpeli, gülümseyen genç bir erkek."
+    },
+    "showcase": {
+      "thumb1": "Dijital düzenleme öncesinde bir kadının orijinal kahverengi saç rengini gösteren küçük resim.",
+      "thumb2": "Saç rengi simülasyonu için kullanılan, doğal saç rengine sahip bir kadının küçük resmi.",
+      "thumb3": "Saçları topuz yapılmış koyu saçlı bir kadının 'öncesi' görüntüsünü temsil eden küçük resim.",
+      "colors": {
+        "1": {
+          "pinkFuchsia": "Canlı 'Pembe Fuşya' saç rengi dönüşümünü gösteren bir kadın portresi.",
+          "blondeHoney": "Saçları dijital olarak 'Bal Sarısı' tonuna boyanmış bir kadın portresi.",
+          "redCherry": "Bir kadının portresinde uygulanmış 'Kırmızı Vişne' saç rengi örneği."
+        },
+        "2": {
+          "graySilver": "Soğuk tonlu 'Gri Gümüş' saç rengi düzenlemesiyle bir kadın yüzüne yakın plan.",
+          "purplePlum": "Saçları dijital olarak 'Mor Erik' rengine çevrilmiş bir kadın.",
+          "tealPastel": "Bir kadının portresine uygulanmış parlak 'Turkuaz Pastel' saç rengi örneği."
+        },
+        "3": {
+          "greenMint": "Topuz ve perçemlerde canlı 'Yeşil Nane' saç rengi dönüşümünü gösteren kadın portresi.",
+          "blueIce": "Saç topuzu ve perçemleri çarpıcı 'Buz Mavisi' tonuna boyanmış bir kadın.",
+          "copperBright": "Sıcak 'Parlak Bakır' saç tonunu gösteren saç rengi simülasyonu."
+        }
+      }
+    }
+  },
   "a11y": {
     "skipToContent": "İçeriğe atla"
   },
@@ -23,7 +55,8 @@
     "divider": "veya",
     "modelButton": "Model Kullan",
     "cameraButton": "Kamerayı Kullan",
-    "qualityNote": "En iyi sonuçları, net ve yüksek çözünürlüklü portre fotoğrafları verir."
+    "qualityNoteRich": "En iyi sonuçları, net ve yüksek çözünürlüklü {0} fotoğrafları verir.",
+    "portraitWord": "portre"
   },
   "colors": {
     "Black": "Siyah",

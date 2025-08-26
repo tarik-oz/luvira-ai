@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, nextTick } from 'vue'
 import { defineExpose } from 'vue'
 import {
   PhCamera,
@@ -24,6 +24,7 @@ const router = useRouter()
 import hairService from '../../../services/hairService'
 
 const showModal = ref(false)
+const modalRef = ref<HTMLElement | null>(null)
 const videoRef = ref<HTMLVideoElement | null>(null)
 const stream = ref<MediaStream | null>(null)
 let pendingStreamPromise: Promise<MediaStream> | null = null
@@ -100,6 +101,9 @@ const open = async () => {
 
   // Reset states
   showModal.value = true
+  nextTick(() => {
+    modalRef.value?.focus()
+  })
   trackEvent('camera_open')
   isLoading.value = true
   isStreamReady.value = false
@@ -441,7 +445,13 @@ defineExpose({ open })
   <div
     v-if="showModal"
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-[clamp(12px,5vw,24px)] backdrop-blur-xs"
+    role="dialog"
+    aria-modal="true"
+    :aria-label="capturedImage ? (t('camera.preview') as string) : (t('camera.title') as string)"
     @click.self="close"
+    @keydown.esc.prevent="close"
+    ref="modalRef"
+    tabindex="-1"
   >
     <div
       class="bg-base-content/80 relative flex w-full flex-col items-center rounded-xl p-[clamp(12px,3vw,24px)] shadow-2xl"
@@ -453,9 +463,9 @@ defineExpose({ open })
       >
         <PhX class="h-4 w-4" weight="bold" />
       </button>
-      <div class="text-base-100 mb-6 text-center text-2xl font-bold">
+      <h2 class="text-base-100 mb-6 text-center text-2xl font-bold">
         {{ capturedImage ? t('camera.preview') : t('camera.title') }}
-      </div>
+      </h2>
       <!-- Camera Box with overlay -->
       <div
         class="relative mb-1 flex w-full items-center justify-center overflow-hidden rounded-lg transition-all duration-500 ease-in-out"
@@ -530,7 +540,11 @@ defineExpose({ open })
       </div>
 
       <!-- Error Section -->
-      <div v-if="errorMessage" class="my-4 flex items-center justify-center gap-2 text-center">
+      <div
+        v-if="errorMessage"
+        class="my-4 flex items-center justify-center gap-2 text-center"
+        aria-live="polite"
+      >
         <PhWarning class="h-5 w-5 shrink-0 text-red-600" />
         <span
           class="text-sm font-medium text-red-600 md:max-w-[420px] md:truncate md:whitespace-nowrap"

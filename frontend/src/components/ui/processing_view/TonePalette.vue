@@ -2,7 +2,7 @@
 import { computed, watch, reactive, ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../../composables/useAppState'
-import { TONE_DEFINITIONS } from '../../../config/colorConfig'
+import { TONE_MAP } from '@/data/colorOptions'
 import { getBasePreview, getTonePreview } from '@/data/hairAssets'
 import { getToneSortOrder } from '@/data/colorMeta'
 import hairService from '../../../services/hairService'
@@ -23,8 +23,8 @@ const basePreview = computed(() =>
   currentColorResult.value ? getBasePreview(currentColorResult.value.originalColor) : '',
 )
 
-// Tone definitions matching CUSTOM_TONES in the backend
-const toneDefinitions = TONE_DEFINITIONS
+// Tone keys by color
+const toneMap = TONE_MAP
 
 // Tones of the current color
 const availableTones = computed(() => {
@@ -32,11 +32,10 @@ const availableTones = computed(() => {
 
   // Use originalColor instead of color (which contains cache key)
   const colorName = currentColorResult.value.originalColor
-  const colorTones = toneDefinitions[colorName] || {}
-  const tones = Object.keys(colorTones).map((toneName) => ({
+  const toneKeys = toneMap[colorName] || []
+  const tones = toneKeys.map((toneName) => ({
     name: toneName,
     displayName: toneName.charAt(0).toUpperCase() + toneName.slice(1),
-    description: colorTones[toneName].description,
     preview: getTonePreview(colorName, toneName),
   }))
   return getToneSortOrder(colorName, tones)
@@ -222,6 +221,8 @@ watch(
       <!-- Base Color (No Tone) -->
       <div
         @click="selectBase"
+        @keydown.enter.prevent="selectBase"
+        @keydown.space.prevent="selectBase"
         :class="[
           'bg-base-content/80 border-base-100/20 rounded-xl border p-0.5 transition-all duration-200',
           currentSelectedTone === null ? 'border-primary ring-primary/20 shadow-lg ring-2' : '',
@@ -231,6 +232,9 @@ watch(
               : 'pointer-events-none cursor-not-allowed opacity-50'
             : 'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
         ]"
+        role="button"
+        tabindex="0"
+        :aria-current="currentSelectedTone === null ? 'true' : 'false'"
       >
         <div
           class="bg-base-100 relative aspect-[3/4] w-full overflow-hidden rounded-lg lg:aspect-[9/16]"
@@ -265,6 +269,8 @@ watch(
         v-for="tone in availableTones"
         :key="tone.name"
         @click="selectTone(tone.name)"
+        @keydown.enter.prevent="selectTone(tone.name)"
+        @keydown.space.prevent="selectTone(tone.name)"
         :class="[
           'bg-base-content/80 border-base-100/20 rounded-xl border p-0.5 transition-all duration-200',
           currentSelectedTone === tone.name
@@ -278,6 +284,9 @@ watch(
                 : 'pointer-events-none cursor-not-allowed opacity-50'
               : 'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
         ]"
+        role="button"
+        tabindex="0"
+        :aria-current="currentSelectedTone === tone.name ? 'true' : 'false'"
       >
         <div
           class="bg-base-100 relative aspect-[3/4] w-full overflow-hidden rounded-lg lg:aspect-[9/16]"

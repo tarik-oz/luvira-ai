@@ -120,6 +120,7 @@ const generateFileName = (): string => {
     "
     :aria-label="t('processing.downloadButton') as string"
     :title="t('processing.downloadButton') as string"
+    :aria-busy="isProcessing ? 'true' : 'false'"
   >
     <template #icon>
       <PhDownloadSimple class="h-4 w-4" />
@@ -134,6 +135,7 @@ const generateFileName = (): string => {
     :class="'h-9 w-auto rounded-xl px-3 py-0'"
     :aria-label="t('processing.downloadButton') as string"
     :title="t('processing.downloadButton') as string"
+    :aria-busy="isProcessing ? 'true' : 'false'"
   >
     <template #icon>
       <PhDownloadSimple class="text-base-100 h-4 w-4" />

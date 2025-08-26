@@ -19,18 +19,25 @@ const cameraCaptureModal = ref()
 <template>
   <div class="grid grid-cols-1 gap-y-6 lg:min-h-[75vh] lg:grid-cols-2 lg:items-center lg:gap-x-8">
     <!-- Left column -->
-    <div
+    <section
       class="order-2 flex flex-col items-center justify-center px-4 text-center lg:order-1 lg:items-start lg:px-0 lg:text-left"
+      :aria-busy="isUploading ? 'true' : 'false'"
+      aria-describedby="upload-desc"
+      aria-labelledby="upload-title"
     >
       <!-- Title -->
       <h1
-        class="text-base-content mb-4 text-4xl leading-tight font-extrabold md:text-4xl lg:text-6xl"
+        id="upload-title"
+        class="text-base-content mb-4 text-4xl leading-tight font-extrabold md:text-4xl lg:text-[3.45rem]"
       >
         {{ t('upload.title') }}
       </h1>
 
       <!-- Description -->
-      <p class="text-base-content/70 mb-6 max-w-xl text-base md:text-base lg:text-xl">
+      <p
+        id="upload-desc"
+        class="text-base-content/70 mb-6 max-w-xl text-base md:text-base lg:text-[1.2rem]"
+      >
         {{ t('upload.description') }}
       </p>
 
@@ -50,6 +57,7 @@ const cameraCaptureModal = ref()
         <AppButton
           class="w-full md:flex-1"
           :disabled="isUploading"
+          aria-haspopup="dialog"
           @click="modelImagesModal.open()"
         >
           <template #icon>
@@ -62,6 +70,7 @@ const cameraCaptureModal = ref()
         <AppButton
           class="w-full md:flex-1"
           :disabled="isUploading"
+          aria-haspopup="dialog"
           @click="cameraCaptureModal.open()"
         >
           <template #icon>
@@ -76,7 +85,7 @@ const cameraCaptureModal = ref()
 
       <!-- CameraCapture Modal -->
       <CameraCapture ref="cameraCaptureModal" />
-    </div>
+    </section>
 
     <!-- Right column -->
     <div

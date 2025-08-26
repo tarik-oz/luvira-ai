@@ -17,8 +17,6 @@ onMounted(() => {
   const savedTheme = localStorage.getItem('theme')
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
   theme.value = savedTheme || (prefersDark ? 'dark' : 'light')
-  document.documentElement.classList.remove('dark', 'light')
-  document.documentElement.classList.add(theme.value)
   document.documentElement.setAttribute('data-theme', theme.value)
   const input = document.querySelector('.theme-controller') as HTMLInputElement
   if (input) input.checked = theme.value === 'light'
@@ -57,8 +55,6 @@ function setLanguage(lang: string) {
 function toggleTheme(e: Event) {
   const checked = (e.target as HTMLInputElement).checked
   theme.value = checked ? 'light' : 'dark'
-  document.documentElement.classList.remove('dark', 'light')
-  document.documentElement.classList.add(theme.value)
   document.documentElement.setAttribute('data-theme', theme.value)
   localStorage.setItem('theme', theme.value)
 }
@@ -75,15 +71,20 @@ function handleHomeClick() {
     <div class="flex items-center justify-between px-4 py-2 md:px-6 lg:px-8">
       <!-- Logo and Title -->
       <RouterLink to="/" class="flex items-center gap-2 md:gap-3" @click="handleHomeClick">
-        <img :src="logo" alt="LuviraAI Logo" class="h-10 w-10 object-contain md:h-12 md:w-12" />
-        <h1
+        <img
+          :src="logo"
+          alt="LuviraAI Logo"
+          width="48"
+          height="48"
+          class="h-10 w-10 object-contain md:h-12 md:w-12"
+        />
+        <span
           class="text-base-100 relative top-[2px] text-[20px] leading-none font-semibold tracking-tight md:text-2xl"
+          >LuviraAI</span
         >
-          LuviraAI
-        </h1>
       </RouterLink>
 
-      <div class="flex items-center gap-2 px-2 md:gap-4 md:px-6">
+      <nav class="flex items-center gap-2 px-2 md:gap-4 md:px-6" aria-label="App controls">
         <!-- Theme Toggle -->
         <label class="swap swap-rotate" aria-label="Toggle theme">
           <input
@@ -94,8 +95,8 @@ function handleHomeClick() {
             @change="toggleTheme"
             aria-label="Theme toggle"
           />
-          <PhSun class="swap-on h-8 w-8 text-yellow-300" />
-          <PhMoon class="swap-off text-base-100 h-8 w-8" />
+          <PhMoon class="swap-on text-base-100 h-8 w-8" />
+          <PhSun class="swap-off h-8 w-8 text-yellow-600" />
         </label>
 
         <!-- Language Dropdown -->
@@ -145,7 +146,7 @@ function handleHomeClick() {
             </li>
           </ul>
         </div>
-      </div>
+      </nav>
     </div>
   </header>
 </template>

@@ -51,7 +51,10 @@ onBeforeUnmount(() => {
 <template>
   <div class="container mx-auto lg:px-4">
     <!-- Mobile/Tablet Top Actions Bar -->
-    <div class="-mx-4 mb-4 flex items-center justify-between px-4 py-2 lg:hidden">
+    <div
+      class="-mx-4 mb-4 flex items-center justify-between px-4 py-2 lg:hidden"
+      aria-label="Top actions"
+    >
       <div class="flex items-center gap-2">
         <!-- Back (AppButton circular, base variant) -->
         <AppButton
@@ -104,12 +107,14 @@ onBeforeUnmount(() => {
     <!-- Main Content Grid -->
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
       <!-- Left column -->
-      <div
+      <section
         class="flex flex-col items-center justify-center px-0 lg:items-start lg:justify-start lg:px-0"
+        aria-labelledby="image-display-heading"
       >
         <!-- Image Display Container -->
         <div class="mx-auto w-full max-w-lg space-y-4">
           <!-- Image Display -->
+          <h2 id="image-display-heading" class="sr-only">Image display</h2>
           <ImageDisplay :compare-mode="isCompareMode" />
           <!-- Error Section -->
           <div
@@ -143,10 +148,13 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       <!-- Right column -->
-      <div class="flex flex-col gap-4 px-4 lg:gap-5 lg:px-0">
+      <section
+        class="flex flex-col gap-4 px-4 lg:gap-5 lg:px-0"
+        aria-label="Color and tone selection"
+      >
         <!-- ColorPalette: Always show on desktop, conditionally on mobile -->
         <ColorPalette
           :class="{ 'lg:block': true, hidden: showMobileToneBar, block: !showMobileToneBar }"
@@ -157,7 +165,7 @@ onBeforeUnmount(() => {
 
         <!-- MobileColorToneBar: Show on mobile only when showMobileToneBar is true -->
         <MobileColorToneBar v-show="showMobileToneBar" />
-      </div>
+      </section>
     </div>
   </div>
 </template>

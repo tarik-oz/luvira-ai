@@ -153,7 +153,10 @@ const getTransitionStyle = () => ({
 </script>
 
 <template>
-  <div class="flex h-full flex-col items-center justify-center gap-4">
+  <div
+    class="flex h-full flex-col items-center justify-center gap-4"
+    aria-label="Hair color showcase"
+  >
     <!-- Main Showcase -->
     <Transition name="fade" mode="out-in" @after-enter="onAfterEnter">
       <div
@@ -165,13 +168,17 @@ const getTransitionStyle = () => ({
         <!-- Base Image (Current Color) -->
         <img
           :src="currentColor.src"
-          :alt="currentColor.alt"
+          :alt="
+            currentColor.altKey
+              ? (t(currentColor.altKey, currentColor.alt) as string)
+              : currentColor.alt
+          "
           class="absolute inset-0 h-full w-full object-cover"
         />
         <!-- Overlay Image (Next Color) -->
         <img
           :src="nextColor.src"
-          :alt="nextColor.alt"
+          :alt="nextColor.altKey ? (t(nextColor.altKey, nextColor.alt) as string) : nextColor.alt"
           class="absolute inset-0 h-full w-full object-cover"
           :style="getTransitionStyle()"
           width="480"
@@ -200,13 +207,26 @@ const getTransitionStyle = () => ({
       v-for="(model, index) in models"
       :key="model.id"
       @click="selectModel(index)"
+      @keydown.enter.prevent="selectModel(index)"
+      @keydown.space.prevent="selectModel(index)"
       class="h-20 w-20 cursor-pointer overflow-hidden rounded-lg transition-all duration-500 sm:h-24 sm:w-24"
       :class="{
         'border-primary scale-110 border-2 shadow-lg': activeModelIndex === index,
         'hover:border-base-content/50 border-2 border-transparent': activeModelIndex !== index,
       }"
+      role="button"
+      tabindex="0"
+      :aria-current="activeModelIndex === index ? 'true' : 'false'"
     >
-      <img :src="model.thumbnail" :alt="model.thumbnailAlt" class="h-full w-full object-cover" />
+      <img
+        :src="model.thumbnail"
+        :alt="
+          model.thumbnailAltKey
+            ? (t(model.thumbnailAltKey, model.thumbnailAlt) as string)
+            : model.thumbnailAlt
+        "
+        class="h-full w-full object-cover"
+      />
     </div>
   </div>
 </template>

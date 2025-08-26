@@ -5,6 +5,7 @@ const props = defineProps<{
   class?: string
   disabled?: boolean
   variant?: 'accent' | 'base' | 'primary' | 'ghost'
+  type?: 'button' | 'submit' | 'reset'
 }>()
 
 const slots = useSlots()
@@ -36,7 +37,7 @@ const variantClass = computed(() => {
       props.fullWidth !== false ? 'w-full' : 'w-auto',
       props.class,
     ]"
-    type="button"
+    :type="props.type ?? 'button'"
   >
     <slot name="icon" />
     <span v-if="hasDefaultSlot"><slot /></span>

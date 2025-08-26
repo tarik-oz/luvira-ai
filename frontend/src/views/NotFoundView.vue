@@ -13,7 +13,11 @@ const goHome = () => {
 </script>
 
 <template>
-  <div class="flex min-h-[60vh] items-center justify-center px-4 py-20">
+  <div
+    class="flex min-h-[60vh] items-center justify-center px-4 py-20"
+    role="region"
+    aria-label="Not found"
+  >
     <div class="mx-auto max-w-md text-center">
       <!-- 404 Icon -->
       <div class="mb-6 flex justify-center">

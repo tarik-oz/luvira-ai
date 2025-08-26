@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { modelImages } from '../../../data/modelImages'
 import { defineExpose } from 'vue'
 import { PhX } from '@phosphor-icons/vue'
@@ -15,6 +15,7 @@ const { isUploading } = useAppState()
 const router = useRouter()
 
 const showModal = ref(false)
+const modalRef = ref<HTMLElement | null>(null)
 const selectedImageIndex = ref<number | null>(null)
 const errorMessage = ref<string | null>(null)
 
@@ -22,6 +23,9 @@ const open = () => {
   showModal.value = true
   selectedImageIndex.value = null
   errorMessage.value = null
+  nextTick(() => {
+    modalRef.value?.focus()
+  })
 }
 
 const close = () => {
@@ -43,7 +47,7 @@ const handleImageSelect = async (index: number, imageUrl: string) => {
     if (!navigator.onLine) {
       throw new TypeError('Network offline')
     }
-    // Send only the image name to analytics (e.g., guy_1)
+    // Send only the image name to analytics
     const nameMatch = imageUrl.match(/([a-zA-Z0-9_-]+)\.[a-zA-Z0-9]+$/)
     const imageName = nameMatch ? nameMatch[1] : `model_${index + 1}`
     trackEvent('model_click', { index, image: imageName })
@@ -77,7 +81,13 @@ defineExpose({ open })
   <div
     v-if="showModal"
     class="no-callout fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-[clamp(12px,5vw,24px)] backdrop-blur-xs select-none"
+    role="dialog"
+    aria-modal="true"
+    :aria-label="t('upload.modelButton') as string"
     @click.self="close"
+    @keydown.esc.prevent="close"
+    ref="modalRef"
+    tabindex="-1"
   >
     <div
       class="bg-base-content/80 relative w-full max-w-2xl rounded-xl p-[clamp(12px,3vw,24px)] shadow-2xl"
@@ -90,9 +100,9 @@ defineExpose({ open })
         <PhX class="h-4 w-4" weight="bold" />
       </button>
 
-      <div class="text-base-100 mb-4 text-center text-2xl font-bold">
+      <h2 class="text-base-100 mb-4 text-center text-2xl font-bold">
         {{ t('upload.modelButton') }}
-      </div>
+      </h2>
 
       <!-- Image Grid -->
       <div
@@ -102,6 +112,8 @@ defineExpose({ open })
           v-for="(img, index) in modelImages"
           :key="img.id"
           @click="handleImageSelect(index, img.url)"
+          @keydown.enter.prevent="handleImageSelect(index, img.url)"
+          @keydown.space.prevent="handleImageSelect(index, img.url)"
           :class="[
             'bg-base-200 flex h-36 w-28 cursor-pointer items-center justify-center overflow-hidden rounded-lg transition-all duration-300 md:h-40 md:w-32',
             selectedImageIndex === index
@@ -111,8 +123,15 @@ defineExpose({ open })
                 : 'hover:ring-primary hover:scale-102 hover:ring-2',
           ]"
           :style="isUploading ? { pointerEvents: 'none' } : {}"
+          role="button"
+          tabindex="0"
+          :aria-current="selectedImageIndex === index ? 'true' : 'false'"
         >
-          <img :src="img.url" :alt="img.alt" class="h-full w-full rounded-lg object-cover" />
+          <img
+            :src="img.url"
+            :alt="img.altKey ? (t(img.altKey, img.alt) as string) : img.alt"
+            class="h-full w-full rounded-lg object-cover"
+          />
         </div>
       </div>
 
@@ -127,7 +146,11 @@ defineExpose({ open })
       </div>
 
       <!-- Error Section -->
-      <div v-if="errorMessage" class="mt-4 flex items-center justify-center gap-2 text-center">
+      <div
+        v-if="errorMessage"
+        class="mt-4 flex items-center justify-center gap-2 text-center"
+        aria-live="polite"
+      >
         <PhWarning class="h-5 w-5 shrink-0 text-red-600" />
         <span class="text-sm font-medium text-red-600">{{ errorMessage }}</span>
       </div>

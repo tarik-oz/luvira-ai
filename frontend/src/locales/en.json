@@ -23,7 +23,8 @@
     "divider": "or",
     "modelButton": "Use Model",
     "cameraButton": "Use Camera",
-    "qualityNote": "For best results, use clear, high-resolution portrait photos."
+    "qualityNoteRich": "For best results, use clear, high-resolution {0} photos.",
+    "portraitWord": "portrait"
   },
   "colors": {
     "Black": "Black",

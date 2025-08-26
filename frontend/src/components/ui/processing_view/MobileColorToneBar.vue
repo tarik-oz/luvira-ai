@@ -2,7 +2,7 @@
 import { computed, watch, reactive, ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../../composables/useAppState'
-import { TONE_DEFINITIONS } from '../../../config/colorConfig'
+import { TONE_MAP } from '@/data/colorOptions'
 import { getBasePreview, getTonePreview } from '@/data/hairAssets'
 import { getToneSortOrder } from '@/data/colorMeta'
 import hairService from '../../../services/hairService'
@@ -25,19 +25,18 @@ const basePreview = computed(() =>
   currentColorResult.value ? getBasePreview(currentColorResult.value.originalColor) : '',
 )
 
-// Tone definitions matching CUSTOM_TONES in the backend
-const toneDefinitions = TONE_DEFINITIONS
+// Tone keys by color
+const toneMap = TONE_MAP
 
 // Tones of the current color (including base as first tone)
 const availableTones = computed(() => {
   if (!currentColorResult.value) return []
 
   const colorName = currentColorResult.value.originalColor
-  const colorTones = toneDefinitions[colorName] || {}
-  const tones = Object.keys(colorTones).map((toneName) => ({
+  const toneKeys = toneMap[colorName] || []
+  const tones = toneKeys.map((toneName) => ({
     name: toneName,
     displayName: toneName.charAt(0).toUpperCase() + toneName.slice(1),
-    description: colorTones[toneName].description,
     preview: getTonePreview(colorName, toneName),
   }))
 
@@ -45,7 +44,6 @@ const availableTones = computed(() => {
   const baseTone = {
     name: 'base',
     displayName: 'Base',
-    description: 'Original color',
     preview: getBasePreview(colorName),
   }
 
@@ -233,7 +231,7 @@ watch(
     <!-- Main flex container: fixed box + tone content -->
     <div class="flex h-full gap-0">
       <!-- Fixed Color Box -->
-      <div class="h-full w-1/3 flex-shrink-0">
+      <div class="h-full w-[7.5rem] flex-shrink-0 md:w-[10rem]">
         <div class="bg-base-content/70 relative h-full rounded-xl rounded-r-none">
           <div class="flex h-full items-center justify-center">
             <!-- Back Button -->
@@ -245,7 +243,9 @@ watch(
               <PhCaretLeft class="h-3 w-3" />
             </button>
             <!-- Selected Color Display (not clickable, no borders) -->
-            <div class="bg-base-content/80 rounded-lg p-0.5" style="width: 84px">
+            <div
+              class="bg-base-content/80 w-[5.25rem] flex-shrink-0 rounded-lg p-0.5 md:w-[6.25rem]"
+            >
               <div class="bg-base-100 relative aspect-[3/4] w-full overflow-hidden rounded-md">
                 <img :src="basePreview" alt="Selected Color" class="h-full w-full object-cover" />
                 <!-- Bottom label bar -->
@@ -266,7 +266,7 @@ watch(
       <div class="flex-1 overflow-hidden py-3">
         <!-- Tones Grid / Horizontal scroller -->
         <div
-          class="scrollbar-none grid auto-cols-[minmax(84px,1fr)] grid-flow-col gap-2 overflow-x-auto"
+          class="scrollbar-none grid scroll-px-2 auto-cols-[minmax(84px,1fr)] grid-flow-col gap-2 overflow-x-auto overflow-y-hidden px-2"
           ref="scrollerRef"
           @scroll.passive="updateScrollIndicator()"
         >
@@ -275,6 +275,8 @@ watch(
             v-for="tone in availableTones"
             :key="tone.name"
             @click="selectTone(tone.name)"
+            @keydown.enter.prevent="selectTone(tone.name)"
+            @keydown.space.prevent="selectTone(tone.name)"
             :class="[
               'bg-base-content/80 border-base-100/20 h-full rounded-xl border p-0.5 transition-all duration-200',
               (tone.name === 'base' && currentSelectedTone === null) ||
@@ -290,6 +292,14 @@ watch(
                     : 'pointer-events-none cursor-not-allowed opacity-50'
                   : 'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
             ]"
+            role="button"
+            tabindex="0"
+            :aria-current="
+              (tone.name === 'base' && currentSelectedTone === null) ||
+              (tone.name !== 'base' && currentSelectedTone === tone.name)
+                ? 'true'
+                : 'false'
+            "
           >
             <div class="bg-base-100 relative aspect-[3/4] w-full overflow-hidden rounded-lg">
               <img

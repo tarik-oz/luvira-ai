@@ -115,7 +115,7 @@ const luminance = (rgb: [number, number, number]): number => {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
-export type ToneItem = { name: string; displayName: string; description: string; preview?: string }
+export type ToneItem = { name: string; displayName: string; preview?: string }
 
 export const getToneSortOrder = (colorName: string, tones: ToneItem[]): ToneItem[] => {
   const rgbMap = TONE_RGB[colorName] || {}

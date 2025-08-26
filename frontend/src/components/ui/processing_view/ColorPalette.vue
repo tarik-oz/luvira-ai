@@ -2,7 +2,7 @@
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppState } from '../../../composables/useAppState'
-import { AVAILABLE_COLORS } from '../../../config/colorConfig'
+import { AVAILABLE_COLORS } from '@/data/colorOptions'
 import { getBasePreview } from '@/data/hairAssets'
 import { getPreferredColorOrder } from '@/data/colorMeta'
 import hairService from '../../../services/hairService'
@@ -96,7 +96,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="bg-base-content/70 border-base-content/80 rounded-2xl border p-3 shadow-lg lg:p-4">
+  <div class="bg-base-content/70 border-base-content/80 rounded-2xl border py-3 shadow-lg lg:p-4">
     <!-- Header -->
     <div class="mb-3 hidden lg:mb-4 lg:block">
       <h3 class="text-base-100 mb-1 text-lg font-bold">{{ t('colorPalette.title') }}</h3>
@@ -105,12 +105,14 @@ onUnmounted(() => {
     <!-- Color Grid / Horizontal scroller on mobile -->
     <div
       ref="scrollerRef"
-      class="scrollbar-none grid auto-cols-[minmax(84px,1fr)] grid-flow-col gap-2 overflow-x-auto lg:auto-cols-auto lg:grid-flow-row lg:grid-cols-7 lg:overflow-visible"
+      class="scrollbar-none grid scroll-px-2 auto-cols-[minmax(84px,1fr)] grid-flow-col gap-2 overflow-x-auto overflow-y-hidden px-2 lg:auto-cols-auto lg:grid-flow-row lg:grid-cols-7 lg:overflow-visible lg:px-0"
     >
       <div
         v-for="color in colors"
         :key="color.name"
         @click="selectColor(color.name)"
+        @keydown.enter.prevent="selectColor(color.name)"
+        @keydown.space.prevent="selectColor(color.name)"
         :class="[
           'bg-base-content/80 border-base-100/20 rounded-xl border p-0.5 transition-all duration-200',
           selectedColor === color.name ? 'border-primary ring-primary/20 shadow-lg ring-2' : '',
@@ -120,6 +122,9 @@ onUnmounted(() => {
               : 'pointer-events-none cursor-not-allowed opacity-50'
             : 'cursor-pointer hover:scale-105 hover:border-gray-300 hover:shadow-md',
         ]"
+        role="button"
+        tabindex="0"
+        :aria-current="selectedColor === color.name ? 'true' : 'false'"
       >
         <div
           class="bg-base-100 relative aspect-[3/4] w-full overflow-hidden rounded-lg lg:aspect-[9/16]"
