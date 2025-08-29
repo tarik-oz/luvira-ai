@@ -70,7 +70,7 @@ jobs:
       - name: Add Runner IP to AWS Security Group
         run: |
           aws ec2 authorize-security-group-ingress \
-            --group-id 'sg-012345abcdef' \
+            --group-id 'sg-07be80aeabae4bf35' \
             --protocol tcp \
             --port 22 \
             --cidr ${{ steps.ip.outputs.ipv4 }}/32 \
@@ -100,7 +100,7 @@ jobs:
         if: always()
         run: |
           aws ec2 revoke-security-group-ingress \
-            --group-id 'sg-012345abcdef' \
+            --group-id 'sg-07be80aeabae4bf35' \
             --protocol tcp \
             --port 22 \
             --cidr ${{ steps.ip.outputs.ipv4 }}/32 \
