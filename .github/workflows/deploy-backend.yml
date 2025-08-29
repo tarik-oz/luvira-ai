@@ -19,8 +19,6 @@ on:
       - "Dockerfile"
       - "requirements.txt"
 
-# Prevents multiple workflow runs for the same branch from running at the same time.
-# If a new push is made, the previous in-progress run will be cancelled.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -68,19 +66,18 @@ jobs:
         id: ip
         uses: haythem/public-ip@v1.3
 
+      # --- YENİ VE KURŞUN GEÇİRMEZ IP YÖNETİMİ ---
       - name: Add Runner IP to AWS Security Group
-        # This step only runs on Pull Requests to test connectivity, and on pushes to main for deployment.
-        uses: its-a-knockout/aws-security-group-action@v1
-        with:
-          aws-region: ${{ secrets.AWS_REGION }}
-          aws-sg-id: "sg-07be80aeabae4bf35"
-          ip-address: ${{ steps.ip.outputs.ipv4 }}
-          port: 22
-          protocol: "tcp"
-          action: "add"
+        run: |
+          aws ec2 authorize-security-group-ingress \
+            --group-id 'sg-012345abcdef' \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${{ steps.ip.outputs.ipv4 }}/32 \
+            --region ${{ secrets.AWS_REGION }}
 
       - name: Deploy to EC2 via SSH
-        # This step ONLY runs on a push to the main branch, not on Pull Requests.
+        # Sadece PR üzerinde test etmek için bu if'i geçici olarak yorumda bırakabilirsin
         # if: github.event_name == 'push'
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -88,45 +85,23 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           script: |
-            # set -e
-
-            # docker pull ${{ secrets.DOCKERHUB_USERNAME }}/luviraai-api:${{ github.sha }}
-
-            # docker stop luviraai-backend-container || true
-            # docker rm luviraai-backend-container || true
-
-            # aws ssm get-parameters-by-path --path "/luviraai/prod" --recursive --with-decryption --query "Parameters[].[Name,Value]" --output text | sed 's#/luviraai/prod/##' | awk '{printf "%s=%s\n",$1,$2}' > .env
-
-            # docker run -d --name luviraai-backend-container \
-            #   --restart unless-stopped \
-            #   --env-file .env \
-            #   --log-driver awslogs \
-            #   --log-opt awslogs-region=${{ secrets.AWS_REGION }} \
-            #   --log-opt awslogs-group=/luviraai/api \
-            #   --log-opt awslogs-create-group=true \
-            #   --log-opt awslogs-stream=luviraai-$(hostname) \
-            #   -p 127.0.0.1:8000:8000 \
-            #   ${{ secrets.DOCKERHUB_USERNAME }}/luviraai-api:${{ github.sha }}
-
-            # docker image prune -af
-             # --- PR TEST SCRIPT ---
-
+            # --- PR TEST SCRIPT ---
             echo "SSH connection successful!"
 
             echo "Testing Docker Hub pull..."
-            docker pull ${{ secrets.DOCK-ERHUB_USERNAME }}/luviraai-api:${{ github.sha }}
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/luviraai-api:${{ github.sha }}
 
             echo "Testing AWS CLI and SSM access..."
             aws ssm get-parameters-by-path --path "/luviraai/prod" --recursive --query "Parameters[].[Name,Value]" --output text > /dev/null
 
             echo "All EC2 checks passed!"
+
       - name: Remove Runner IP from AWS Security Group
         if: always()
-        uses: sohel-ahmed-raj/aws-security-group-remove-ip-action@v1.1.0
-        with:
-          aws-region: ${{ secrets.AWS_REGION }}
-          aws-sg-id: "sg-07be80aeabae4bf35"
-          ip-address: ${{ steps.ip.outputs.ipv4 }}
-          port: 22
-          protocol: "tcp"
-          action: "remove"
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id 'sg-012345abcdef' \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${{ steps.ip.outputs.ipv4 }}/32 \
+            --region ${{ secrets.AWS_REGION }}
