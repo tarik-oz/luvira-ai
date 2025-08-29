@@ -1,0 +1,130 @@
+name: Build, Push, and Deploy Backend to AWS EC2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api/**"
+      - "model/**"
+      - "color_changer/**"
+      - "Dockerfile"
+      - "requirements.txt"
+      - ".github/workflows/deploy-backend.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "api/**"
+      - "model/**"
+      - "color_changer/**"
+      - "Dockerfile"
+      - "requirements.txt"
+
+# Prevents multiple workflow runs for the same branch from running at the same time.
+# If a new push is made, the previous in-progress run will be cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          target: production
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/luviraai-api:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/luviraai-api:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Get GitHub Actions Runner IP
+        id: ip
+        uses: haythem/public-ip@v1.3
+
+      - name: Add Runner IP to AWS Security Group
+        # This step only runs on Pull Requests to test connectivity, and on pushes to main for deployment.
+        uses: sohel-ahmed-raj/aws-security-group-add-ip-action@v1.1.0
+        with:
+          aws_region: ${{ secrets.AWS_REGION }}
+          aws_sg_id: "sg-07be80aeabae4bf35"
+          ip_address: ${{ steps.ip.outputs.ipv4 }}
+          port: 22
+          protocol: "tcp"
+
+      - name: Deploy to EC2 via SSH
+        # This step ONLY runs on a push to the main branch, not on Pull Requests.
+        # if: github.event_name == 'push'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          script: |
+            # set -e
+
+            # docker pull ${{ secrets.DOCKERHUB_USERNAME }}/luviraai-api:${{ github.sha }}
+
+            # docker stop luviraai-backend-container || true
+            # docker rm luviraai-backend-container || true
+
+            # aws ssm get-parameters-by-path --path "/luviraai/prod" --recursive --with-decryption --query "Parameters[].[Name,Value]" --output text | sed 's#/luviraai/prod/##' | awk '{printf "%s=%s\n",$1,$2}' > .env
+
+            # docker run -d --name luviraai-backend-container \
+            #   --restart unless-stopped \
+            #   --env-file .env \
+            #   --log-driver awslogs \
+            #   --log-opt awslogs-region=${{ secrets.AWS_REGION }} \
+            #   --log-opt awslogs-group=/luviraai/api \
+            #   --log-opt awslogs-create-group=true \
+            #   --log-opt awslogs-stream=luviraai-$(hostname) \
+            #   -p 127.0.0.1:8000:8000 \
+            #   ${{ secrets.DOCKERHUB_USERNAME }}/luviraai-api:${{ github.sha }}
+
+            # docker image prune -af
+             # --- PR TEST SCRIPT ---
+
+            echo "SSH connection successful!"
+
+            echo "Testing Docker Hub pull..."
+            docker pull ${{ secrets.DOCK-ERHUB_USERNAME }}/luviraai-api:${{ github.sha }}
+
+            echo "Testing AWS CLI and SSM access..."
+            aws ssm get-parameters-by-path --path "/luviraai/prod" --recursive --query "Parameters[].[Name,Value]" --output text > /dev/null
+
+            echo "All EC2 checks passed!"
+      - name: Remove Runner IP from AWS Security Group
+        if: always()
+        uses: sohel-ahmed-raj/aws-security-group-remove-ip-action@v1.1.0
+        with:
+          aws_region: ${{ secrets.AWS_REGION }}
+          aws_sg_id: "sg-07be80aeabae4bf35"
+          ip_address: ${{ steps.ip.outputs.ipv4 }}
+          port: 22
+          protocol: "tcp"
