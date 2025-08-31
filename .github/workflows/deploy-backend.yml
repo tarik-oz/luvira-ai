@@ -1,4 +1,4 @@
-name: Build, Push, and Deploy Backend to AWS EC2
+name: Deploy Backend to AWS EC2
 
 on:
   push:
@@ -67,16 +67,17 @@ jobs:
         uses: haythem/public-ip@v1.3
 
       - name: Add Runner IP to AWS Security Group
+        if: github.event_name == 'push' # Only run on push to main
         run: |
           aws ec2 authorize-security-group-ingress \
-            --group-id 'sg-07be80aeabae4bf35' \
+            --group-id ${{ secrets.AWS_SECURITY_GROUP_ID }} \
             --protocol tcp \
             --port 22 \
             --cidr ${{ steps.ip.outputs.ipv4 }}/32 \
             --region ${{ secrets.AWS_REGION }}
 
       - name: Deploy to EC2 via SSH
-        # if: github.event_name == 'push'
+        if: github.event_name == 'push' # Only run on push to main
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -84,34 +85,50 @@ jobs:
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           script: |
             set -e
-
-            echo "SSH connection successful!"
-
-            if ! command -v aws &> /dev/null
-            then
-                echo "AWS CLI not found on EC2. Installing..."
-                sudo apt-get update -y
-                sudo apt-get install -y unzip
-                curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-                unzip awscliv2.zip
-                sudo ./aws/install
-                rm -rf awscliv2.zip aws
-                echo "AWS CLI installed."
+            if ! command -v aws &> /dev/null; then
+              sudo apt-get update -y
+              sudo apt-get install -y unzip
+              curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+              unzip awscliv2.zip
+              sudo ./aws/install
+              rm -rf awscliv2.zip aws
             fi
 
-            echo "Testing Docker Hub pull..."
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/luviraai-api:${{ github.sha }}
 
-            echo "Testing AWS CLI and SSM access..."
-            aws ssm get-parameters-by-path --path "/luviraai/prod" --recursive --query "Parameters[].[Name,Value]" --output text > /dev/null
+            docker stop luviraai-backend-container || true
+            docker rm luviraai-backend-container || true
 
-            echo "All EC2 checks passed successfully!"
+            aws ssm get-parameters-by-path \
+              --path "/luviraai/prod" \
+              --recursive \
+              --with-decryption \
+              --query "Parameters[].[Name,Value]" \
+              --output text \
+              --region ${{ secrets.AWS_REGION }} \
+            | sed 's#/luviraai/prod/##' \
+            | awk '{printf "%s=%s\n",$1,$2}' \
+            > .env
+
+            docker run -d \
+              --name luviraai-backend-container \
+              --restart unless-stopped \
+              --env-file .env \
+              --log-driver awslogs \
+              --log-opt awslogs-region=${{ secrets.AWS_REGION }} \
+              --log-opt awslogs-group=/luviraai/api \
+              --log-opt awslogs-create-group=true \
+              --log-opt awslogs-stream=luviraai-$(hostname) \
+              -p 127.0.0.1:8000:8000 \
+              ${{ secrets.DOCKERHUB_USERNAME }}/luviraai-api:${{ github.sha }}
+
+            docker image prune -af
 
       - name: Remove Runner IP from AWS Security Group
-        if: always()
+        if: always() && github.event_name == 'push' # Only run on push to main, but always run even if deploy fails
         run: |
           aws ec2 revoke-security-group-ingress \
-            --group-id 'sg-07be80aeabae4bf35' \
+            --group-id ${{ secrets.AWS_SECURITY_GROUP_ID }} \
             --protocol tcp \
             --port 22 \
             --cidr ${{ steps.ip.outputs.ipv4 }}/32 \
