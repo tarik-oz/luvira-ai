@@ -75,6 +75,12 @@ async def overlays_with_session(
                 for name, webp_bytes in color_change_service.iter_overlays_with_session(
                     session_id, color_name, webp_quality=80
                 ):
+                    # structured log for color selection event
+                    logger.info(json.dumps({
+                        "event": "color_category_selected",
+                        "session_id": session_id,
+                        "color": color_name
+                    }))
                     # structured log for each yielded part
                     logger.info(json.dumps({
                         "event": "overlay_part",

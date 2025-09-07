@@ -14,7 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 # Default paths
 PREVIEW_IMAGES_DIR = PROJECT_ROOT / "color_changer" / "test_images"
 PREVIEW_RESULTS_DIR = PROJECT_ROOT / "color_changer" / "test_results"
-DEFAULT_MODEL_PATH = PROJECT_ROOT / "model" / "trained_models" / "2025-07-14_02-57-22_acc0.9708" / "best_model.pth"
+DEFAULT_MODEL_PATH = PROJECT_ROOT / "model" / "trained_models" / "luviraai_weights.pth"
 
 # Predefined colors in RGB format [R, G, B] with names
 COLORS = [

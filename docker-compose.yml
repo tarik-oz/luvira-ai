@@ -13,12 +13,15 @@ services:
       - ./api:/app/api
       - ./model:/app/model
       - ./color_changer:/app/color_changer
+      - ./model/trained_models:/app/model/trained_models
     environment:
+      - APP_ENV=development
       - PYTHONUNBUFFERED=1
       - HOST=0.0.0.0
       - PORT=8000
       - RELOAD=true
       - DEVICE_PREFERENCE=auto
+      - MODEL_LOCAL_PATH=/app/model/trained_models/luviraai_weights.pth
     networks:
       - luviraai-network
 

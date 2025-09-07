@@ -72,7 +72,7 @@ FILE_VALIDATION = {
 # Model settings
 _default_model_path = os.getenv(
     "MODEL_LOCAL_PATH",
-    str(PROJECT_ROOT / "model" / "trained_models" / "2025-08-15_01-54-07" / "best_model.pth"),
+    str(PROJECT_ROOT / "model" / "trained_models" / "luviraai_weights.pth"),
 )
 
 MODEL_CONFIG = {
