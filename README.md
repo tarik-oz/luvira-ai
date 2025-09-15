@@ -25,9 +25,14 @@ Welcome to LuviraAI! This repository contains a production-grade, solo-developed
 ## 🎬 Live Demonstration
 
 <div align="center">
-  <video src="./docs/assets/demo/luviraai-demo.mp4" autoplay loop muted playsinline width="100%">
+  <video 
+    src="https://github.com/user-attachments/assets/3a46cf73-a1e2-4ed2-957a-86102827e120" 
+    muted 
+    playsinline 
+    controls 
+    width="100%">
   </video>
-  <em>(Demonstration shows both desktop and mobile responsive UI)</em>
+  <em>(🎬 Click Play for a full demonstration of the desktop and mobile UI)</em>
 </div>
 
 ## ✨ Core Features
@@ -88,17 +93,17 @@ _For a detailed look at all API workflows, see the [API's README](./api/README.m
 This project's health and usage are actively monitored. Below are screenshots of the live dashboards.
 
 <div align="center">
-  <img src="./docs/monitoring/cloudwatch-dashboard.png" alt="CloudWatch Dashboard" width="85%">
+  <img src="./docs/monitoring/cloudwatch-dashboard.png" alt="CloudWatch Dashboard" width="100%">
 </div>
 <div align="center">
-  <img src="./docs/monitoring/sentry-dashboard.png" alt="Sentry Dashboard" width="85%">
+  <img src="./docs/monitoring/sentry-dashboard.png" alt="Sentry Dashboard" width="100%">
   <p><em>Real-time backend/infrastructure monitoring with CloudWatch and frontend error tracking with Sentry.</em></p>
 </div>
 <div align="center">
-  <img src="./docs/monitoring/looker-analytics-dashboard.png" alt="Analytics Dashboard" width="85%">
+  <img src="./docs/monitoring/looker-analytics-dashboard.png" alt="Analytics Dashboard" width="100%">
 </div>
 <div align="center">
-  <img src="./docs/monitoring/looker-search-console-dashboard.png" alt="Search Console Dashboard" width="85%">
+  <img src="./docs/monitoring/looker-search-console-dashboard.png" alt="Search Console Dashboard" width="100%">
   <p><em>User engagement and SEO performance analysis via Looker Studio. (<a href="https://lookerstudio.google.com/reporting/f0f1d235-1544-4101-a7ee-21ab2ebdd26a">View Live Dashboard</a>)</em></p>
 </div>
 
