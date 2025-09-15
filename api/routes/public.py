@@ -8,6 +8,7 @@ from fastapi.responses import Response, StreamingResponse
 from ..core import get_color_change_service, SessionExpiredException
 from ..core.exceptions import APIException
 from ..services import ColorChangeService
+from ..schemas.enums import SourceEnum
 
 import json
 import logging
@@ -19,7 +20,7 @@ router = APIRouter()
 @router.post("/upload-and-prepare")
 async def upload_and_prepare(
     file: UploadFile = File(...),
-    source: str = Form(..., description="Upload source: 'upload_section', 'camera', or 'sample_images'"),
+    source: SourceEnum = Form(..., description="Upload source: 'upload_section', 'camera', or 'model_images'"),
     color_change_service: ColorChangeService = Depends(get_color_change_service)
 ):
     """
@@ -68,6 +69,12 @@ async def overlays_with_session(
     Part names: base, then each tone name. Quality: WEBP q=80. Soft edges + alpha.
     """
     try:
+        # structured log for color selection event
+        logger.info(json.dumps({
+            "event": "color_category_selected",
+            "session_id": session_id,
+            "color": color_name
+        }))
         boundary = "luvira"
 
         def iter_multipart():
@@ -75,12 +82,6 @@ async def overlays_with_session(
                 for name, webp_bytes in color_change_service.iter_overlays_with_session(
                     session_id, color_name, webp_quality=80
                 ):
-                    # structured log for color selection event
-                    logger.info(json.dumps({
-                        "event": "color_category_selected",
-                        "session_id": session_id,
-                        "color": color_name
-                    }))
                     # structured log for each yielded part
                     logger.info(json.dumps({
                         "event": "overlay_part",
@@ -99,7 +100,7 @@ async def overlays_with_session(
                 payload = {
                     "detail": e.detail,
                     "error_code": e.error_code,
-                    "extra": getattr(e, "extra_data", {}),
+                    "extra": getattr(e, "extra_data", {})
                 }
                 logger.info(json.dumps({
                     "event": "session_expired",
