@@ -1,167 +1,144 @@
-# Deep Learning Hair Segmentation
+<div align="center">
+  <img src="./docs/assets/logo/luviraai-logo.webp" alt="Luvira AI Logo" width="180">
+  <h1>LuviraAI</h1>
+  
+  <p><strong>An AI-powered, full-stack application to virtually try on new hair colors in real-time.</strong></p>
+  
+  <!-- Badges -->
+  <p>
+    <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.10+-blue.svg" alt="Python"></a>
+    <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/Backend-FastAPI-teal.svg" alt="FastAPI"></a>
+    <a href="https://vuejs.org"><img src="https://img.shields.io/badge/Frontend-Vue.js_3-green.svg" alt="Vue.js"></a>
+    <a href="https://github.com/tarik-oz/luvira-ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>                                                                                    
+  </p>
+  
+  <!-- Important Links -->
+  <p>
+    <strong>
+      <a href="https://luviraai.app">🌐 View Live Demo</a>
+    </strong>
+  </p>
+</div>
 
-> AI-powered hair color transformation with realistic results in seconds
+Welcome to LuviraAI! This repository contains a production-grade, solo-developed application that uses a custom-trained deep learning model to provide realistic hair color transformations.
 
-A comprehensive hair segmentation and realistic color transformation system powered by deep learning. This project provides both a REST API and a Vue.js frontend for accurate hair mask prediction and natural-looking hair recoloring.
+## 🎬 Live Demonstration
 
-🌐 **Live Demo**: [luviraai.app](https://luviraai.app)
+<div align="center">
+  <video src="./docs/assets/demo/luviraai-demo.mp4" autoplay loop muted playsinline width="100%">
+  </video>
+  <em>(Demonstration shows both desktop and mobile responsive UI)</em>
+</div>
 
-## 🎥 System in Action
+## ✨ Core Features
 
-<video width="100%" autoplay muted loop>
-  <source src="./docs/luvira-ai-demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
-
-_Real-time hair color transformation with AI-powered segmentation_
-
-## 🌟 Features
-
-- **AI-Powered Hair Segmentation**: Attention U-Net model for precise hair boundary detection
-- **Realistic Color Transformation**: HSV-based color change with natural blending and tone variations
-- **Session-Based Processing**: Fast color trials without regenerating masks
-- **Mobile-Optimized UI**: Responsive Vue.js frontend with camera capture support
-- **REST API**: FastAPI backend with comprehensive endpoints
-- **Multiple Deployment Options**: Docker Compose for easy local development
+- **AI-Powered Segmentation:** Utilizes a custom-trained **PyTorch** Attention U-Net model for highly accurate, real-time hair mask generation.
+- **Realistic Color Transformation:** A proprietary algorithm processes images in HSV color space to preserve natural hair highlights and shadows.
+- **High-Performance Streaming API:** Delivers multiple color tones in a single **multipart streaming response**, drastically reducing perceived latency and improving user experience.
+- **Multiple Upload Options:** Supports image input from file upload, live camera capture, and a pre-selected gallery of sample models.
+- **Full Observability:** Integrated with **Sentry**, **CloudWatch**, and **Looker Studio** for end-to-end monitoring of frontend errors, backend logs, and user analytics.
 
 ## 🏗️ System Architecture
 
-![System Architecture](./docs/system-architecture-diagram.png)
+<div align="center">
+  <img src="./docs/architecture/system-architecture-diagram.png" alt="System Architecture Diagram" width="100%">
+</div>
 
-The system follows a microservices architecture with clean separation between frontend, backend API, and core processing modules:
+LuviraAI is built on a modern, decoupled full-stack architecture designed for scalability and maintainability.
 
-- **Vue.js Frontend**: Responsive UI with real-time preview and mobile optimization
-- **FastAPI Backend**: RESTful API with session management and async processing
-- **Deep Learning Module**: Attention U-Net for precise hair segmentation
-- **Color Transformation Engine**: HSV-based realistic color blending
-- **Session Storage**: Filesystem or S3-based caching for fast color trials
+- **Frontend:** A responsive SPA built with **Vue.js & TypeScript**, deployed on **Vercel** to leverage its global CDN.
+- **Backend:** A powerful API built with **Python & FastAPI**, containerized with **Docker** and deployed on an **AWS EC2** instance.
+- **Automation:** The backend has a full **CI/CD pipeline** using **GitHub Actions** for automated builds and deployments to AWS.
+- **Observability:** The system's health is actively monitored with **Sentry** (frontend errors), **AWS CloudWatch** (backend logs & metrics), and **Looker Studio** (analytics).
 
-## 🚀 Quick Start with Docker
+## 🛠️ Tech Stack
 
-### Prerequisites
+<div align="center">
+  <table>
+    <tr>
+      <td align="center"><strong>Backend & AI</strong></td>
+      <td>FastAPI, Python, PyTorch, OpenCV</td>
+    </tr>
+    <tr>
+      <td align="center"><strong>Frontend</strong></td>
+      <td>Vue.js, TypeScript, Vite, Tailwind CSS, daisyUI</td>
+    </tr>
+    <tr>
+      <td align="center"><strong>DevOps & Cloud</strong></td>
+      <td>Docker, Docker Hub, CI/CD (GitHub Actions), AWS (EC2, S3, IAM, CloudWatch, SSM), Vercel</td>
+    </tr>
+     <tr>
+      <td align="center"><strong>Observability</strong></td>
+      <td>Sentry, Looker Studio (GA/GSC), AWS CloudWatch</td>
+    </tr>
+  </table>
+</div>
 
-- [Docker](https://docs.docker.com/get-docker/)
-- [Docker Compose](https://docs.docker.com/compose/install/)
+## 🔄 Core API Workflow
 
-### 1. Clone the Repository
+<div align="center">
+  <img src="./docs/flows/overlays-with-session.png" alt="API Streaming Workflow" width="100%">
+  <p><em>This diagram showcases the streaming optimization: after a single segmentation, the API streams only the lightweight hair masks, which are then combined with the original image on the client-side.</em></p>
+</div>
 
-```bash
-git clone <repository-url>
-cd deep-learning-hair-segmentation
-```
+_For a detailed look at all API workflows, see the [API's README](./api/README.md)._
 
-### 2. Start the Application
+## 📊 Live Dashboards
 
-```bash
-# Start all services (API + Frontend)
-docker-compose up --build
+This project's health and usage are actively monitored. Below are screenshots of the live dashboards.
 
-# Or run in background
-docker-compose up -d --build
-```
+<div align="center">
+  <img src="./docs/monitoring/cloudwatch-dashboard.png" alt="CloudWatch Dashboard" width="85%">
+</div>
+<div align="center">
+  <img src="./docs/monitoring/sentry-dashboard.png" alt="Sentry Dashboard" width="85%">
+  <p><em>Real-time backend/infrastructure monitoring with CloudWatch and frontend error tracking with Sentry.</em></p>
+</div>
+<div align="center">
+  <img src="./docs/monitoring/looker-analytics-dashboard.png" alt="Analytics Dashboard" width="85%">
+</div>
+<div align="center">
+  <img src="./docs/monitoring/looker-search-console-dashboard.png" alt="Search Console Dashboard" width="85%">
+  <p><em>User engagement and SEO performance analysis via Looker Studio. (<a href="https://lookerstudio.google.com/reporting/f0f1d235-1544-4101-a7ee-21ab2ebdd26a">View Live Dashboard</a>)</em></p>
+</div>
 
-### 3. Access the Application
+## ⚡ Performance & Quality
 
-- **Frontend**: http://localhost:5173
-- **API Documentation**: http://localhost:8000/docs
-- **API Health Check**: http://localhost:8000/
+<div align="center">
+  <img src="./docs/performance/lighthouse-desktop.png" alt="Desktop Lighthouse Score" width="60%">
+  <p><b>Desktop Performance</b>: Optimized for speed with excellent Core Web Vitals scores.</p>
+  <img src="./docs/performance/lighthouse-mobile.png" alt="Mobile Lighthouse Score" width="60%">
+  <p><b>Mobile Performance</b>: Intentionally showcases rich hair color samples and high-quality previews, prioritizing visual fidelity over pure performance metrics for the best user experience in beauty applications.</p>
+</div>
 
-### 4. Stop the Application
+## 🚀 Getting Started
 
-```bash
-docker-compose down
-```
+Ready to run the project locally? It's easy with Docker.
+
+1.  **Clone the Repository**
+    ```bash
+    git clone https://github.com/tarik-oz/luvira-ai.git
+    cd luvira-ai
+    ```
+2.  **Download Model Files**
+    Download the `luviraai-model.zip` archive from **[Hugging Face](https://huggingface.co/tarik-oz/luviraai-hair-segmentation)**. Extract it and place the two files inside into the `model/trained_models/` directory.
+
+3.  **Run with Docker Compose**
+    ```bash
+    docker-compose up --build
+    ```
+    - **Frontend**: `http://localhost:5173`
+    - **API Docs**: `http://localhost:8000/docs`
 
 ## 📁 Project Structure
 
-```
-deep-learning-hair-segmentation/
-├── 📁 api/                    # FastAPI Backend
-│   ├── routes/                # API endpoints
-│   ├── services/              # Business logic
-│   ├── core/                  # Core components
-│   └── README.md             # Backend documentation
-├── 📁 frontend/               # Vue.js Frontend
-│   ├── src/                   # Source code
-│   ├── public/                # Static assets
-│   └── README.md             # Frontend documentation
-├── 📁 model/                  # Deep Learning Models
-│   ├── models/                # Model architectures
-│   ├── training/              # Training scripts
-│   ├── inference/             # Prediction logic
-│   └── README.md             # Model documentation
-├── 📁 color_changer/          # Color Transformation
-│   ├── core/                  # Main transformer
-│   ├── transformers/          # HSV processing
-│   ├── utils/                 # Helper functions
-│   └── README.md             # Color changer documentation
-├── docker-compose.yml        # Multi-service orchestration
-├── Dockerfile                # Backend container
-└── requirements.txt          # Python dependencies
-```
+For more details on a specific part of the project, check out its dedicated `README`:
 
-## 🔧 Module Documentation
-
-Each module has detailed documentation for local development and advanced usage:
-
-- **[🤖 Model Training & Inference](./model/README.md)** - Train new models, run predictions, CLI tools
-- **[🚀 API Backend](./api/README.md)** - FastAPI development, endpoints, local setup
-- **[🎨 Color Transformation](./color_changer/README.md)** - Color algorithms, custom colors, testing tools
-- **[💻 Frontend](./frontend/README.md)** - Vue.js development, components, UI customization
-
-## 🛠️ Development Setup (Without Docker)
-
-For module-specific development, see individual README files. Each module can be run independently:
-
-1. **Model Training**: See [model/README.md](./model/README.md)
-2. **API Development**: See [api/README.md](./api/README.md)
-3. **Color Testing**: See [color_changer/README.md](./color_changer/README.md)
-4. **Frontend Development**: See [frontend/README.md](./frontend/README.md)
-
-## 📝 API Usage Examples
-
-### Upload and Process Image
-
-```bash
-# Upload image and get session ID
-curl -X POST "http://localhost:8000/upload-and-prepare" \
-  -F "file=@image.jpg" \
-  -F "source=upload_section"
-
-# Change hair color using session
-curl -X POST "http://localhost:8000/change-hair-color-with-session/session_abc123" \
-  -F "color_name=Blonde" \
-  -F "tone=golden"
-```
-
-### Get Available Colors
-
-```bash
-curl "http://localhost:8000/available-colors"
-curl "http://localhost:8000/available-tones/Blonde"
-```
-
-### Logs
-
-```bash
-# View API logs
-docker-compose logs api
-
-# View frontend logs
-docker-compose logs frontend
-
-# View all logs
-docker-compose logs -f
-```
+- **[🚀 API Backend](./api/README.md)** - Endpoints, security, and local setup.
+- **[💻 Frontend](./frontend/README.md)** - Vue components and state management.
+- **[🤖 AI Model](./model/README.md)** - Model architecture, training scripts, and CLI usage.
+- **[🎨 Color Algorithm](./color_changer/README.md)** - Details of the colorization logic.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 👨‍💻 Author
-
-**Tarık Öz**
-
----
-
-_For detailed module documentation, please refer to the individual README files in each directory._
+This project is licensed under the Apache 2.0 License. See the [LICENSE](./LICENSE) file for details.
